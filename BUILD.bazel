@@ -1,0 +1,31 @@
+load("@bazel_gazelle//:def.bzl", "gazelle_binary")
+load("@build_stack_rules_proto//rules:proto_gazelle.bzl", "proto_gazelle")
+
+exports_files([
+    "rules_proto_config.yaml",
+    "MODULE.bazel",
+])
+
+# ----------------------------------------------------
+# Gazelle
+# ----------------------------------------------------
+# gazelle:prefix github.com/stackb/centrl
+# gazelle:exclude vendor
+
+gazelle_binary(
+    name = "gazelle-custom",
+    languages = [
+        "@bazel_gazelle//language/go",
+        "@bazel_gazelle//language/proto",
+        "@build_stack_rules_proto//language/protobuf",
+        "//language/bcr",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+proto_gazelle(
+    name = "gazelle",
+    cfgs = ["//:rules_proto_config.yaml"],
+    external = "static",
+    gazelle = "//:gazelle-custom",
+)
