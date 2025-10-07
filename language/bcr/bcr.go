@@ -3,6 +3,7 @@ package bcr
 import (
 	"flag"
 	"log"
+	"path/filepath"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
@@ -121,5 +122,15 @@ func (pl *bcrExtension) Resolve(
 // log.Print.
 func (pl *bcrExtension) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	log.Println("visiting:", args.Rel, args.RegularFiles)
+
+	for _, name := range args.RegularFiles {
+		if name == "metadata.json" {
+			filename := filepath.Join(args.Config.WorkDir, args.Rel, name)
+			_, err := readMetadataJson(filename)
+			if err != nil {
+				log.Panicln(err)
+			}
+		}
+	}
 	return language.GenerateResult{}
 }

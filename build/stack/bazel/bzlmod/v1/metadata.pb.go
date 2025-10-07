@@ -28,6 +28,7 @@ type Metadata struct {
 	Repository     []string               `protobuf:"bytes,3,rep,name=repository,proto3" json:"repository,omitempty"`
 	Versions       []string               `protobuf:"bytes,4,rep,name=versions,proto3" json:"versions,omitempty"`
 	YankedVersions map[string]string      `protobuf:"bytes,5,rep,name=yanked_versions,json=yankedVersions,proto3" json:"yanked_versions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Deprecated     string                 `protobuf:"bytes,6,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -97,11 +98,20 @@ func (x *Metadata) GetYankedVersions() map[string]string {
 	return nil
 }
 
+func (x *Metadata) GetDeprecated() string {
+	if x != nil {
+		return x.Deprecated
+	}
+	return ""
+}
+
 type Metadata_Maintainer struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	GithubUserId  int32                  `protobuf:"varint,3,opt,name=github_user_id,json=githubUserId,proto3" json:"github_user_id,omitempty"`
+	Github        string                 `protobuf:"bytes,3,opt,name=github,proto3" json:"github,omitempty"`
+	DoNotNotify   bool                   `protobuf:"varint,4,opt,name=do_not_notify,json=doNotNotify,proto3" json:"do_not_notify,omitempty"`
+	GithubUserId  int32                  `protobuf:"varint,5,opt,name=github_user_id,json=githubUserId,proto3" json:"github_user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -150,6 +160,20 @@ func (x *Metadata_Maintainer) GetName() string {
 	return ""
 }
 
+func (x *Metadata_Maintainer) GetGithub() string {
+	if x != nil {
+		return x.Github
+	}
+	return ""
+}
+
+func (x *Metadata_Maintainer) GetDoNotNotify() bool {
+	if x != nil {
+		return x.DoNotNotify
+	}
+	return false
+}
+
 func (x *Metadata_Maintainer) GetGithubUserId() int32 {
 	if x != nil {
 		return x.GithubUserId
@@ -161,7 +185,7 @@ var File_build_stack_bazel_bzlmod_v1_metadata_proto protoreflect.FileDescriptor
 
 const file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc = "" +
 	"\n" +
-	"*build/stack/bazel/bzlmod/v1/metadata.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\"\xbb\x03\n" +
+	"*build/stack/bazel/bzlmod/v1/metadata.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\"\x98\x04\n" +
 	"\bMetadata\x12\x1a\n" +
 	"\bhomepage\x18\x01 \x01(\tR\bhomepage\x12R\n" +
 	"\vmaintainers\x18\x02 \x03(\v20.build.stack.bazel.bzlmod.v1.Metadata.MaintainerR\vmaintainers\x12\x1e\n" +
@@ -169,12 +193,17 @@ const file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc = "" +
 	"repository\x18\x03 \x03(\tR\n" +
 	"repository\x12\x1a\n" +
 	"\bversions\x18\x04 \x03(\tR\bversions\x12b\n" +
-	"\x0fyanked_versions\x18\x05 \x03(\v29.build.stack.bazel.bzlmod.v1.Metadata.YankedVersionsEntryR\x0eyankedVersions\x1a\\\n" +
+	"\x0fyanked_versions\x18\x05 \x03(\v29.build.stack.bazel.bzlmod.v1.Metadata.YankedVersionsEntryR\x0eyankedVersions\x12\x1e\n" +
+	"\n" +
+	"deprecated\x18\x06 \x01(\tR\n" +
+	"deprecated\x1a\x98\x01\n" +
 	"\n" +
 	"Maintainer\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12$\n" +
-	"\x0egithub_user_id\x18\x03 \x01(\x05R\fgithubUserId\x1aA\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06github\x18\x03 \x01(\tR\x06github\x12\"\n" +
+	"\rdo_not_notify\x18\x04 \x01(\bR\vdoNotNotify\x12$\n" +
+	"\x0egithub_user_id\x18\x05 \x01(\x05R\fgithubUserId\x1aA\n" +
 	"\x13YankedVersionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B;Z9github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpbb\x06proto3"

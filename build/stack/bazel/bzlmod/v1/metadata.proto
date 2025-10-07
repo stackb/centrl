@@ -14,8 +14,12 @@ message Metadata {
         string email = 1;
         // "name": "Laurent Perron"
         string name = 2;
+        // "github": "UebelAndre",
+        string github = 3;
+        // "do_not_notify": true,
+        bool do_not_notify = 4;
         // "github_user_id": 704767
-        int32 github_user_id = 3;
+        int32 github_user_id = 5;
     }
     // "homepage": "https://github.com/mateidavid/zstr",
     string homepage = 1;
@@ -27,4 +31,6 @@ message Metadata {
     repeated string versions = 4;
     // "yanked_versions": { "1.5.0": "Regression in prebuilt artifacts leads to missing rules_rust dep" }
     map<string,string> yanked_versions = 5;
+    // "deprecated": "use opentracing-cpp instead"
+    string deprecated = 6;
 }

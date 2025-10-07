@@ -2,7 +2,10 @@ module github.com/stackb/centrl
 
 go 1.23.6
 
-require github.com/bazelbuild/bazel-gazelle v0.45.0
+require (
+	github.com/bazelbuild/bazel-gazelle v0.45.0
+	google.golang.org/protobuf v1.36.3
+)
 
 require (
 	github.com/bazelbuild/buildtools v0.0.0-20240918101019-be1c24cc9a44 // indirect
