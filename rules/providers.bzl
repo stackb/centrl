@@ -73,3 +73,10 @@ ModuleDependencyCycleInfo = provider(
         "cycle_name": "Name identifier for this cycle",
     },
 )
+
+ModuleRegistryInfo = provider(
+    doc = "Info about a Module Registry",
+    fields = {
+        "deps": "List of module metadata targets providing ModuleMetadataInfo",
+    },
+)

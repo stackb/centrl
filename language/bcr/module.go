@@ -140,6 +140,24 @@ func moduleVersionKinds() map[string]rule.KindInfo {
 	}
 }
 
+func moduleVersionImports(r *rule.Rule) []resolve.ImportSpec {
+	// Get the module name and version to construct the import spec
+	moduleName := r.AttrString("module_name")
+	version := r.AttrString("version")
+
+	if moduleName == "" || version == "" {
+		return nil
+	}
+
+	// Construct and return the import spec: "module_name@version"
+	importSpec := resolve.ImportSpec{
+		Lang: "bcr",
+		Imp:  fmt.Sprintf("%s@%s", moduleName, version),
+	}
+
+	return []resolve.ImportSpec{importSpec}
+}
+
 // parseStarlarkBool parses the boolean string and discards any parse error
 func parseStarlarkBool(value string) bool {
 	result, _ := strconv.ParseBool(strings.ToLower(value))

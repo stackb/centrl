@@ -10,6 +10,7 @@ go_library(
         "lifecycle.go",
         "metadata.go",
         "module.go",
+        "registry.go",
         "source.go",
     ],
     importpath = "github.com/stackb/centrl/language/bcr",

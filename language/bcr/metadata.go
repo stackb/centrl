@@ -26,13 +26,7 @@ func makeModuleMaintainerRules(maintainers []*bzpb.Metadata_Maintainer) []*rule.
 		if m.Github != "" {
 			name = m.Github
 		} else if m.Email != "" {
-			// Use email prefix as name if no github username
-			for j, c := range m.Email {
-				if c == '@' {
-					name = m.Email[:j]
-					break
-				}
-			}
+			name = m.Email
 		}
 
 		r := rule.NewRule("module_maintainer", name)
@@ -108,6 +102,13 @@ func moduleMetadataKinds() map[string]rule.KindInfo {
 			MatchAttrs: []string{"name", "email"},
 		},
 	}
+}
+
+func moduleMetadataImports(r *rule.Rule) []resolve.ImportSpec {
+	return []resolve.ImportSpec{{
+		Lang: "bcr",
+		Imp:  r.Name(),
+	}}
 }
 
 // resolveModuleMetadataRule resolves the deps attribute for a module_metadata rule

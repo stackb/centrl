@@ -2,7 +2,6 @@ package bcr
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"maps"
 	"path"
@@ -69,6 +68,7 @@ func (*bcrExtension) Kinds() map[string]rule.KindInfo {
 	maps.Copy(kinds, moduleSourceKinds())
 	maps.Copy(kinds, moduleAttestationsKinds())
 	maps.Copy(kinds, moduleDependencyCycleKinds())
+	maps.Copy(kinds, moduleRegistryKinds())
 	return kinds
 }
 
@@ -84,6 +84,7 @@ func (ext *bcrExtension) Loads() []rule.LoadInfo {
 		moduleSourceLoadInfo(),
 		moduleAttestationsLoadInfo(),
 		moduleDependencyCycleLoadInfo(),
+		moduleRegistryLoadInfo(),
 	}
 }
 
@@ -99,26 +100,13 @@ func (*bcrExtension) Fix(c *config.Config, f *rule.File) {
 // If nil is returned, the rule will not be indexed. If any non-nil slice is
 // returned, including an empty slice, the rule will be indexed.
 func (ext *bcrExtension) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
-	// Only handle module_version rules
-	if r.Kind() != "module_version" {
-		return nil
+	switch r.Kind() {
+	case "module_version":
+		return moduleVersionImports(r)
+	case "module_metadata":
+		return moduleMetadataImports(r)
 	}
-
-	// Get the module name and version to construct the import spec
-	moduleName := r.AttrString("module_name")
-	version := r.AttrString("version")
-
-	if moduleName == "" || version == "" {
-		return nil
-	}
-
-	// Construct and return the import spec: "module_name@version"
-	importSpec := resolve.ImportSpec{
-		Lang: "bcr",
-		Imp:  fmt.Sprintf("%s@%s", moduleName, version),
-	}
-
-	return []resolve.ImportSpec{importSpec}
+	return nil
 }
 
 // Embeds returns a list of labels of rules that the given rule embeds. If a
@@ -152,6 +140,8 @@ func (ext *bcrExtension) Resolve(
 		resolveModuleDependencyCycleRule(r, ix)
 	case "module_metadata":
 		resolveModuleMetadataRule(r, ix, from)
+	case "module_registry":
+		resolveModuleRegistryRule(r, ix)
 	}
 }
 
@@ -176,14 +166,16 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 	// rules.
 	//
 	// TODO(make this configurable).
-	if strings.HasSuffix(args.Rel, "bazel-central-registry/recursion") {
+	if args.Rel == "bazel-central-registry/recursion" {
 		cycles := ext.getCycles()
 		if len(cycles) > 0 {
 			cycleRules := makeModuleDependencyCycleRules(cycles)
 			rules = append(rules, cycleRules...)
 		}
 	}
-
+	if args.Rel == "bazel-central-registry/modules" {
+		rules = append(rules, makeModuleRegistryRule(args.Subdirs))
+	}
 	for _, name := range args.RegularFiles {
 		if name == "metadata.json" {
 			filename := filepath.Join(args.Config.WorkDir, args.Rel, name)
