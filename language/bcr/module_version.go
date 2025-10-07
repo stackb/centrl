@@ -7,7 +7,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
-	"github.com/stackb/centrl/pkg/modulebazel"
 )
 
 // moduleVersionLoadInfo returns load info for the module_version rule
@@ -98,9 +97,4 @@ func moduleVersionImports(r *rule.Rule) []resolve.ImportSpec {
 	}
 
 	return []resolve.ImportSpec{importSpec}
-}
-
-// readModuleBazelFile reads and parses a MODULE.bazel file
-func readModuleBazelFile(filename string) (*bzpb.ModuleVersion, error) {
-	return modulebazel.ReadFile(filename)
 }

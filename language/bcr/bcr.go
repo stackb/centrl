@@ -2,12 +2,12 @@ package bcr
 
 import (
 	"flag"
-	"io"
 	"log"
 	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -17,6 +17,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/dominikbraun/graph"
+	"github.com/stackb/centrl/pkg/modulebazel"
 )
 
 // NewLanguage is called by Gazelle to install this language extension in a
@@ -180,14 +181,17 @@ func (ext *bcrExtension) Resolve(
 // Any non-fatal errors this function encounters should be logged using
 // log.Print.
 func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.GenerateResult {
+	// TODO(make this configurable).
+	if !strings.HasPrefix(args.Rel, "bazel-central-registry/") {
+		return language.GenerateResult{}
+	}
+
 	log.Println("visiting:", args.Rel, args.RegularFiles)
 
 	var rules []*rule.Rule
 
 	// Check if this is the recursion directory where we should generate cycle
 	// rules.
-	//
-	// TODO(make this configurable).
 	if args.Rel == "bazel-central-registry/recursion" {
 		cycles := ext.getCycles()
 		if len(cycles) > 0 {
@@ -198,93 +202,100 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 	if args.Rel == "bazel-central-registry/modules" {
 		rules = append(rules, makeModuleRegistryRule(args.Subdirs))
 	}
-	for _, name := range args.RegularFiles {
-		if name == "metadata.json" {
-			filename := filepath.Join(args.Config.WorkDir, args.Rel, name)
-			md, err := readMetadataJson(filename)
-			if err != nil {
-				log.Panicln(err)
-			}
-			// Generate maintainer rules
-			maintainerRules := makeModuleMaintainerRules(md.Maintainers)
-			// Add maintainer rules to the list
-			rules = append(rules, maintainerRules...)
-			// Add metadata rule with references to maintainers
-			rules = append(rules, makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules, name))
+
+	if slices.Contains(args.RegularFiles, "metadata.json") {
+		filename := filepath.Join(args.Config.WorkDir, args.Rel, "metadata.json")
+		md, err := readMetadataJson(filename)
+		if err != nil {
+			log.Fatalf("reading %s/source.json: %v", args.Rel, err)
 		}
-		if name == "MODULE.bazel" && strings.Contains(args.Rel, "modules/") && !strings.Contains(args.Rel, "overlay/") {
-			filename := filepath.Join(args.Config.WorkDir, args.Rel, name)
-			module, err := readModuleBazelFile(filename)
-			if err != nil {
-				log.Panicln(err)
-			}
+		// Generate maintainer rules
+		maintainerRules := makeModuleMaintainerRules(md.Maintainers)
+		// Add maintainer rules to the list
+		rules = append(rules, maintainerRules...)
+		// Add metadata rule with references to maintainers
+		rules = append(rules, makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules, "metadata.json"))
+	}
 
-			// Copy MODULE.bazel to MODULE.bazel.txt to work around Bazel's special handling
-			modulebazelTxtFilename := filepath.Join(args.Config.WorkDir, args.Rel, "MODULE.bazel.txt")
-			if err := copyFile(filename, modulebazelTxtFilename); err != nil {
-				log.Printf("Failed to copy MODULE.bazel to MODULE.bazel.txt: %v", err)
-			}
+	// are we in a module version directory?  A previous pass of gazelle may have already renamed MODULE.bazel to MODULE.bazel.txt
+	if strings.Contains(args.Rel, "modules/") &&
+		!strings.Contains(args.Rel, "/overlay") &&
+		(slices.Contains(args.RegularFiles, "MODULE.bazel") || slices.Contains(args.RegularFiles, "MODULE.bazel.txt")) {
+		moduleBazelFilename := filepath.Join(args.Config.WorkDir, args.Rel, "MODULE.bazel.txt")
 
-			// Try to read source.json if it exists
-			var sourceRule *rule.Rule
+		// Move MODULE.bazel to MODULE.bazel.txt because that file breaks
+		// symlinks in sandboxes
+		if slices.Contains(args.RegularFiles, "MODULE.bazel") {
+			src := filepath.Join(args.Config.WorkDir, args.Rel, "MODULE.bazel")
+			dst := moduleBazelFilename
+			if err := os.Rename(src, dst); err != nil {
+				log.Fatalf("Failed to rename %s to %s: %v", src, dst, err)
+			}
+		}
+
+		module, err := modulebazel.ReadFile(moduleBazelFilename)
+		if err != nil {
+			log.Fatalf("reading %s: %v", moduleBazelFilename, err)
+		}
+
+		// Extract version from path (e.g., modules/foo/1.2.3 -> 1.2.3)
+		version := filepath.Base(args.Rel)
+
+		var sourceRule *rule.Rule
+		var attestationsRule *rule.Rule
+		var presubmitRule *rule.Rule
+
+		if slices.Contains(args.RegularFiles, "source.json") {
 			sourceFilename := filepath.Join(args.Config.WorkDir, args.Rel, "source.json")
 			source, err := readSourceJson(sourceFilename)
 			if err != nil {
-				// source.json is optional, just log if missing
-				log.Printf("No source.json found for %s: %v", args.Rel, err)
-			} else {
-				module.Source = source
-				// Generate source rule
-				sourceRule = makeModuleSourceRule(source, "source.json")
-				rules = append(rules, sourceRule)
+				log.Fatalf("reading %s/source.json: %v", args.Rel, err)
 			}
+			module.Source = source
+			sourceRule = makeModuleSourceRule(source, "source.json")
+			rules = append(rules, sourceRule)
+		}
+
+		if slices.Contains(args.RegularFiles, "attestations.json") {
 			// Try to read attestations.json if it exists
-			var attestationsRule *rule.Rule
 			attestationsFilename := filepath.Join(args.Config.WorkDir, args.Rel, "attestations.json")
 			attestations, err := readAttestationsJson(attestationsFilename)
 			if err != nil {
-				// attestations.json is optional, just log if missing
-				log.Printf("No attestations.json found for %s: %v", args.Rel, err)
-			} else {
-				module.Attestations = attestations
-				// Generate attestations rule
-				attestationsRule = makeModuleAttestationsRule(attestations, "attestations.json")
-				rules = append(rules, attestationsRule)
+				log.Fatalf("reading %s/attestations.json: %v", args.Rel, err)
 			}
+			module.Attestations = attestations
+			attestationsRule = makeModuleAttestationsRule(attestations, "attestations.json")
+			rules = append(rules, attestationsRule)
+		}
+
+		if slices.Contains(args.RegularFiles, "presubmit.yml") {
 			// Try to read presubmit.yml if it exists
-			var presubmitRule *rule.Rule
 			presubmitFilename := filepath.Join(args.Config.WorkDir, args.Rel, "presubmit.yml")
 			presubmit, err := readPresubmitYaml(presubmitFilename)
 			if err != nil {
-				// presubmit.yml is optional, just log if missing
-				log.Printf("No presubmit.yml found for %s: %v", args.Rel, err)
-			} else {
-				module.Presubmit = presubmit
-				// Generate presubmit rule
-				presubmitRule = makeModulePresubmitRule(presubmit, "presubmit.yml")
-				rules = append(rules, presubmitRule)
+				log.Printf("reading %s/presubmit.yml: %v", args.Rel, err)
 			}
-			// Extract version from path (e.g., modules/foo/1.2.3 -> 1.2.3)
-			version := filepath.Base(args.Rel)
-
-			// Add module to dependency graph
-			ext.addModuleToGraph(module.Name, version)
-
-			// Add dependency edges to graph
-			for _, dep := range module.Deps {
-				ext.addDependencyEdge(module.Name, version, dep.Name, dep.Version)
-			}
-
-			// Generate dependency and override rules
-			depRules, overrideRules := makeModuleDependencyRules(module.Deps)
-			// Add override rules to the list first (so dependencies can reference them)
-			rules = append(rules, overrideRules...)
-			// Add dependency rules to the list
-			rules = append(rules, depRules...)
-			// Add module version rule with references to dependencies, source, attestations, and presubmit
-			// Use MODULE.bazel.txt instead of MODULE.bazel to avoid Bazel's special handling
-			rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule, presubmitRule, "MODULE.bazel.txt"))
+			module.Presubmit = presubmit
+			presubmitRule = makeModulePresubmitRule(presubmit, "presubmit.yml")
+			rules = append(rules, presubmitRule)
 		}
+		// Add module to dependency graph
+		ext.addModuleToGraph(module.Name, version)
+
+		// Add dependency edges to graph
+		for _, dep := range module.Deps {
+			ext.addDependencyEdge(module.Name, version, dep.Name, dep.Version)
+		}
+
+		// Generate dependency and override rules
+		depRules, overrideRules := makeModuleDependencyRules(module.Deps)
+		// Add override rules to the list first (so dependencies can reference them)
+		rules = append(rules, overrideRules...)
+		// Add dependency rules to the list
+		rules = append(rules, depRules...)
+		// Add module version rule with references to dependencies, source, attestations, and presubmit
+		// Use MODULE.bazel.txt instead of MODULE.bazel to avoid Bazel's special handling
+		rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule, presubmitRule, "MODULE.bazel.txt"))
 	}
 
 	imports := make([]interface{}, len(rules))
@@ -296,22 +307,4 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		Gen:     rules,
 		Imports: imports,
 	}
-}
-
-// copyFile copies a file from src to dst
-func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer sourceFile.Close()
-
-	destFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, sourceFile)
-	return err
 }

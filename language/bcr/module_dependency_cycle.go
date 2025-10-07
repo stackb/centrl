@@ -95,7 +95,7 @@ func resolveModuleDependencyCycleRule(r *rule.Rule, ix *resolve.RuleIndex) {
 		results := ix.FindRulesByImport(importSpec, "bcr")
 
 		if len(results) == 0 {
-			log.Printf("No module_version found for %s in cycle %s", moduleVersion, r.Name())
+			log.Printf("resolveModuleDependencyCycleRule: No module_version found for %s in cycle %s", moduleVersion, r.Name())
 			continue
 		}
 

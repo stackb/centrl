@@ -90,7 +90,7 @@ func resolveModuleMetadataRule(r *rule.Rule, ix *resolve.RuleIndex) {
 			results := ix.FindRulesByImport(importSpec, "bcr")
 
 			if len(results) == 0 {
-				log.Printf("No module_version found for %s@%s in module_metadata", moduleName, version)
+				log.Printf("resolveModuleMetadataRule: No module_version found for %s@%s in module_metadata", moduleName, version)
 				continue
 			}
 

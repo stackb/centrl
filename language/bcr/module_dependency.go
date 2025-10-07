@@ -106,7 +106,7 @@ func resolveModuleDependencyRule(r *rule.Rule, ix *resolve.RuleIndex, from label
 	results := ix.FindRulesByImport(importSpec, "bcr")
 
 	if len(results) == 0 {
-		log.Printf("No module_version found for %s@%s", depName, version)
+		log.Printf("%s: No module_version found for %s", from, moduleVersion)
 		return
 	}
 

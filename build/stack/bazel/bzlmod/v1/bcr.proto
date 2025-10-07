@@ -46,6 +46,18 @@ message Source {
     int32 patch_strip = 4;
     // Map of patch file names to their integrity hashes
     map<string, string> patches = 5;
+    // Map of overlay file names to their integrity hashes
+    map<string, string> overlay = 6;
+    // Optional docs url
+    string docs_url = 7;
+    // Optional mirrors urls
+    repeated string mirror_urls = 8;
+    // optional (e.g. "archive_type": "tar.gz")
+    string archive_type = 9;
+    // optional (e.g. "type": "git_repository")
+    string type = 10;
+    string remote = 11;
+    string commit = 12;
 }
 
 // Attestations represents an attestations.json file for a module version
