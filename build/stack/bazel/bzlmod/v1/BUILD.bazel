@@ -5,14 +5,14 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 
 proto_library(
     name = "bzpb_proto",
-    srcs = ["metadata.proto"],
+    srcs = ["bcr.proto"],
     visibility = ["//visibility:public"],
 )
 
 proto_compiled_sources(
     name = "bzpb_go_compiled_sources",
-    srcs = ["metadata.pb.go"],
-    output_mappings = ["metadata.pb.go=github.com/stackb/centrl/build/stack/bazel/bzlmod/v1/metadata.pb.go"],
+    srcs = ["bcr.pb.go"],
+    output_mappings = ["bcr.pb.go=github.com/stackb/centrl/build/stack/bazel/bzlmod/v1/bcr.pb.go"],
     plugins = ["@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go"],
     proto = "bzpb_proto",
     visibility = ["//visibility:public"],
@@ -20,7 +20,7 @@ proto_compiled_sources(
 
 proto_go_library(
     name = "bzpb_go_proto",
-    srcs = ["metadata.pb.go"],
+    srcs = ["bcr.pb.go"],
     importpath = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1",
     visibility = ["//visibility:public"],
     deps = [
@@ -34,7 +34,7 @@ proto_go_library(
 
 go_library(
     name = "bzlmod",
-    srcs = ["metadata.pb.go"],
+    srcs = ["bcr.pb.go"],
     importpath = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1",
     visibility = ["//visibility:public"],
     deps = [

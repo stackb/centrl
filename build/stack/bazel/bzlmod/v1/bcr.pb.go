@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.32.0
-// source: build/stack/bazel/bzlmod/v1/metadata.proto
+// source: build/stack/bazel/bzlmod/v1/bcr.proto
 
 package bzpb
 
@@ -35,7 +35,7 @@ type Metadata struct {
 
 func (x *Metadata) Reset() {
 	*x = Metadata{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[0]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *Metadata) String() string {
 func (*Metadata) ProtoMessage() {}
 
 func (x *Metadata) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[0]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *Metadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Metadata.ProtoReflect.Descriptor instead.
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{0}
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Metadata) GetHomepage() string {
@@ -118,7 +118,7 @@ type Source struct {
 
 func (x *Source) Reset() {
 	*x = Source{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[1]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -130,7 +130,7 @@ func (x *Source) String() string {
 func (*Source) ProtoMessage() {}
 
 func (x *Source) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[1]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -143,7 +143,7 @@ func (x *Source) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Source.ProtoReflect.Descriptor instead.
 func (*Source) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{1}
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Source) GetUrl() string {
@@ -191,7 +191,7 @@ type Attestations struct {
 
 func (x *Attestations) Reset() {
 	*x = Attestations{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[2]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -203,7 +203,7 @@ func (x *Attestations) String() string {
 func (*Attestations) ProtoMessage() {}
 
 func (x *Attestations) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[2]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -216,7 +216,7 @@ func (x *Attestations) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Attestations.ProtoReflect.Descriptor instead.
 func (*Attestations) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{2}
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Attestations) GetMediaType() string {
@@ -248,7 +248,7 @@ type ModuleVersion struct {
 
 func (x *ModuleVersion) Reset() {
 	*x = ModuleVersion{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[3]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -260,7 +260,7 @@ func (x *ModuleVersion) String() string {
 func (*ModuleVersion) ProtoMessage() {}
 
 func (x *ModuleVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[3]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -273,7 +273,7 @@ func (x *ModuleVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModuleVersion.ProtoReflect.Descriptor instead.
 func (*ModuleVersion) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{3}
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ModuleVersion) GetName() string {
@@ -336,7 +336,7 @@ type ModuleDependency struct {
 
 func (x *ModuleDependency) Reset() {
 	*x = ModuleDependency{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[4]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -348,7 +348,7 @@ func (x *ModuleDependency) String() string {
 func (*ModuleDependency) ProtoMessage() {}
 
 func (x *ModuleDependency) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[4]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -361,7 +361,7 @@ func (x *ModuleDependency) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModuleDependency.ProtoReflect.Descriptor instead.
 func (*ModuleDependency) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{4}
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ModuleDependency) GetName() string {
@@ -398,7 +398,7 @@ type Metadata_Maintainer struct {
 
 func (x *Metadata_Maintainer) Reset() {
 	*x = Metadata_Maintainer{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[5]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -410,7 +410,7 @@ func (x *Metadata_Maintainer) String() string {
 func (*Metadata_Maintainer) ProtoMessage() {}
 
 func (x *Metadata_Maintainer) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[5]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -423,7 +423,7 @@ func (x *Metadata_Maintainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Metadata_Maintainer.ProtoReflect.Descriptor instead.
 func (*Metadata_Maintainer) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{0, 0}
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *Metadata_Maintainer) GetEmail() string {
@@ -471,7 +471,7 @@ type Attestations_Attestation struct {
 
 func (x *Attestations_Attestation) Reset() {
 	*x = Attestations_Attestation{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[8]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -483,7 +483,7 @@ func (x *Attestations_Attestation) String() string {
 func (*Attestations_Attestation) ProtoMessage() {}
 
 func (x *Attestations_Attestation) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[8]
+	mi := &file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -496,7 +496,7 @@ func (x *Attestations_Attestation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Attestations_Attestation.ProtoReflect.Descriptor instead.
 func (*Attestations_Attestation) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{2, 0}
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP(), []int{2, 0}
 }
 
 func (x *Attestations_Attestation) GetUrl() string {
@@ -513,11 +513,11 @@ func (x *Attestations_Attestation) GetIntegrity() string {
 	return ""
 }
 
-var File_build_stack_bazel_bzlmod_v1_metadata_proto protoreflect.FileDescriptor
+var File_build_stack_bazel_bzlmod_v1_bcr_proto protoreflect.FileDescriptor
 
-const file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc = "" +
+const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\n" +
-	"*build/stack/bazel/bzlmod/v1/metadata.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\"\x98\x04\n" +
+	"%build/stack/bazel/bzlmod/v1/bcr.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\"\x98\x04\n" +
 	"\bMetadata\x12\x1a\n" +
 	"\bhomepage\x18\x01 \x01(\tR\bhomepage\x12R\n" +
 	"\vmaintainers\x18\x02 \x03(\v20.build.stack.bazel.bzlmod.v1.Metadata.MaintainerR\vmaintainers\x12\x1e\n" +
@@ -573,19 +573,19 @@ const file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc = "" +
 	"\x03dev\x18\x03 \x01(\bR\x03devB;Z9github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpbb\x06proto3"
 
 var (
-	file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescOnce sync.Once
-	file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescData []byte
+	file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescOnce sync.Once
+	file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescData []byte
 )
 
-func file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP() []byte {
-	file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescOnce.Do(func() {
-		file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc), len(file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc)))
+func file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescGZIP() []byte {
+	file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescOnce.Do(func() {
+		file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc), len(file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc)))
 	})
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescData
+	return file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescData
 }
 
-var file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-var file_build_stack_bazel_bzlmod_v1_metadata_proto_goTypes = []any{
+var file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_build_stack_bazel_bzlmod_v1_bcr_proto_goTypes = []any{
 	(*Metadata)(nil),                 // 0: build.stack.bazel.bzlmod.v1.Metadata
 	(*Source)(nil),                   // 1: build.stack.bazel.bzlmod.v1.Source
 	(*Attestations)(nil),             // 2: build.stack.bazel.bzlmod.v1.Attestations
@@ -597,7 +597,7 @@ var file_build_stack_bazel_bzlmod_v1_metadata_proto_goTypes = []any{
 	(*Attestations_Attestation)(nil), // 8: build.stack.bazel.bzlmod.v1.Attestations.Attestation
 	nil,                              // 9: build.stack.bazel.bzlmod.v1.Attestations.AttestationsEntry
 }
-var file_build_stack_bazel_bzlmod_v1_metadata_proto_depIdxs = []int32{
+var file_build_stack_bazel_bzlmod_v1_bcr_proto_depIdxs = []int32{
 	5, // 0: build.stack.bazel.bzlmod.v1.Metadata.maintainers:type_name -> build.stack.bazel.bzlmod.v1.Metadata.Maintainer
 	6, // 1: build.stack.bazel.bzlmod.v1.Metadata.yanked_versions:type_name -> build.stack.bazel.bzlmod.v1.Metadata.YankedVersionsEntry
 	7, // 2: build.stack.bazel.bzlmod.v1.Source.patches:type_name -> build.stack.bazel.bzlmod.v1.Source.PatchesEntry
@@ -613,26 +613,26 @@ var file_build_stack_bazel_bzlmod_v1_metadata_proto_depIdxs = []int32{
 	0, // [0:8] is the sub-list for field type_name
 }
 
-func init() { file_build_stack_bazel_bzlmod_v1_metadata_proto_init() }
-func file_build_stack_bazel_bzlmod_v1_metadata_proto_init() {
-	if File_build_stack_bazel_bzlmod_v1_metadata_proto != nil {
+func init() { file_build_stack_bazel_bzlmod_v1_bcr_proto_init() }
+func file_build_stack_bazel_bzlmod_v1_bcr_proto_init() {
+	if File_build_stack_bazel_bzlmod_v1_bcr_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc), len(file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc), len(file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_build_stack_bazel_bzlmod_v1_metadata_proto_goTypes,
-		DependencyIndexes: file_build_stack_bazel_bzlmod_v1_metadata_proto_depIdxs,
-		MessageInfos:      file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes,
+		GoTypes:           file_build_stack_bazel_bzlmod_v1_bcr_proto_goTypes,
+		DependencyIndexes: file_build_stack_bazel_bzlmod_v1_bcr_proto_depIdxs,
+		MessageInfos:      file_build_stack_bazel_bzlmod_v1_bcr_proto_msgTypes,
 	}.Build()
-	File_build_stack_bazel_bzlmod_v1_metadata_proto = out.File
-	file_build_stack_bazel_bzlmod_v1_metadata_proto_goTypes = nil
-	file_build_stack_bazel_bzlmod_v1_metadata_proto_depIdxs = nil
+	File_build_stack_bazel_bzlmod_v1_bcr_proto = out.File
+	file_build_stack_bazel_bzlmod_v1_bcr_proto_goTypes = nil
+	file_build_stack_bazel_bzlmod_v1_bcr_proto_depIdxs = nil
 }
