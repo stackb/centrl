@@ -18,6 +18,7 @@ ModuleMetadataInfo = provider(
         "versions": "List of version strings",
         "yanked_versions": "Dictionary mapping version to reason for yanking",
         "deprecated": "Deprecation message if deprecated",
+        "deps": "List of module version targets providing ModuleVersionInfo",
     },
 )
 
@@ -28,6 +29,7 @@ ModuleDependencyInfo = provider(
         "version": "Dependency module version",
         "dev": "Whether this is a dev dependency",
         "module": "Module version target providing ModuleVersionInfo",
+        "cycle": "Cycle target providing ModuleDependencyCycleInfo if this dependency is part of a cycle",
     },
 )
 
@@ -61,5 +63,13 @@ ModuleVersionInfo = provider(
         "deps": "List of dependency targets providing ModuleDependencyInfo",
         "source": "Source target providing ModuleSourceInfo",
         "attestations": "Attestations target providing ModuleAttestationsInfo",
+    },
+)
+
+ModuleDependencyCycleInfo = provider(
+    doc = "Info about a Module Dependency Cycle",
+    fields = {
+        "modules": "List of module version targets in the cycle",
+        "cycle_name": "Name identifier for this cycle",
     },
 )

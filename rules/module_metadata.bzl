@@ -1,6 +1,6 @@
 "provides the module_metadata rule"
 
-load("//rules:providers.bzl", "ModuleMaintainerInfo", "ModuleMetadataInfo")
+load("//rules:providers.bzl", "ModuleMaintainerInfo", "ModuleMetadataInfo", "ModuleVersionInfo")
 
 def _module_metadata_impl(ctx):
     return [
@@ -11,6 +11,7 @@ def _module_metadata_impl(ctx):
             versions = ctx.attr.versions,
             yanked_versions = ctx.attr.yanked_versions,
             deprecated = ctx.attr.deprecated,
+            deps = ctx.attr.deps,
         ),
     ]
 
@@ -23,6 +24,7 @@ module_metadata = rule(
         "versions": attr.string_list(),
         "yanked_versions": attr.string_dict(),
         "deprecated": attr.string(),
+        "deps": attr.label_list(providers = [ModuleVersionInfo]),
     },
     provides = [ModuleMetadataInfo],
 )

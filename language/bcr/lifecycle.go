@@ -14,7 +14,13 @@ func (ext *bcrExtension) Before(ctx context.Context) {
 // This is the ideal place to detect circular dependencies since the
 // complete dependency graph has been built.
 func (ext *bcrExtension) DoneGeneratingRules() {
-	// Detect and log any circular dependencies
+	// Get all detected cycles
+	cycles := ext.getCycles()
+
+	// Build the module-to-cycle mapping for use during resolution
+	ext.moduleToCycle = buildModuleToCycleMap(cycles)
+
+	// Log any circular dependencies
 	ext.logCycles()
 }
 

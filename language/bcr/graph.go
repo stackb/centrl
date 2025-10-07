@@ -63,14 +63,20 @@ func (ext *bcrExtension) detectCycles() ([][]string, error) {
 	return cycles, nil
 }
 
-// logCycles logs all detected circular dependencies
-func (ext *bcrExtension) logCycles() {
+// getCycles returns all detected circular dependencies
+// Returns an empty slice if no cycles are found or if an error occurs
+func (ext *bcrExtension) getCycles() [][]string {
 	cycles, err := ext.detectCycles()
 	if err != nil {
 		log.Printf("Error detecting cycles: %v", err)
-		return
+		return nil
 	}
+	return cycles
+}
 
+// logCycles logs all detected circular dependencies
+func (ext *bcrExtension) logCycles() {
+	cycles := ext.getCycles()
 	if len(cycles) == 0 {
 		return
 	}

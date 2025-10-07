@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -21,14 +22,16 @@ import (
 // binary.
 func NewLanguage() language.Language {
 	return &bcrExtension{
-		depGraph: initDepGraph(),
+		depGraph:      initDepGraph(),
+		moduleToCycle: make(map[string]string),
 	}
 }
 
 // bcrExtension implements language.Language.
 type bcrExtension struct {
-	name     string
-	depGraph graph.Graph[string, string]
+	name          string
+	depGraph      graph.Graph[string, string]
+	moduleToCycle map[string]string // maps "module@version" to cycle rule name
 }
 
 // Name returns the name of the language. This should be a prefix of the kinds
@@ -65,6 +68,7 @@ func (*bcrExtension) Kinds() map[string]rule.KindInfo {
 	maps.Copy(kinds, moduleVersionKinds())
 	maps.Copy(kinds, moduleSourceKinds())
 	maps.Copy(kinds, moduleAttestationsKinds())
+	maps.Copy(kinds, moduleDependencyCycleKinds())
 	return kinds
 }
 
@@ -79,6 +83,7 @@ func (ext *bcrExtension) Loads() []rule.LoadInfo {
 		moduleDependencyLoadInfo(),
 		moduleSourceLoadInfo(),
 		moduleAttestationsLoadInfo(),
+		moduleDependencyCycleLoadInfo(),
 	}
 }
 
@@ -139,39 +144,15 @@ func (ext *bcrExtension) Resolve(
 	importsRaw any,
 	from label.Label,
 ) {
-	// Only handle module_dependency rules
-	if r.Kind() != "module_dependency" {
-		return
+	// Switch on rule kind to delegate to specific resolver functions
+	switch r.Kind() {
+	case "module_dependency":
+		resolveModuleDependencyRule(r, ix, ext.moduleToCycle)
+	case "module_dependency_cycle":
+		resolveModuleDependencyCycleRule(r, ix)
+	case "module_metadata":
+		resolveModuleMetadataRule(r, ix, from)
 	}
-
-	// Get the dependency name and version to construct the import spec
-	depName := r.AttrString("dep_name")
-	version := r.AttrString("version")
-
-	if depName == "" || version == "" {
-		log.Printf("module_dependency %s missing dep_name or version", r.Name())
-		return
-	}
-
-	// Construct the import spec: "module_name@version"
-	importSpec := resolve.ImportSpec{
-		Lang: "bcr",
-		Imp:  fmt.Sprintf("%s@%s", depName, version),
-	}
-
-	// Find the module_version rule that provides this import
-	results := ix.FindRulesByImport(importSpec, "bcr")
-
-	if len(results) == 0 {
-		log.Printf("No module_version found for %s@%s", depName, version)
-		return
-	}
-
-	// Use the first result (should only be one)
-	result := results[0]
-
-	// Set the module attr to point to the found module_version rule
-	r.SetAttr("module", result.Label.String())
 }
 
 // GenerateRules extracts build metadata from source files in a directory.
@@ -191,6 +172,18 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 
 	var rules []*rule.Rule
 
+	// Check if this is the recursion directory where we should generate cycle
+	// rules.
+	//
+	// TODO(make this configurable).
+	if strings.HasSuffix(args.Rel, "bazel-central-registry/recursion") {
+		cycles := ext.getCycles()
+		if len(cycles) > 0 {
+			cycleRules := makeModuleDependencyCycleRules(cycles)
+			rules = append(rules, cycleRules...)
+		}
+	}
+
 	for _, name := range args.RegularFiles {
 		if name == "metadata.json" {
 			filename := filepath.Join(args.Config.WorkDir, args.Rel, name)
@@ -203,7 +196,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			// Add maintainer rules to the list
 			rules = append(rules, maintainerRules...)
 			// Add metadata rule with references to maintainers
-			rules = append(rules, makeModuleMetadataRule(md, maintainerRules))
+			rules = append(rules, makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules))
 		}
 		if name == "MODULE.bazel" && strings.Contains(args.Rel, "modules/") && !strings.Contains(args.Rel, "overlay/") {
 			filename := filepath.Join(args.Config.WorkDir, args.Rel, name)

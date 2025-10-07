@@ -1,6 +1,6 @@
 "provides the module_dependency rule"
 
-load("//rules:providers.bzl", "ModuleDependencyInfo", "ModuleVersionInfo")
+load("//rules:providers.bzl", "ModuleDependencyCycleInfo", "ModuleDependencyInfo", "ModuleVersionInfo")
 
 def _module_dependency_impl(ctx):
     return [
@@ -9,6 +9,7 @@ def _module_dependency_impl(ctx):
             version = ctx.attr.version,
             dev = ctx.attr.dev,
             module = ctx.attr.module,
+            cycle = ctx.attr.cycle,
         ),
     ]
 
@@ -19,6 +20,7 @@ module_dependency = rule(
         "version": attr.string(),
         "dev": attr.bool(default = False),
         "module": attr.label(providers = [ModuleVersionInfo]),
+        "cycle": attr.label(providers = [ModuleDependencyCycleInfo]),
     },
     provides = [ModuleDependencyInfo],
 )

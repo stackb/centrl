@@ -5,10 +5,9 @@ go_library(
     srcs = [
         "attestations.go",
         "bcr.go",
+        "cycle.go",
         "graph.go",
         "lifecycle.go",
-        # "graph.go",
-        # "lifecycle.go",
         "metadata.go",
         "module.go",
         "source.go",
