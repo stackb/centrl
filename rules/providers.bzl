@@ -27,6 +27,7 @@ ModuleDependencyInfo = provider(
         "name": "Dependency module name",
         "version": "Dependency module version",
         "dev": "Whether this is a dev dependency",
+        "module": "Module version target providing ModuleVersionInfo",
     },
 )
 

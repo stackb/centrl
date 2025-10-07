@@ -2,6 +2,7 @@ package bcr
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"maps"
 	"path/filepath"
@@ -94,7 +95,26 @@ func (*bcrExtension) Fix(c *config.Config, f *rule.File) {
 // If nil is returned, the rule will not be indexed. If any non-nil slice is
 // returned, including an empty slice, the rule will be indexed.
 func (pl *bcrExtension) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
-	return nil
+	// Only handle module_version rules
+	if r.Kind() != "module_version" {
+		return nil
+	}
+
+	// Get the module name and version to construct the import spec
+	moduleName := r.AttrString("module_name")
+	version := r.AttrString("version")
+
+	if moduleName == "" || version == "" {
+		return nil
+	}
+
+	// Construct and return the import spec: "module_name@version"
+	importSpec := resolve.ImportSpec{
+		Lang: "bcr",
+		Imp:  fmt.Sprintf("%s@%s", moduleName, version),
+	}
+
+	return []resolve.ImportSpec{importSpec}
 }
 
 // Embeds returns a list of labels of rules that the given rule embeds. If a
@@ -120,6 +140,39 @@ func (pl *bcrExtension) Resolve(
 	importsRaw any,
 	from label.Label,
 ) {
+	// Only handle module_dependency rules
+	if r.Kind() != "module_dependency" {
+		return
+	}
+
+	// Get the dependency name and version to construct the import spec
+	depName := r.AttrString("dep_name")
+	version := r.AttrString("version")
+
+	if depName == "" || version == "" {
+		log.Printf("module_dependency %s missing dep_name or version", r.Name())
+		return
+	}
+
+	// Construct the import spec: "module_name@version"
+	importSpec := resolve.ImportSpec{
+		Lang: "bcr",
+		Imp:  fmt.Sprintf("%s@%s", depName, version),
+	}
+
+	// Find the module_version rule that provides this import
+	results := ix.FindRulesByImport(importSpec, "bcr")
+
+	if len(results) == 0 {
+		log.Printf("No module_version found for %s@%s", depName, version)
+		return
+	}
+
+	// Use the first result (should only be one)
+	result := results[0]
+
+	// Set the module attr to point to the found module_version rule
+	r.SetAttr("module", result.Label.String())
 }
 
 // GenerateRules extracts build metadata from source files in a directory.

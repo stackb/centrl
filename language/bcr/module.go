@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
@@ -92,6 +93,14 @@ func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules 
 		r.SetAttr("attestations", fmt.Sprintf(":%s", attestationsRule.Name()))
 	}
 	r.SetAttr("visibility", []string{"//visibility:public"})
+
+	// Set GazelleImports private attr with the import spec
+	// The import spec for a module version is "module_name@version"
+	if module.Name != "" && version != "" {
+		importSpec := fmt.Sprintf("%s@%s", module.Name, version)
+		r.SetPrivateAttr(config.GazelleImportsKey, []string{importSpec})
+	}
+
 	return r
 }
 
@@ -117,7 +126,7 @@ func moduleVersionKinds() map[string]rule.KindInfo {
 		},
 		"module_dependency": {
 			MatchAny:     true,
-			ResolveAttrs: map[string]bool{},
+			ResolveAttrs: map[string]bool{"module": true},
 		},
 	}
 }
