@@ -1,6 +1,6 @@
 "provides the module_version rule"
 
-load("//rules:providers.bzl", "ModuleDependencyInfo", "ModuleVersionInfo")
+load("//rules:providers.bzl", "ModuleDependencyInfo", "ModuleSourceInfo", "ModuleVersionInfo")
 
 def _module_version_impl(ctx):
     return [
@@ -10,6 +10,7 @@ def _module_version_impl(ctx):
             compatibility_level = ctx.attr.compatibility_level,
             repo_name = ctx.attr.repo_name,
             deps = ctx.attr.deps,
+            source = ctx.attr.source,
         ),
     ]
 
@@ -21,6 +22,7 @@ module_version = rule(
         "compatibility_level": attr.int(default = 0),
         "repo_name": attr.string(),
         "deps": attr.label_list(providers = [ModuleDependencyInfo]),
+        "source": attr.label(providers = [ModuleSourceInfo]),
     },
     provides = [ModuleVersionInfo],
 )

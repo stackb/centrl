@@ -64,7 +64,7 @@ func makeModuleDependencyRules(deps []*bzpb.ModuleVersion_Dependency) []*rule.Ru
 	return rules
 }
 
-func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules []*rule.Rule) *rule.Rule {
+func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules []*rule.Rule, sourceRule *rule.Rule) *rule.Rule {
 	r := rule.NewRule("module_version", version)
 	if module.Name != "" {
 		r.SetAttr("module_name", module.Name)
@@ -84,6 +84,9 @@ func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules 
 			deps[i] = fmt.Sprintf(":%s", dr.Name())
 		}
 		r.SetAttr("deps", deps)
+	}
+	if sourceRule != nil {
+		r.SetAttr("source", fmt.Sprintf(":%s", sourceRule.Name()))
 	}
 	r.SetAttr("visibility", []string{"//visibility:public"})
 	return r
@@ -107,7 +110,7 @@ func moduleVersionKinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"module_version": {
 			MatchAny:     true,
-			ResolveAttrs: map[string]bool{"deps": true},
+			ResolveAttrs: map[string]bool{"deps": true, "source": true},
 		},
 		"module_dependency": {
 			MatchAny:     true,

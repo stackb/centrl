@@ -35,6 +35,20 @@ message Metadata {
     string deprecated = 6;
 }
 
+// Source represents a source.json file for a module version
+message Source {
+    // URL to the source archive
+    string url = 1;
+    // Integrity hash (e.g., "sha256-...")
+    string integrity = 2;
+    // Directory prefix to strip from the archive
+    string strip_prefix = 3;
+    // Number of leading path components to strip from patch files
+    int32 patch_strip = 4;
+    // Map of patch file names to their integrity hashes
+    map<string, string> patches = 5;
+}
+
 // ModuleVersion represents a Bazel module version and its dependencies
 message ModuleVersion {
     // Dependency represents a module dependency
@@ -56,4 +70,6 @@ message ModuleVersion {
     string repo_name = 4;
     // Module dependencies
     repeated Dependency deps = 5;
+    // Source information from source.json
+    Source source = 6;
 }

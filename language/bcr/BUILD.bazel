@@ -6,6 +6,7 @@ go_library(
         "bcr.go",
         "metadata.go",
         "module.go",
+        "source.go",
     ],
     importpath = "github.com/stackb/centrl/language/bcr",
     visibility = ["//visibility:public"],

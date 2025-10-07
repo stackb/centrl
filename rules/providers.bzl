@@ -30,6 +30,17 @@ ModuleDependencyInfo = provider(
     },
 )
 
+ModuleSourceInfo = provider(
+    doc = "Info about a Module Source",
+    fields = {
+        "url": "Source archive URL",
+        "integrity": "Source integrity hash",
+        "strip_prefix": "Directory prefix to strip from archive",
+        "patch_strip": "Number of path components to strip from patches",
+        "patches": "Map of patch filenames to integrity hashes",
+    },
+)
+
 ModuleVersionInfo = provider(
     doc = "Info about a Module Version",
     fields = {
@@ -38,5 +49,6 @@ ModuleVersionInfo = provider(
         "compatibility_level": "Module compatibility level",
         "repo_name": "Repository name",
         "deps": "List of dependency targets providing ModuleDependencyInfo",
+        "source": "Source target providing ModuleSourceInfo",
     },
 )

@@ -105,6 +105,82 @@ func (x *Metadata) GetDeprecated() string {
 	return ""
 }
 
+type Source struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	Integrity     string                 `protobuf:"bytes,2,opt,name=integrity,proto3" json:"integrity,omitempty"`
+	StripPrefix   string                 `protobuf:"bytes,3,opt,name=strip_prefix,json=stripPrefix,proto3" json:"strip_prefix,omitempty"`
+	PatchStrip    int32                  `protobuf:"varint,4,opt,name=patch_strip,json=patchStrip,proto3" json:"patch_strip,omitempty"`
+	Patches       map[string]string      `protobuf:"bytes,5,rep,name=patches,proto3" json:"patches,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Source) Reset() {
+	*x = Source{}
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Source) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Source) ProtoMessage() {}
+
+func (x *Source) ProtoReflect() protoreflect.Message {
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Source.ProtoReflect.Descriptor instead.
+func (*Source) Descriptor() ([]byte, []int) {
+	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Source) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *Source) GetIntegrity() string {
+	if x != nil {
+		return x.Integrity
+	}
+	return ""
+}
+
+func (x *Source) GetStripPrefix() string {
+	if x != nil {
+		return x.StripPrefix
+	}
+	return ""
+}
+
+func (x *Source) GetPatchStrip() int32 {
+	if x != nil {
+		return x.PatchStrip
+	}
+	return 0
+}
+
+func (x *Source) GetPatches() map[string]string {
+	if x != nil {
+		return x.Patches
+	}
+	return nil
+}
+
 type ModuleVersion struct {
 	state              protoimpl.MessageState      `protogen:"open.v1"`
 	Name               string                      `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -112,13 +188,14 @@ type ModuleVersion struct {
 	CompatibilityLevel int32                       `protobuf:"varint,3,opt,name=compatibility_level,json=compatibilityLevel,proto3" json:"compatibility_level,omitempty"`
 	RepoName           string                      `protobuf:"bytes,4,opt,name=repo_name,json=repoName,proto3" json:"repo_name,omitempty"`
 	Deps               []*ModuleVersion_Dependency `protobuf:"bytes,5,rep,name=deps,proto3" json:"deps,omitempty"`
+	Source             *Source                     `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ModuleVersion) Reset() {
 	*x = ModuleVersion{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[1]
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -130,7 +207,7 @@ func (x *ModuleVersion) String() string {
 func (*ModuleVersion) ProtoMessage() {}
 
 func (x *ModuleVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[1]
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -143,7 +220,7 @@ func (x *ModuleVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModuleVersion.ProtoReflect.Descriptor instead.
 func (*ModuleVersion) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{1}
+	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ModuleVersion) GetName() string {
@@ -181,6 +258,13 @@ func (x *ModuleVersion) GetDeps() []*ModuleVersion_Dependency {
 	return nil
 }
 
+func (x *ModuleVersion) GetSource() *Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
 type Metadata_Maintainer struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
@@ -194,7 +278,7 @@ type Metadata_Maintainer struct {
 
 func (x *Metadata_Maintainer) Reset() {
 	*x = Metadata_Maintainer{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[2]
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -206,7 +290,7 @@ func (x *Metadata_Maintainer) String() string {
 func (*Metadata_Maintainer) ProtoMessage() {}
 
 func (x *Metadata_Maintainer) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[2]
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -268,7 +352,7 @@ type ModuleVersion_Dependency struct {
 
 func (x *ModuleVersion_Dependency) Reset() {
 	*x = ModuleVersion_Dependency{}
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[4]
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -280,7 +364,7 @@ func (x *ModuleVersion_Dependency) String() string {
 func (*ModuleVersion_Dependency) ProtoMessage() {}
 
 func (x *ModuleVersion_Dependency) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[4]
+	mi := &file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -293,7 +377,7 @@ func (x *ModuleVersion_Dependency) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModuleVersion_Dependency.ProtoReflect.Descriptor instead.
 func (*ModuleVersion_Dependency) Descriptor() ([]byte, []int) {
-	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{1, 0}
+	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP(), []int{2, 0}
 }
 
 func (x *ModuleVersion_Dependency) GetName() string {
@@ -342,13 +426,24 @@ const file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc = "" +
 	"\x0egithub_user_id\x18\x05 \x01(\x05R\fgithubUserId\x1aA\n" +
 	"\x13YankedVersionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa4\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x84\x02\n" +
+	"\x06Source\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12\x1c\n" +
+	"\tintegrity\x18\x02 \x01(\tR\tintegrity\x12!\n" +
+	"\fstrip_prefix\x18\x03 \x01(\tR\vstripPrefix\x12\x1f\n" +
+	"\vpatch_strip\x18\x04 \x01(\x05R\n" +
+	"patchStrip\x12J\n" +
+	"\apatches\x18\x05 \x03(\v20.build.stack.bazel.bzlmod.v1.Source.PatchesEntryR\apatches\x1a:\n" +
+	"\fPatchesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe1\x02\n" +
 	"\rModuleVersion\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12/\n" +
 	"\x13compatibility_level\x18\x03 \x01(\x05R\x12compatibilityLevel\x12\x1b\n" +
 	"\trepo_name\x18\x04 \x01(\tR\brepoName\x12I\n" +
-	"\x04deps\x18\x05 \x03(\v25.build.stack.bazel.bzlmod.v1.ModuleVersion.DependencyR\x04deps\x1aL\n" +
+	"\x04deps\x18\x05 \x03(\v25.build.stack.bazel.bzlmod.v1.ModuleVersion.DependencyR\x04deps\x12;\n" +
+	"\x06source\x18\x06 \x01(\v2#.build.stack.bazel.bzlmod.v1.SourceR\x06source\x1aL\n" +
 	"\n" +
 	"Dependency\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
@@ -367,23 +462,27 @@ func file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescGZIP() []byte {
 	return file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDescData
 }
 
-var file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_build_stack_bazel_bzlmod_v1_metadata_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_build_stack_bazel_bzlmod_v1_metadata_proto_goTypes = []any{
 	(*Metadata)(nil),                 // 0: build.stack.bazel.bzlmod.v1.Metadata
-	(*ModuleVersion)(nil),            // 1: build.stack.bazel.bzlmod.v1.ModuleVersion
-	(*Metadata_Maintainer)(nil),      // 2: build.stack.bazel.bzlmod.v1.Metadata.Maintainer
-	nil,                              // 3: build.stack.bazel.bzlmod.v1.Metadata.YankedVersionsEntry
-	(*ModuleVersion_Dependency)(nil), // 4: build.stack.bazel.bzlmod.v1.ModuleVersion.Dependency
+	(*Source)(nil),                   // 1: build.stack.bazel.bzlmod.v1.Source
+	(*ModuleVersion)(nil),            // 2: build.stack.bazel.bzlmod.v1.ModuleVersion
+	(*Metadata_Maintainer)(nil),      // 3: build.stack.bazel.bzlmod.v1.Metadata.Maintainer
+	nil,                              // 4: build.stack.bazel.bzlmod.v1.Metadata.YankedVersionsEntry
+	nil,                              // 5: build.stack.bazel.bzlmod.v1.Source.PatchesEntry
+	(*ModuleVersion_Dependency)(nil), // 6: build.stack.bazel.bzlmod.v1.ModuleVersion.Dependency
 }
 var file_build_stack_bazel_bzlmod_v1_metadata_proto_depIdxs = []int32{
-	2, // 0: build.stack.bazel.bzlmod.v1.Metadata.maintainers:type_name -> build.stack.bazel.bzlmod.v1.Metadata.Maintainer
-	3, // 1: build.stack.bazel.bzlmod.v1.Metadata.yanked_versions:type_name -> build.stack.bazel.bzlmod.v1.Metadata.YankedVersionsEntry
-	4, // 2: build.stack.bazel.bzlmod.v1.ModuleVersion.deps:type_name -> build.stack.bazel.bzlmod.v1.ModuleVersion.Dependency
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 0: build.stack.bazel.bzlmod.v1.Metadata.maintainers:type_name -> build.stack.bazel.bzlmod.v1.Metadata.Maintainer
+	4, // 1: build.stack.bazel.bzlmod.v1.Metadata.yanked_versions:type_name -> build.stack.bazel.bzlmod.v1.Metadata.YankedVersionsEntry
+	5, // 2: build.stack.bazel.bzlmod.v1.Source.patches:type_name -> build.stack.bazel.bzlmod.v1.Source.PatchesEntry
+	6, // 3: build.stack.bazel.bzlmod.v1.ModuleVersion.deps:type_name -> build.stack.bazel.bzlmod.v1.ModuleVersion.Dependency
+	1, // 4: build.stack.bazel.bzlmod.v1.ModuleVersion.source:type_name -> build.stack.bazel.bzlmod.v1.Source
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_build_stack_bazel_bzlmod_v1_metadata_proto_init() }
@@ -397,7 +496,7 @@ func file_build_stack_bazel_bzlmod_v1_metadata_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc), len(file_build_stack_bazel_bzlmod_v1_metadata_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

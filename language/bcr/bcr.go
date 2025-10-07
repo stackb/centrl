@@ -63,6 +63,7 @@ func (*bcrExtension) Kinds() map[string]rule.KindInfo {
 	kinds := map[string]rule.KindInfo{}
 	maps.Copy(kinds, moduleMetadataKinds())
 	maps.Copy(kinds, moduleVersionKinds())
+	maps.Copy(kinds, moduleSourceKinds())
 	return kinds
 }
 
@@ -75,6 +76,7 @@ func (pl *bcrExtension) Loads() []rule.LoadInfo {
 		moduleMaintainerLoadInfo(),
 		moduleVersionLoadInfo(),
 		moduleDependencyLoadInfo(),
+		moduleSourceLoadInfo(),
 	}
 }
 
@@ -155,14 +157,27 @@ func (pl *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gener
 			if err != nil {
 				log.Panicln(err)
 			}
+			// Try to read source.json if it exists
+			var sourceRule *rule.Rule
+			sourceFilename := filepath.Join(args.Config.WorkDir, args.Rel, "source.json")
+			source, err := readSourceJson(sourceFilename)
+			if err != nil {
+				// source.json is optional, just log if missing
+				log.Printf("No source.json found for %s: %v", args.Rel, err)
+			} else {
+				module.Source = source
+				// Generate source rule
+				sourceRule = makeModuleSourceRule(source)
+				rules = append(rules, sourceRule)
+			}
 			// Extract version from path (e.g., modules/foo/1.2.3 -> 1.2.3)
 			version := filepath.Base(args.Rel)
 			// Generate dependency rules
 			depRules := makeModuleDependencyRules(module.Deps)
 			// Add dependency rules to the list
 			rules = append(rules, depRules...)
-			// Add module version rule with references to dependencies
-			rules = append(rules, makeModuleVersionRule(module, version, depRules))
+			// Add module version rule with references to dependencies and source
+			rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule))
 		}
 	}
 
