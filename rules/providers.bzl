@@ -20,6 +20,7 @@ ModuleMetadataInfo = provider(
         "deprecated": "Deprecation message if deprecated",
         "deps": "List of module version targets providing ModuleVersionInfo",
         "overrides": "List of override targets providing ModuleOverrideInfo",
+        "metadata_json": "The metadata.json file",
     },
 )
 
@@ -43,6 +44,7 @@ ModuleSourceInfo = provider(
         "strip_prefix": "Directory prefix to strip from archive",
         "patch_strip": "Number of path components to strip from patches",
         "patches": "Map of patch filenames to integrity hashes",
+        "source_json": "The source.json file",
     },
 )
 
@@ -52,6 +54,7 @@ ModuleAttestationsInfo = provider(
         "media_type": "Media type for the attestations file",
         "urls": "Map of file names to attestation URLs",
         "integrities": "Map of file names to attestation integrity hashes",
+        "attestations_json": "The attestations.json file",
     },
 )
 
@@ -66,6 +69,15 @@ ModuleVersionInfo = provider(
         "deps": "List of dependency targets providing ModuleDependencyInfo",
         "source": "Source target providing ModuleSourceInfo",
         "attestations": "Attestations target providing ModuleAttestationsInfo",
+        "presubmit": "Presubmit target providing ModulePresubmitInfo",
+        "module_bazel": "The MODULE.bazel file",
+    },
+)
+
+ModulePresubmitInfo = provider(
+    doc = "Info about Module Presubmit Configuration",
+    fields = {
+        "presubmit_yml": "The presubmit.yml file",
     },
 )
 

@@ -29,7 +29,7 @@ func moduleMetadataKinds() map[string]rule.KindInfo {
 }
 
 // makeModuleMetadataRule creates a module_metadata rule from protobuf metadata
-func makeModuleMetadataRule(name string, md *bzpb.Metadata, maintainerRules []*rule.Rule) *rule.Rule {
+func makeModuleMetadataRule(name string, md *bzpb.Metadata, maintainerRules []*rule.Rule, metadataJsonFile string) *rule.Rule {
 	r := rule.NewRule("module_metadata", name)
 	if md.Homepage != "" {
 		r.SetAttr("homepage", md.Homepage)
@@ -52,6 +52,9 @@ func makeModuleMetadataRule(name string, md *bzpb.Metadata, maintainerRules []*r
 	}
 	if md.Deprecated != "" {
 		r.SetAttr("deprecated", md.Deprecated)
+	}
+	if metadataJsonFile != "" {
+		r.SetAttr("metadata_json", metadataJsonFile)
 	}
 	r.SetAttr("visibility", []string{"//visibility:public"})
 	return r

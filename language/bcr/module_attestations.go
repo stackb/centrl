@@ -16,7 +16,7 @@ func readAttestationsJson(filename string) (*bzpb.Attestations, error) {
 	return &att, nil
 }
 
-func makeModuleAttestationsRule(attestations *bzpb.Attestations) *rule.Rule {
+func makeModuleAttestationsRule(attestations *bzpb.Attestations, attestationsJsonFile string) *rule.Rule {
 	r := rule.NewRule("module_attestations", "attestations")
 	if attestations.MediaType != "" {
 		r.SetAttr("media_type", attestations.MediaType)
@@ -39,6 +39,9 @@ func makeModuleAttestationsRule(attestations *bzpb.Attestations) *rule.Rule {
 		if len(integrities) > 0 {
 			r.SetAttr("integrities", integrities)
 		}
+	}
+	if attestationsJsonFile != "" {
+		r.SetAttr("attestations_json", attestationsJsonFile)
 	}
 	return r
 }

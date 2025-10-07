@@ -17,6 +17,7 @@ def _module_metadata_impl(ctx):
             deprecated = ctx.attr.deprecated,
             deps = depset(deps),
             overrides = depset(overrides),
+            metadata_json = ctx.file.metadata_json,
         ),
     ]
 
@@ -31,6 +32,7 @@ module_metadata = rule(
         "deprecated": attr.string(),
         "deps": attr.label_list(providers = [ModuleVersionInfo]),
         "overrides": attr.label_list(providers = [ModuleOverrideInfo]),
+        "metadata_json": attr.label(allow_single_file = [".json"], mandatory = True),
     },
     provides = [ModuleMetadataInfo],
 )

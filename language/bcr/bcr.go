@@ -69,6 +69,7 @@ func (*bcrExtension) Kinds() map[string]rule.KindInfo {
 	maps.Copy(kinds, moduleDependencyKinds())
 	maps.Copy(kinds, moduleSourceKinds())
 	maps.Copy(kinds, moduleAttestationsKinds())
+	maps.Copy(kinds, modulePresubmitKinds())
 	maps.Copy(kinds, moduleDependencyCycleKinds())
 	maps.Copy(kinds, moduleRegistryKinds())
 	maps.Copy(kinds, gitOverrideKinds())
@@ -89,6 +90,7 @@ func (ext *bcrExtension) Loads() []rule.LoadInfo {
 		moduleDependencyLoadInfo(),
 		moduleSourceLoadInfo(),
 		moduleAttestationsLoadInfo(),
+		modulePresubmitLoadInfo(),
 		moduleDependencyCycleLoadInfo(),
 		moduleRegistryLoadInfo(),
 		gitOverrideLoadInfo(),
@@ -206,7 +208,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			// Add maintainer rules to the list
 			rules = append(rules, maintainerRules...)
 			// Add metadata rule with references to maintainers
-			rules = append(rules, makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules))
+			rules = append(rules, makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules, name))
 		}
 		if name == "MODULE.bazel" && strings.Contains(args.Rel, "modules/") && !strings.Contains(args.Rel, "overlay/") {
 			filename := filepath.Join(args.Config.WorkDir, args.Rel, name)
@@ -224,7 +226,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			} else {
 				module.Source = source
 				// Generate source rule
-				sourceRule = makeModuleSourceRule(source)
+				sourceRule = makeModuleSourceRule(source, "source.json")
 				rules = append(rules, sourceRule)
 			}
 			// Try to read attestations.json if it exists
@@ -237,8 +239,21 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			} else {
 				module.Attestations = attestations
 				// Generate attestations rule
-				attestationsRule = makeModuleAttestationsRule(attestations)
+				attestationsRule = makeModuleAttestationsRule(attestations, "attestations.json")
 				rules = append(rules, attestationsRule)
+			}
+			// Try to read presubmit.yml if it exists
+			var presubmitRule *rule.Rule
+			presubmitFilename := filepath.Join(args.Config.WorkDir, args.Rel, "presubmit.yml")
+			presubmit, err := readPresubmitYaml(presubmitFilename)
+			if err != nil {
+				// presubmit.yml is optional, just log if missing
+				log.Printf("No presubmit.yml found for %s: %v", args.Rel, err)
+			} else {
+				module.Presubmit = presubmit
+				// Generate presubmit rule
+				presubmitRule = makeModulePresubmitRule(presubmit, "presubmit.yml")
+				rules = append(rules, presubmitRule)
 			}
 			// Extract version from path (e.g., modules/foo/1.2.3 -> 1.2.3)
 			version := filepath.Base(args.Rel)
@@ -257,8 +272,8 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			rules = append(rules, overrideRules...)
 			// Add dependency rules to the list
 			rules = append(rules, depRules...)
-			// Add module version rule with references to dependencies, source, and attestations
-			rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule))
+			// Add module version rule with references to dependencies, source, attestations, and presubmit
+			rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule, presubmitRule, name))
 		}
 	}
 

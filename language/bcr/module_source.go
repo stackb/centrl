@@ -16,7 +16,7 @@ func readSourceJson(filename string) (*bzpb.Source, error) {
 	return &src, nil
 }
 
-func makeModuleSourceRule(source *bzpb.Source) *rule.Rule {
+func makeModuleSourceRule(source *bzpb.Source, sourceJsonFile string) *rule.Rule {
 	r := rule.NewRule("module_source", "source")
 	if source.Url != "" {
 		r.SetAttr("url", source.Url)
@@ -32,6 +32,9 @@ func makeModuleSourceRule(source *bzpb.Source) *rule.Rule {
 	}
 	if len(source.Patches) > 0 {
 		r.SetAttr("patches", source.Patches)
+	}
+	if sourceJsonFile != "" {
+		r.SetAttr("source_json", sourceJsonFile)
 	}
 	return r
 }

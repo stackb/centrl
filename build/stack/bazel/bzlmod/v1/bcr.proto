@@ -81,6 +81,8 @@ message ModuleVersion {
     Source source = 7;
     // Attestations information from attestations.json
     Attestations attestations = 8;
+    // Presubmit configuration from presubmit.yml
+    Presubmit presubmit = 9;
 }
 
 // ModuleDependency represents a module dependency
@@ -186,6 +188,48 @@ message LocalPathOverride {
     string path = 1;
 }
 
+// Presubmit represents a presubmit.yml file for CI testing
+message Presubmit {
+    // Optional bcr_test_module configuration
+    message BcrTestModule {
+        // Module path
+        string module_path = 1;
+        // Matrix configuration
+        PresubmitMatrix matrix = 2;
+        // Tasks to run
+        map<string, PresubmitTask> tasks = 3;
+    }
 
+    // Matrix configuration for platforms and bazel versions
+    message PresubmitMatrix {
+        // List of platforms (e.g., "ubuntu2004", "macos", "windows")
+        repeated string platform = 1;
+        // List of bazel versions (e.g., "7.x", "8.x", "rolling")
+        repeated string bazel = 2;
+    }
 
+    // A presubmit task configuration
+    message PresubmitTask {
+        // Task name
+        string name = 1;
+        // Platform (can be a template like "${{ platform }}" or literal)
+        string platform = 2;
+        // Bazel version (can be a template like "${{ bazel }}" or literal)
+        string bazel = 3;
+        // Build flags to pass to bazel build
+        repeated string build_flags = 4;
+        // Test flags to pass to bazel test
+        repeated string test_flags = 5;
+        // Build targets
+        repeated string build_targets = 6;
+        // Test targets
+        repeated string test_targets = 7;
+    }
 
+    // bcr_test_module configuration (if present)
+    BcrTestModule bcr_test_module = 1;
+    // Top-level matrix (if bcr_test_module not present)
+    PresubmitMatrix matrix = 2;
+    // Top-level tasks (if bcr_test_module not present)
+    map<string, PresubmitTask> tasks = 3;
+}

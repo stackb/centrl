@@ -36,7 +36,7 @@ func moduleVersionKinds() map[string]rule.KindInfo {
 }
 
 // makeModuleVersionRule creates a module_version rule from parsed MODULE.bazel data
-func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules []*rule.Rule, sourceRule *rule.Rule, attestationsRule *rule.Rule) *rule.Rule {
+func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules []*rule.Rule, sourceRule *rule.Rule, attestationsRule *rule.Rule, presubmitRule *rule.Rule, moduleBazelFile string) *rule.Rule {
 	r := rule.NewRule("module_version", version)
 	if module.Name != "" {
 		r.SetAttr("module_name", module.Name)
@@ -65,6 +65,12 @@ func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules 
 	}
 	if attestationsRule != nil {
 		r.SetAttr("attestations", fmt.Sprintf(":%s", attestationsRule.Name()))
+	}
+	if presubmitRule != nil {
+		r.SetAttr("presubmit", fmt.Sprintf(":%s", presubmitRule.Name()))
+	}
+	if moduleBazelFile != "" {
+		r.SetAttr("module_bazel", moduleBazelFile)
 	}
 	r.SetAttr("visibility", []string{"//visibility:public"})
 

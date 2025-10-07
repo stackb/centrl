@@ -1,11 +1,12 @@
 "provides the module_version rule"
 
-load("//rules:providers.bzl", "ModuleAttestationsInfo", "ModuleDependencyInfo", "ModuleSourceInfo", "ModuleVersionInfo")
+load("//rules:providers.bzl", "ModuleAttestationsInfo", "ModuleDependencyInfo", "ModulePresubmitInfo", "ModuleSourceInfo", "ModuleVersionInfo")
 
 def _module_version_impl(ctx):
     deps = [dep[ModuleDependencyInfo] for dep in ctx.attr.deps]
     source = ctx.attr.source[ModuleSourceInfo] if ctx.attr.source and ModuleSourceInfo in ctx.attr.source else None
     attestations = ctx.attr.attestations[ModuleAttestationsInfo] if ctx.attr.attestations and ModuleAttestationsInfo in ctx.attr.attestations else None
+    presubmit = ctx.attr.presubmit[ModulePresubmitInfo] if ctx.attr.presubmit and ModulePresubmitInfo in ctx.attr.presubmit else None
 
     return [
         ModuleVersionInfo(
@@ -17,6 +18,8 @@ def _module_version_impl(ctx):
             deps = depset(deps),
             source = source,
             attestations = attestations,
+            presubmit = presubmit,
+            module_bazel = ctx.file.module_bazel,
         ),
     ]
 
@@ -31,6 +34,8 @@ module_version = rule(
         "deps": attr.label_list(providers = [ModuleDependencyInfo]),
         "source": attr.label(providers = [ModuleSourceInfo]),
         "attestations": attr.label(providers = [ModuleAttestationsInfo]),
+        "presubmit": attr.label(providers = [ModulePresubmitInfo]),
+        "module_bazel": attr.label(allow_single_file = True, mandatory = True),
     },
     provides = [ModuleVersionInfo],
 )

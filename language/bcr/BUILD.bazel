@@ -14,9 +14,11 @@ go_library(
         "module_dependency_cycle.go",
         "module_maintainer.go",
         "module_metadata.go",
+        "module_presubmit.go",
         "module_registry.go",
         "module_source.go",
         "module_version.go",
+        "presubmit.go",
         "single_version_override.go",
     ],
     importpath = "github.com/stackb/centrl/language/bcr",
@@ -32,5 +34,6 @@ go_library(
         "@bazel_gazelle//rule:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@com_github_dominikbraun_graph//:go_default_library",
+        "@in_gopkg_yaml_v3//:go_default_library",
     ],
 )
