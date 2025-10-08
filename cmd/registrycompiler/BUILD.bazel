@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "registrycompiler_lib",
+    srcs = ["registrycompiler.go"],
+    importpath = "github.com/stackb/centrl/cmd/registrycompiler",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//build/stack/bazel/bzlmod/v1:bzlmod",
+        "//pkg/metadatajson",
+        "//pkg/paramsfile",
+        "//pkg/protoutil",
+    ],
+)
+
+go_binary(
+    name = "registrycompiler",
+    embed = [":registrycompiler_lib"],
+    visibility = ["//visibility:public"],
+)

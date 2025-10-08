@@ -21,6 +21,7 @@ ModuleMetadataInfo = provider(
         "deps": "List of module version targets providing ModuleVersionInfo",
         "overrides": "List of override targets providing ModuleOverrideInfo",
         "metadata_json": "The metadata.json file",
+        "proto": "The compiled Module proto file",
     },
 )
 
@@ -94,6 +95,8 @@ ModuleRegistryInfo = provider(
     doc = "Info about a Module Registry",
     fields = {
         "deps": "List of module metadata targets providing ModuleMetadataInfo",
+        "cycles": "List of module dep cycle targets providing ModuleDependencyCycleInfo",
+        "proto": "The compiled Registry proto file",
     },
 )
 

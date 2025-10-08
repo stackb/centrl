@@ -6,6 +6,20 @@ package build.stack.bazel.bzlmod.v1;
 
 option go_package = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpb";
 
+// Aggregate type about a module registry and all it's modules
+message Registry {
+    // list of known modules
+    repeated Module modules = 1;
+}
+
+// Aggregate type about a module and all it's versions
+message Module {
+    // the module metadata
+    ModuleMetadata metadata = 1;
+    // list of known versions
+    repeated ModuleVersion versions = 2;
+}
+
 // Metadata about a Module.
 message ModuleMetadata {
     message Maintainer {

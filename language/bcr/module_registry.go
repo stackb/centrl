@@ -1,6 +1,7 @@
 package bcr
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -23,8 +24,16 @@ func moduleRegistryKinds() map[string]rule.KindInfo {
 	}
 }
 
-func makeModuleRegistryRule(name string, subdirs []string) *rule.Rule {
+func makeModuleRegistryRule(name string, subdirs []string, cycleRules []*rule.Rule) *rule.Rule {
 	r := rule.NewRule("module_registry", name)
+	if len(cycleRules) > 0 {
+		cycles := make([]string, len(cycleRules))
+		for i, mr := range cycleRules {
+			cycles[i] = fmt.Sprintf(":%s", mr.Name())
+		}
+		r.SetAttr("cycles", cycles)
+	}
+
 	r.SetPrivateAttr("subdirs", subdirs)
 	r.SetAttr("visibility", []string{"//visibility:public"})
 	return r

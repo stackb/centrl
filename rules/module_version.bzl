@@ -4,7 +4,7 @@ load("//rules:providers.bzl", "ModuleAttestationsInfo", "ModuleDependencyInfo", 
 
 def _compile_action(ctx, source, attestations, presubmit):
     # Declare output file for compiled proto
-    proto_out = ctx.actions.declare_file(ctx.label.name + ".moduleversion.json")
+    proto_out = ctx.actions.declare_file(ctx.label.name + ".moduleversion.pb")
 
     # Build arguments for the compiler
     args = ctx.actions.args()
@@ -17,22 +17,22 @@ def _compile_action(ctx, source, attestations, presubmit):
     inputs = [ctx.file.module_bazel]
 
     # Add optional source.json file
-    source_json = None
-    if source:
-        source_json = source.source_json
-        if source_json:
-            args.add("--source_json_file")
-            args.add(source_json)
-            inputs.append(source_json)
+    if source and source.source_json:
+        args.add("--source_json_file")
+        args.add(source.source_json)
+        inputs.append(source.source_json)
 
     # Add optional presubmit.yml file
-    presubmit_yml = None
-    if presubmit:
-        presubmit_yml = presubmit.presubmit_yml
-        if presubmit_yml:
-            args.add("--presubmit_yml_file")
-            args.add(presubmit_yml)
-            inputs.append(presubmit_yml)
+    if presubmit and presubmit.presubmit_yml:
+        args.add("--presubmit_yml_file")
+        args.add(presubmit.presubmit_yml)
+        inputs.append(presubmit.presubmit_yml)
+
+    # Add optional attestations.json file
+    if attestations and attestations.attestations_json:
+        args.add("--attestations_json_file")
+        args.add(attestations.attestations_json)
+        inputs.append(attestations.attestations_json)
 
     # Run the compiler action
     ctx.actions.run(

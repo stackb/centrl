@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/stackb/centrl/pkg/attestationsjson"
 	"github.com/stackb/centrl/pkg/modulebazel"
 	"github.com/stackb/centrl/pkg/paramsfile"
 	"github.com/stackb/centrl/pkg/presubmityml"
@@ -17,10 +18,11 @@ import (
 const toolName = "moduleversioncompiler"
 
 type Config struct {
-	OutputFile       string
-	ModuleBazelFile  string
-	SourceJsonFile   string
-	PresubmitYmlFile string
+	OutputFile           string
+	ModuleBazelFile      string
+	SourceJsonFile       string
+	AttestationsJsonFile string
+	PresubmitYmlFile     string
 }
 
 func main() {
@@ -34,14 +36,7 @@ func main() {
 }
 
 func run(args []string) error {
-	log.Println("args:", args)
-
-	cwd, _ := os.Getwd()
-	log.Println("cwd:", cwd)
-
-	ListFiles(cwd)
 	parsedArgs, err := paramsfile.ReadArgsParamsFile(args)
-	log.Println("parsedArgs:", parsedArgs)
 	if err != nil {
 		return fmt.Errorf("failed to read params file: %v", err)
 	}
@@ -78,9 +73,20 @@ func run(args []string) error {
 	if cfg.PresubmitYmlFile != "" {
 		presubmit, err := presubmityml.ReadFile(cfg.PresubmitYmlFile)
 		if err != nil {
+			// TODO: fix parsing of the YAML
+			log.Printf("failed to read presubmit.yml: %v", err)
+		} else {
+			module.Presubmit = presubmit
+		}
+	}
+
+	// Read attestions.json file (optional)
+	if cfg.AttestationsJsonFile != "" {
+		attestations, err := attestationsjson.ReadFile(cfg.AttestationsJsonFile)
+		if err != nil {
 			return fmt.Errorf("failed to read presubmit.yml: %v", err)
 		}
-		module.Presubmit = presubmit
+		module.Attestations = attestations
 	}
 
 	// Write the compiled ModuleVersion to output file
@@ -88,7 +94,7 @@ func run(args []string) error {
 		return fmt.Errorf("failed to write output file: %v", err)
 	}
 
-	log.Printf("Successfully compiled module version to %s", cfg.OutputFile)
+	// log.Printf("Successfully compiled module version to %s", cfg.OutputFile)
 	return nil
 }
 
@@ -97,6 +103,7 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs.StringVar(&cfg.ModuleBazelFile, "module_bazel_file", "", "the MODULE.bazel file to read (required)")
 	fs.StringVar(&cfg.SourceJsonFile, "source_json_file", "", "the source.json file to read (optional)")
 	fs.StringVar(&cfg.PresubmitYmlFile, "presubmit_yml_file", "", "the presubmit.yml file to read (optional)")
+	fs.StringVar(&cfg.AttestationsJsonFile, "attestations_json_file", "", "the attestations.json file to read (optional)")
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "usage: %s @PARAMS_FILE", toolName)
@@ -110,8 +117,8 @@ func parseFlags(args []string) (cfg Config, err error) {
 	return
 }
 
-// ListFiles is a convenience debugging function to log the files under a given dir.
-func ListFiles(dir string) error {
+// listFiles is a convenience debugging function to log the files under a given dir.
+func listFiles(dir string) error {
 	log.Println("Listing files under " + dir)
 	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

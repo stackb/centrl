@@ -199,12 +199,13 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 	if args.Rel == cfg.modulesRoot {
 		// Generate cycles in the modules root package
 		cycles := ext.getCycles()
+		var cycleRules []*rule.Rule
 		if len(cycles) > 0 {
-			cycleRules := makeModuleDependencyCycleRules(cycles)
+			cycleRules = makeModuleDependencyCycleRules(cycles)
 			rules = append(rules, cycleRules...)
 		}
 		// generate registry in the modules root package
-		rules = append(rules, makeModuleRegistryRule(cfg.modulesRoot, args.Subdirs))
+		rules = append(rules, makeModuleRegistryRule(cfg.modulesRoot, args.Subdirs, cycleRules))
 	}
 
 	if slices.Contains(args.RegularFiles, "metadata.json") {
