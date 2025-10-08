@@ -38,13 +38,12 @@ func makeModuleDependencyRules(deps []*bzpb.ModuleDependency) ([]*rule.Rule, []*
 	var depRules []*rule.Rule
 	var overrideRules []*rule.Rule
 
-	for i, dep := range deps {
-		name := dep.Name
-		if name == "" {
-			name = fmt.Sprintf("dep_%d", i)
+	for _, dep := range deps {
+		if dep.Name == "" {
+			log.Panicf("dep.Name is mandatory: %+v", dep)
 		}
 
-		r := rule.NewRule("module_dependency", name)
+		r := rule.NewRule("module_dependency", dep.Name)
 		r.SetAttr("dep_name", dep.Name)
 		if dep.Version != "" {
 			r.SetAttr("version", dep.Version)
@@ -69,15 +68,19 @@ func makeModuleDependencyRules(deps []*bzpb.ModuleDependency) ([]*rule.Rule, []*
 }
 
 // makeOverrideRule creates an override rule based on the override type
-func makeOverrideRule(moduleName string, override interface{}) *rule.Rule {
-	switch o := override.(type) {
-	case *bzpb.ModuleDependency_GitOverride:
+func makeOverrideRule(moduleName string, override *bzpb.ModuleDependencyOverride) *rule.Rule {
+	if override == nil {
+		return nil
+	}
+
+	switch o := override.Override.(type) {
+	case *bzpb.ModuleDependencyOverride_GitOverride:
 		return makeGitOverrideRule(moduleName, o.GitOverride)
-	case *bzpb.ModuleDependency_ArchiveOverride:
+	case *bzpb.ModuleDependencyOverride_ArchiveOverride:
 		return makeArchiveOverrideRule(moduleName, o.ArchiveOverride)
-	case *bzpb.ModuleDependency_SingleVersionOverride:
+	case *bzpb.ModuleDependencyOverride_SingleVersionOverride:
 		return makeSingleVersionOverrideRule(moduleName, o.SingleVersionOverride)
-	case *bzpb.ModuleDependency_LocalPathOverride:
+	case *bzpb.ModuleDependencyOverride_LocalPathOverride:
 		return makeLocalPathOverrideRule(moduleName, o.LocalPathOverride)
 	default:
 		return nil

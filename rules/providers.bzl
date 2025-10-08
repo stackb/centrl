@@ -109,9 +109,10 @@ GitOverrideInfo = provider(
     fields = {
         "module_name": "Name of the module being overridden",
         "commit": "Git commit hash",
+        "remote": "Git remote URL",
+        "branch": "Git branch name",
         "patch_strip": "Number of path components to strip from patches",
         "patches": "List of patch files",
-        "remote": "Git remote URL",
     },
 )
 

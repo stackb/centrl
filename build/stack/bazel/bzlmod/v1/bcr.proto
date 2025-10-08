@@ -95,6 +95,21 @@ message ModuleVersion {
     Attestations attestations = 8;
     // Presubmit configuration from presubmit.yml
     Presubmit presubmit = 9;
+    // optional toolchains to be registered
+    repeated string toolchains_to_register = 10;
+    // Optional overrides
+    repeated ModuleDependencyOverride override = 11;    
+}
+
+message ModuleDependencyOverride {
+    // The module name this override applies to
+    string module_name = 5;
+    oneof override {
+        GitOverride git_override = 1;
+        ArchiveOverride archive_override = 2;
+        SingleVersionOverride single_version_override = 3;
+        LocalPathOverride local_path_override = 4;
+    }
 }
 
 // ModuleDependency represents a module dependency
@@ -103,15 +118,14 @@ message ModuleDependency {
     string name = 1;
     // Module version
     string version = 2;
+    // optional reponame
+    string repo_name = 3;
     // Whether this is a dev dependency
-    bool dev = 3;
+    bool dev = 4;
+    // max_compatibility_level
+    int32 max_compatibility_level = 5;
     // Optional override for the dependency
-    oneof override {
-        GitOverride git_override = 4;
-        ArchiveOverride archive_override = 5;
-        SingleVersionOverride single_version_override = 6;
-        LocalPathOverride local_path_override = 7;
-    }
+    ModuleDependencyOverride override = 6;
 }
 
 // GitOverride represents a git_override directive
@@ -133,6 +147,8 @@ message GitOverride {
     repeated string patches = 3;
     // Git remote URL
     string remote = 4;
+    // branch
+    string branch = 5;
 }
 
 // ArchiveOverride represents an archive_override directive

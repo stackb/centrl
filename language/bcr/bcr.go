@@ -224,7 +224,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 	// are we in a module version directory?
 	if !inOverlayDir(args.Rel) && slices.Contains(args.RegularFiles, "MODULE.bazel") {
 		moduleBazelFilename := filepath.Join(args.Config.WorkDir, args.Rel, "MODULE.bazel")
-		module, err := modulebazel.ReadFile(moduleBazelFilename)
+		module, err := modulebazel.ExecFile(moduleBazelFilename)
 		if err != nil {
 			log.Fatalf("reading %s: %v", moduleBazelFilename, err)
 		}

@@ -30,14 +30,17 @@ func makeGitOverrideRule(moduleName string, override *bzpb.GitOverride) *rule.Ru
 	if override.Commit != "" {
 		r.SetAttr("commit", override.Commit)
 	}
+	if override.Remote != "" {
+		r.SetAttr("remote", override.Remote)
+	}
+	if override.Branch != "" {
+		r.SetAttr("branch", override.Branch)
+	}
 	if override.PatchStrip != 0 {
 		r.SetAttr("patch_strip", int(override.PatchStrip))
 	}
 	if len(override.Patches) > 0 {
 		r.SetAttr("patches", override.Patches)
-	}
-	if override.Remote != "" {
-		r.SetAttr("remote", override.Remote)
 	}
 	r.SetAttr("visibility", []string{"//visibility:public"})
 	return r

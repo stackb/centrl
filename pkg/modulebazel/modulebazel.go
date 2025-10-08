@@ -2,6 +2,7 @@ package modulebazel
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -10,8 +11,23 @@ import (
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 )
 
-// ReadFile reads and parses a MODULE.bazel file into a ModuleVersion protobuf
-func ReadFile(filename string) (*bzpb.ModuleVersion, error) {
+// ExecFile evaluates a MODULE.bazel as starlark file into a ModuleVersion protobuf
+func ExecFile(filename string) (*bzpb.ModuleVersion, error) {
+	module, err := loadStarlarkModuleBazelFile(filename,
+		func(msg string) {
+			log.Printf("starlark module out> %s", msg)
+		}, func(err error) {
+			log.Printf("starlark module err> %v", err)
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("evaluating %s: %v", filename, err)
+	}
+	return module, nil
+}
+
+// ParseFile reads and parses a MODULE.bazel file into a ModuleVersion protobuf
+func ParseFile(filename string) (*bzpb.ModuleVersion, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -78,18 +94,21 @@ func addOverride(dep *bzpb.ModuleDependency, moduleName string, overrides map[st
 		return
 	}
 
+	dep.Override = &bzpb.ModuleDependencyOverride{}
+
 	switch overrideRule.Kind() {
 	case "git_override":
-		dep.Override = &bzpb.ModuleDependency_GitOverride{
+		dep.Override.Override = &bzpb.ModuleDependencyOverride_GitOverride{
 			GitOverride: &bzpb.GitOverride{
 				Commit:     overrideRule.AttrString("commit"),
+				Remote:     overrideRule.AttrString("remote"),
+				Branch:     overrideRule.AttrString("branch"),
 				PatchStrip: parseInt32(overrideRule.AttrString("patch_strip")),
 				Patches:    overrideRule.AttrStrings("patches"),
-				Remote:     overrideRule.AttrString("remote"),
 			},
 		}
 	case "archive_override":
-		dep.Override = &bzpb.ModuleDependency_ArchiveOverride{
+		dep.Override.Override = &bzpb.ModuleDependencyOverride_ArchiveOverride{
 			ArchiveOverride: &bzpb.ArchiveOverride{
 				Integrity:   overrideRule.AttrString("integrity"),
 				PatchStrip:  parseInt32(overrideRule.AttrString("patch_strip")),
@@ -99,7 +118,7 @@ func addOverride(dep *bzpb.ModuleDependency, moduleName string, overrides map[st
 			},
 		}
 	case "single_version_override":
-		dep.Override = &bzpb.ModuleDependency_SingleVersionOverride{
+		dep.Override.Override = &bzpb.ModuleDependencyOverride_SingleVersionOverride{
 			SingleVersionOverride: &bzpb.SingleVersionOverride{
 				PatchStrip: parseInt32(overrideRule.AttrString("patch_strip")),
 				Patches:    overrideRule.AttrStrings("patches"),
@@ -107,7 +126,7 @@ func addOverride(dep *bzpb.ModuleDependency, moduleName string, overrides map[st
 			},
 		}
 	case "local_path_override":
-		dep.Override = &bzpb.ModuleDependency_LocalPathOverride{
+		dep.Override.Override = &bzpb.ModuleDependencyOverride_LocalPathOverride{
 			LocalPathOverride: &bzpb.LocalPathOverride{
 				Path: overrideRule.AttrString("path"),
 			},
