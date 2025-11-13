@@ -5,6 +5,7 @@ const Maintainer = goog.require("proto.build.stack.bazel.bzlmod.v1.Maintainer");
 const Message = goog.require("jspb.Message");
 const Module = goog.require("proto.build.stack.bazel.bzlmod.v1.Module");
 const ModuleDependency = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleDependency");
+const ModuleMetadata = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleMetadata");
 const ModuleVersion = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleVersion");
 const Registry = goog.require("proto.build.stack.bazel.bzlmod.v1.Registry");
 const Select = goog.require("stack.ui.Select");
@@ -18,26 +19,140 @@ const strings = goog.require("goog.string");
 const { App, Component, Route, RouteEvent, RouteEventType } = goog.require("stack.ui");
 const { Application, Searchable } = goog.require("centrl.common");
 const { ModuleSearchHandler, SearchComponent } = goog.require('centrl.search');
+const { bodySelect, homeSelect, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleSelect, moduleVersionComponent, moduleVersionList, moduleVersionSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, registryApp, toastSuccess } = goog.require('soy.centrl.app');
 const {
-    app,
-    body,
-    home,
-    maintainerComponent,
-    maintainerList,
-    maintainersComponent,
-    moduleComponent,
-    moduleList,
-    moduleVersionComponent,
-    moduleVersionList,
-    moduleVersionOverviewComponent,
-    modulesComponent,
-    notFound,
-} = goog.require('soy.centrl.app');
-const {
-    registryModuleVersions,
+    registryModuleVersions: moduleVersionsListComponent,
 } = goog.require('soy.registry');
 
-const SYNTAX_HIGHLIGHT = false;
+const SYNTAX_HIGHLIGHT = true;
+
+
+/**
+ * @abstract
+ */
+class SelectNav extends Select {
+    /**
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(opt_domHelper) {
+        super(opt_domHelper);
+    }
+
+    /**
+     * @override
+     */
+    enterDocument() {
+        super.enterDocument();
+        this.getHandler().listen(
+            this,
+            [ComponentEventType.SHOW, ComponentEventType.HIDE],
+            this.handleShowHide,
+        );
+    }
+
+    /**
+     * @abstract
+     * @returns {string}
+     */
+    getDefaultTabName() { }
+
+    /**
+     * @override
+     * @param {!Route} route
+     */
+    goHere(route) {
+        this.select(this.getDefaultTabName(), route.add(this.getDefaultTabName()));
+    }
+
+    /**
+     * @param {string} cssName
+     * @return {!HTMLElement}
+     */
+    getCssElement(cssName) {
+        return /** @type {!HTMLElement} */ (
+            dom.getRequiredElementByClass(cssName, this.getElementStrict())
+        );
+    }
+
+    /**
+     * @override
+     * @return {Element} Element to contain child elements (null if none).
+     */
+    getContentElement() {
+        return this.getCssElement(goog.getCssName("content"));
+    }
+
+    /**
+     * @return {!HTMLElement}
+     */
+    getNavElement() {
+        return this.getCssElement(goog.getCssName("nav"));
+    }
+
+    /**
+     * @param {string} name
+     * @param {string} label
+     * @param {number|undefined} count
+     * @param {!Component} c
+     * @returns {!Component}
+     */
+    addNavTab(name, label, count, c) {
+        const rv = super.addTab(name, c);
+
+        const item = this.createMenuItem(name, label, count, c.getPathUrl());
+        const fragmentId = this.makeId(c.getId());
+        item.id = fragmentId;
+
+        dom.append(this.getNavElement(), item);
+        return rv;
+    }
+
+    /**
+     * @param {string} name
+     * @param {string} label
+     * @param {number|undefined} count
+     * @param {string} path
+     * @return {!Element}
+     */
+    createMenuItem(name, label, count, path) {
+        const a = soy.renderAsElement(navItem, {
+            label,
+            count,
+        });
+        a.href = "/#/" + path;
+        dataset.set(a, "name", name);
+        return a;
+    }
+
+    /**
+     * @param {!events.Event} e
+     */
+    handleShowHide(e) {
+        const target = /** @type {!Component} */ (e.target);
+
+        // Check that the target is a child of us
+        const child = this.getChild(target.getId());
+        if (!child) {
+            return;
+        }
+
+        // Find the menu item element corresponding to the child
+        const fragmentId = this.makeId(target.getId());
+        const item = dom.getElement(fragmentId);
+        if (!item) {
+            return;
+        }
+
+        // Get the parent element and find the current active item.
+        const menu = dom.getParentElement(item);
+        const activeItems = dom.getElementsByClass("UnderlineNav-item", menu);
+        if (activeItems && activeItems.length) {
+            arrays.forEach(activeItems, (el) => dom.classlist.remove(el, "selected"));
+        }
+
+        dom.classlist.add(item, "selected");
+    }
+}
 
 /**
  * Top-level app component.
@@ -60,8 +175,8 @@ class RegistryApp extends App {
         /** @private @type {?Component} */
         this.activeComponent_ = null;
 
-        /** @private @type {!Body} */
-        this.body_ = new Body(registry, opt_domHelper);
+        /** @private @type {!BodySelect} */
+        this.body_ = new BodySelect(registry, opt_domHelper);
 
         /** @const @private @type {!ModuleSearchHandler} */
         this.moduleSearchHandler_ = new ModuleSearchHandler();
@@ -82,7 +197,7 @@ class RegistryApp extends App {
 
     /** @override */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(app));
+        this.setElementInternal(soy.renderAsElement(registryApp));
     }
 
     /** @override */
@@ -282,8 +397,8 @@ class RegistryApp extends App {
                 const clippy = dataset.get(node, "clippy");
                 if (clippy) {
                     copyToClipboard(clippy);
-                    events.listen(node, events.EventType.CLICK, handleClippyElementClick);
-                    // this.toastSuccess(`"${clippy}" copied to clipboard`);
+                    // events.listen(node, events.EventType.CLICK, handleClippyElementClick);
+                    this.toastSuccess(`copied: ${clippy}`);
                     return true;
                 }
                 return false;
@@ -300,6 +415,17 @@ class RegistryApp extends App {
         this.search_.rebuild();
     }
 
+    /**
+     * Place an info toast on the page
+     * @param {string} message
+     * @param {number=} opt_dismiss
+     */
+    toastSuccess(message, opt_dismiss) {
+        const toast = soy.renderAsElement(toastSuccess, { message });
+        dom.append(document.body, toast);
+        setTimeout(() => dom.removeNode(toast), opt_dismiss || 5000);
+    }
+
 }
 exports = RegistryApp;
 
@@ -310,6 +436,7 @@ exports = RegistryApp;
 const TabName = {
     HOME: "home",
     LIST: "list",
+    ALL: "all",
     MODULE_VERSIONS: "moduleversions",
     MAINTAINERS: "maintainers",
     MODULES: "modules",
@@ -318,9 +445,26 @@ const TabName = {
 };
 
 /**
+ * @enum {string}
+ */
+const ModulesListTabName = {
+    ALL: "all",
+    VERIFIED: "verified",
+    DEPRECATED: "deprecated",
+    YANKED: "yanked",
+};
+
+/**
+ * @enum {string}
+ */
+const MaintainersListTabName = {
+    ALL: "all",
+};
+
+/**
  * Main body of the application.
  */
-class Body extends Select {
+class BodySelect extends Select {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -336,7 +480,7 @@ class Body extends Select {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(body));
+        this.setElementInternal(soy.renderAsElement(bodySelect));
     }
 
 
@@ -364,9 +508,9 @@ class Body extends Select {
     enterDocument() {
         super.enterDocument();
 
-        this.addTab(TabName.HOME, new Home(this.registry_, this.dom_));
-        this.addTab(TabName.MODULES, new ModulesComponent(this.registry_, this.dom_));
-        this.addTab(TabName.NOT_FOUND, new NotFound(this.dom_));
+        this.addTab(TabName.HOME, new HomeSelect(this.registry_, this.dom_));
+        this.addTab(TabName.MODULES, new ModulesMapSelect(this.registry_, this.dom_));
+        this.addTab(TabName.NOT_FOUND, new NotFoundComponent(this.dom_));
     }
 
     /**
@@ -401,7 +545,7 @@ class Body extends Select {
         // install the maintainers tab lazily as it loads quite a few images
         // from github.
         if (name === TabName.MAINTAINERS) {
-            this.addTab(TabName.MAINTAINERS, new MaintainersComponent(this.registry_, this.dom_));
+            this.addTab(TabName.MAINTAINERS, new MaintainersSelect(this.registry_, this.dom_));
             this.select(name, route);
             return;
         }
@@ -409,130 +553,7 @@ class Body extends Select {
     }
 }
 
-
-/**
- * @abstract
- */
-class TabBase extends Select {
-    /**
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(opt_domHelper) {
-        super(opt_domHelper);
-    }
-
-    /**
-     * @override
-     */
-    enterDocument() {
-        super.enterDocument();
-
-        this.getHandler().listen(
-            this,
-            [ComponentEventType.SHOW, ComponentEventType.HIDE],
-            this.handleShowHide,
-        );
-    }
-
-    /**
-     * @abstract
-     * @returns {string}
-     */
-    getDefaultTabName() { }
-
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(this.getDefaultTabName(), route.add(this.getDefaultTabName()));
-    }
-
-    /**
-     * @param {string} cssName
-     * @return {!HTMLElement}
-     */
-    getCssElement(cssName) {
-        return /** @type {!HTMLElement} */ (
-            dom.getRequiredElementByClass(cssName, this.getElementStrict())
-        );
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
-    }
-
-    /**
-     * @return {!HTMLElement}
-     */
-    getMenuElement() {
-        return this.getCssElement(goog.getCssName("menu"));
-    }
-
-    /**
-     * @override
-     * @param {string} name
-     * @param {!Component} c
-     * @returns {!Component}
-     */
-    addTab(name, c) {
-        const rv = super.addTab(name, c);
-
-        const item = this.createMenuItem(strings.capitalize(name), c.getPathUrl());
-        const fragmentId = this.makeId(c.getId());
-        item.id = fragmentId;
-
-        dom.append(this.getMenuElement(), item);
-        return rv;
-    }
-
-    /**
-     * @param {string} name
-     * @param {string} path
-     * @return {!HTMLElement}
-     */
-    createMenuItem(name, path) {
-        const a = dom.createDom(dom.TagName.A, "appnav-item", name);
-        a.href = "/#/" + path;
-        dataset.set(a, "name", name);
-        return a;
-    }
-
-    /**
-     * @param {!events.Event} e
-     */
-    handleShowHide(e) {
-        const target = /** @type {!Component} */ (e.target);
-
-        // Check that the target is a child of us
-        const child = this.getChild(target.getId());
-        if (!child) {
-            return;
-        }
-
-        // Find the menu item element corresponding to the child
-        const fragmentId = this.makeId(target.getId());
-        const item = dom.getElement(fragmentId);
-        if (!item) {
-            return;
-        }
-
-        // Get the parent element and find the current active item.
-        const menu = dom.getParentElement(item);
-        const activeItems = dom.getElementsByClass("appnav-item", menu);
-        if (activeItems && activeItems.length) {
-            arrays.forEach(activeItems, (el) => dom.classlist.remove(el, "selected"));
-        }
-
-        dom.classlist.add(item, "selected");
-    }
-}
-
-class Home extends Select {
+class HomeSelect extends Select {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -548,17 +569,9 @@ class Home extends Select {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(home, {
+        this.setElementInternal(soy.renderAsElement(homeSelect, {
             registry: this.registry_,
         }));
-    }
-
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(TabName.MODULE_VERSIONS, route.add(TabName.MODULE_VERSIONS));
     }
 
     /**
@@ -566,11 +579,14 @@ class Home extends Select {
      */
     enterDocument() {
         super.enterDocument();
+    }
 
-        this.addTab(
-            TabName.MODULE_VERSIONS,
-            new ModuleVersionList(this.registry_, this.dom_),
-        );
+    /**
+     * @override
+     * @param {!Route} route
+     */
+    goHere(route) {
+        this.select(TabName.OVERVIEW, route.add(TabName.OVERVIEW));
     }
 
     /**
@@ -593,30 +609,7 @@ class Home extends Select {
 }
 
 
-class ModuleVersionList extends Component {
-    /**
-     * @param {!Registry} registry
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(registry, opt_domHelper) {
-        super(opt_domHelper);
-
-        /** @private @const @type {!Registry} */
-        this.registry_ = registry;
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(moduleVersionList, {
-            registry: this.registry_,
-        }));
-    }
-}
-
-
-class ModuleVersionOverviewComponent extends Component {
+class ModuleVersionComponent extends Component {
     /**
      * @param {!Module} module
      * @param {!ModuleVersion} moduleVersion
@@ -636,12 +629,13 @@ class ModuleVersionOverviewComponent extends Component {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(moduleVersionOverviewComponent, {
+        this.setElementInternal(soy.renderAsElement(moduleVersionSelect, {
             module: this.module_,
             metadata: asserts.assertObject(this.module_.getMetadata()),
             deps: this.moduleVersion_.getDepsList().filter(d => !d.getDev()),
             devDeps: this.moduleVersion_.getDepsList().filter(d => d.getDev()),
             moduleVersion: this.moduleVersion_,
+            yanked: getYankedMap(this.module_.getMetadata()),
         }));
     }
 
@@ -652,14 +646,14 @@ class ModuleVersionOverviewComponent extends Component {
         super.enterDocument();
 
         if (SYNTAX_HIGHLIGHT) {
-            const preEls = this.dom_.getElementsByTagNameAndClass(dom.TagName.CODE, goog.getCssName('shiki'), this.getElementStrict());
-            arrays.forEach(preEls, el => syntaxHighlight(this.dom_.getWindow(), el));
+            const preEls = this.dom_.getElementsByTagNameAndClass(dom.TagName.PRE, goog.getCssName('shiki'), this.getElementStrict());
+            arrays.forEach(preEls, preEl => syntaxHighlight(this.dom_.getWindow(), preEl));
         }
     }
 }
 
 
-class MaintainersComponent extends Select {
+class MaintainersSelect extends Select {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -678,7 +672,14 @@ class MaintainersComponent extends Select {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(maintainersComponent));
+        this.setElementInternal(soy.renderAsElement(maintainersSelect));
+    }
+
+    /**
+     * @override
+     */
+    enterDocument() {
+        super.enterDocument();
     }
 
     /**
@@ -687,18 +688,6 @@ class MaintainersComponent extends Select {
      */
     goHere(route) {
         this.select(TabName.LIST, route.add(TabName.LIST));
-    }
-
-    /**
-     * @override
-     */
-    enterDocument() {
-        super.enterDocument();
-
-        this.addTab(
-            TabName.LIST,
-            new MaintainerList(this.maintainers_, this.dom_),
-        );
     }
 
     /**
@@ -715,6 +704,15 @@ class MaintainersComponent extends Select {
             return;
         } else {
             console.warn(`failed to get maintainer for ${name}`, this.maintainers_.keys());
+        }
+
+        if (name === TabName.LIST) {
+            this.addTab(
+                TabName.LIST,
+                new MaintainersMapSelectNav(this.registry_, this.maintainers_, this.dom_),
+            );
+            this.select(name, route);
+            return;
         }
 
         super.selectFail(name, route);
@@ -739,7 +737,66 @@ class MaintainersComponent extends Select {
     }
 }
 
-class ModulesComponent extends Select {
+
+class MaintainersMapSelectNav extends SelectNav {
+    /**
+     * @param {!Registry} registry
+     * @param {!Map<string,!Maintainer>} maintainers
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(registry, maintainers, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const @type {!Registry} */
+        this.registry_ = registry;
+
+        /** @private @const @type {!Map<string,!Maintainer>} */
+        this.maintainers_ = maintainers;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(maintainersMapSelectNav));
+    }
+
+    /**
+     * @override
+     * @param {!Route} route
+     */
+    goHere(route) {
+        this.select(MaintainersListTabName.ALL, route.add(MaintainersListTabName.ALL));
+    }
+
+    /**
+     * @override
+     */
+    enterDocument() {
+        super.enterDocument();
+
+        this.enterAllTab();
+    }
+
+    enterAllTab() {
+        this.addNavTab(
+            MaintainersListTabName.ALL,
+            'All',
+            this.maintainers_.size,
+            new MaintainersMapComponent(this.maintainers_, this.dom_),
+        );
+    }
+
+    /**
+     * @override
+     * @returns {string}
+     */
+    getDefaultTabName() {
+        return MaintainersListTabName.ALL;
+    }
+}
+
+class ModulesMapSelect extends Select {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -758,8 +815,7 @@ class ModulesComponent extends Select {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(modulesComponent, {
-        }));
+        this.setElementInternal(soy.renderAsElement(modulesMapSelect));
     }
 
     /**
@@ -784,70 +840,178 @@ class ModulesComponent extends Select {
      */
     selectFail(name, route) {
         const module = this.modules_.get(name);
-
-        if (name === TabName.LIST) {
-            this.addTab(
-                TabName.LIST,
-                new ModuleList(this.registry_, this.dom_),
-            );
-            this.select(name, route);
-            return;
-        }
-
         if (module) {
-            this.addTab(name, new ModuleComponent(name, module));
+            this.addTab(name, new ModuleSelect(name, module));
             this.select(name, route);
             return;
         } else {
             console.warn(`failed to get module for ${name}`, this.modules_.keys());
         }
 
+        if (name === TabName.LIST) {
+            this.addTab(name, new ModulesMapSelectNav(this.registry_, this.modules_, this.dom_));
+            this.select(name, route);
+            return;
+        }
+
         super.selectFail(name, route);
-    }
-
-    /**
-     * @param {string} cssName
-     * @return {!HTMLElement}
-     */
-    getCssElement(cssName) {
-        return /** @type {!HTMLElement} */ (
-            dom.getRequiredElementByClass(cssName, this.getElementStrict())
-        );
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
     }
 }
 
 
-class ModuleList extends Component {
+class ModulesMapSelectNav extends SelectNav {
     /**
      * @param {!Registry} registry
+     * @param {!Map<string,!Module>} modules
      * @param {?dom.DomHelper=} opt_domHelper
      */
-    constructor(registry, opt_domHelper) {
+    constructor(registry, modules, opt_domHelper) {
         super(opt_domHelper);
 
         /** @private @const @type {!Registry} */
         this.registry_ = registry;
+
+        /** @private @const @type {!Map<string,!Module>} */
+        this.modules_ = modules;
+
+        /** @private @const @type {!Array<!ModuleVersion>} */
+        this.all_ = getLatestModuleVersions(registry);
     }
 
     /**
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(registryModuleVersions, {
-            moduleVersions: getLatestModuleVersions(this.registry_),
+        this.setElementInternal(soy.renderAsElement(modulesMapSelectNav));
+    }
+
+    /**
+     * @override
+     * @param {!Route} route
+     */
+    goHere(route) {
+        this.select(ModulesListTabName.ALL, route.add(ModulesListTabName.ALL));
+    }
+
+    /**
+     * @override
+     */
+    enterDocument() {
+        super.enterDocument();
+
+        this.enterAllTab();
+        this.enterVerifiedTab();
+        this.enterDeprecatedTab();
+        this.enterYankedTab();
+    }
+
+    enterAllTab() {
+        this.addNavTab(
+            ModulesListTabName.ALL,
+            'All',
+            this.all_.length,
+            new ModuleVersionsListComponent(this.all_, this.dom_),
+        );
+    }
+
+    enterVerifiedTab() {
+        const verified = this.all_.filter(m => m.getAttestations());
+        this.addNavTab(
+            ModulesListTabName.VERIFIED,
+            'Verified',
+            verified.length,
+            new ModuleVersionsListComponent(verified, this.dom_),
+        );
+    }
+
+    enterDeprecatedTab() {
+        const deprecated = this.getDeprecated();
+        this.addNavTab(
+            ModulesListTabName.DEPRECATED,
+            'Deprecated',
+            deprecated.length,
+            new ModuleVersionsListComponent(deprecated, this.dom_),
+        );
+    }
+
+    enterYankedTab() {
+        const yanked = this.getYankedVersions();
+        this.addNavTab(
+            ModulesListTabName.YANKED,
+            'Yanked Versions',
+            yanked.length,
+            new ModuleVersionsListComponent(yanked, this.dom_),
+        );
+    }
+
+    /**
+     * @override
+     * @returns {string}
+     */
+    getDefaultTabName() {
+        return ModulesListTabName.ALL;
+    }
+
+    /**
+     * @returns {!Array<ModuleVersion>}
+     */
+    getDeprecated() {
+        const result = [];
+        for (const mv of this.all_) {
+            const module = this.modules_.get(mv.getName());
+            if (module.getMetadata().getDeprecated()) {
+                result.push(mv);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @returns {!Array<ModuleVersion>}
+     */
+    getYankedVersions() {
+        const result = [];
+        for (const module of this.registry_.getModulesList()) {
+            const metadata = module.getMetadata();
+            if (metadata.getYankedVersionsMap()) {
+                const yankedVersions = metadata.getYankedVersionsMap();
+                for (const version of yankedVersions.keys()) {
+                    // const message = yankedVersions.get(version);
+                    const moduleVersion = module.getVersionsList().find(mv => mv.getVersion() === version);
+                    if (moduleVersion) {
+                        result.push(moduleVersion);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+}
+
+
+class ModuleVersionsListComponent extends Component {
+    /**
+     * @param {!Array<ModuleVersion>} moduleVersions
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersions, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const */
+        this.moduleVersions_ = moduleVersions;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(moduleVersionsListComponent, {
+            moduleVersions: this.moduleVersions_,
         }));
     }
 }
 
-class MaintainerList extends Component {
+class MaintainersMapComponent extends Component {
     /**
      * @param {!Map<string,!Maintainer>} maintainers
      * @param {?dom.DomHelper=} opt_domHelper
@@ -863,7 +1027,7 @@ class MaintainerList extends Component {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(maintainerList, {
+        this.setElementInternal(soy.renderAsElement(maintainersMapComponent, {
             maintainers: this.maintainers_,
         }));
     }
@@ -909,7 +1073,7 @@ class MaintainerComponent extends Component {
 }
 
 
-class ModuleComponent extends Select {
+class ModuleSelect extends Select {
     /**
      * @param {string} name
      * @param {!Module} module
@@ -935,7 +1099,7 @@ class ModuleComponent extends Select {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(moduleComponent, {
+        this.setElementInternal(soy.renderAsElement(moduleSelect, {
             name: this.moduleName_,
             module: this.module_,
         }));
@@ -965,7 +1129,7 @@ class ModuleComponent extends Select {
         const moduleVersion = this.moduleVersions_.get(name);
 
         if (moduleVersion) {
-            this.addTab(name, new ModuleVersionComponent(this.module_, moduleVersion));
+            this.addTab(name, new ModuleVersionSelect(this.module_, moduleVersion));
             this.select(name, route);
             return;
         }
@@ -993,7 +1157,7 @@ class ModuleComponent extends Select {
 }
 
 
-class ModuleVersionComponent extends Select {
+class ModuleVersionSelect extends Select {
     /**
      * @param {!Module} module
      * @param {!ModuleVersion} moduleVersion
@@ -1013,7 +1177,7 @@ class ModuleVersionComponent extends Select {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(moduleVersionComponent, {
+        this.setElementInternal(soy.renderAsElement(moduleVersionSelect, {
             moduleVersion: this.moduleVersion_,
         }));
     }
@@ -1032,7 +1196,7 @@ class ModuleVersionComponent extends Select {
     enterDocument() {
         super.enterDocument();
 
-        this.addTab(TabName.OVERVIEW, new ModuleVersionOverviewComponent(this.module_, this.moduleVersion_));
+        this.addTab(TabName.OVERVIEW, new ModuleVersionComponent(this.module_, this.moduleVersion_));
     }
 
     /**
@@ -1045,7 +1209,7 @@ class ModuleVersionComponent extends Select {
     }
 }
 
-class NotFound extends Component {
+class NotFoundComponent extends Component {
     /**
      * @param {?dom.DomHelper=} opt_domHelper
      */
@@ -1057,7 +1221,7 @@ class NotFound extends Component {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(notFound));
+        this.setElementInternal(soy.renderAsElement(notFoundComponent));
     }
 }
 
@@ -1118,19 +1282,19 @@ function maintainerModuleVersions(registry, maintainer) {
 
 /**
  * Builds a mapping of module versions from a module.
- * 
+ *
  * @param {!Window} window
- * @param {!HTMLElement} el The element to highlight
+ * @param {!HTMLPreElement} el The element to highlight
  * @suppress {reportUnknownTypes, missingSourcesWarnings}
  */
 async function syntaxHighlight(window, el) {
-    const html = await window.codeToHtml(dom.getTextContent(el), {
+    const code = el.querySelector('code');
+    const text = code ? code.textContent : el.textContent;
+    const html = await window.codeToHtml(text, {
         'lang': 'py',
         'theme': 'min-light',
     });
-    el.innerHTML = html;
-    console.log('html:', html);
-    // dom.getParentElement(preEl).innerHTML = html;
+    el.outerHTML = html;
 }
 
 
@@ -1165,6 +1329,23 @@ function getLatestModuleVersions(registry) {
 function getLatestModuleVersion(module) {
     const versions = module.getVersionsList();
     return versions[0];
+}
+
+/**
+ * Create a map from the yanked versions.  Regular map seems to play nicer with
+ * soy templates than jspb.Map.
+ * @param {?ModuleMetadata} metadata
+ * @returns {!Map<string,string>}
+ */
+function getYankedMap(metadata) {
+    const result = new Map();
+    if (metadata && metadata.getYankedVersionsMap()) {
+        for (const k of metadata.getYankedVersionsMap().keys()) {
+            const v = metadata.getYankedVersionsMap().get(k);
+            result.set(k, v);
+        }
+    }
+    return result;
 }
 
 /**
@@ -1206,18 +1387,5 @@ function handleClippyElementClick(e) {
             dom.classlist.add(iEl, "octicon-clippy");
             dom.classlist.remove(iEl, "octicon-check");
         }, 2000);
-    }
-}
-
-/**
- * Utility function using traditional iteration, wrote this to workaround
- * closure compiler.
- * @param {?HTMLElement} el 
- * @param {!Array<string>} names 
- * @param {!function(?Element, string)} fn
- */
-function applyAll(el, names, fn) {
-    for (const n in names) {
-        fn(el, n);
     }
 }

@@ -10,11 +10,11 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-func loadStarlarkModuleBazelFile(filename string, reporter func(msg string), errorReporter func(err error)) (*bzpb.ModuleVersion, error) {
+func loadStarlarkModuleBazelFile(filename string, src any, reporter func(msg string), errorReporter func(err error)) (*bzpb.ModuleVersion, error) {
 	module := new(bzpb.ModuleVersion)
 	predeclared := newPredeclared(module)
 
-	_, _, err := loadStarlarkProgram(filename, nil /* src == nil means parse from filename */, predeclared, reporter, errorReporter)
+	_, _, err := loadStarlarkProgram(filename, src, predeclared, reporter, errorReporter)
 	if err != nil {
 		return nil, err
 	}

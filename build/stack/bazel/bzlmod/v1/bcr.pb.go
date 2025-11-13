@@ -604,6 +604,7 @@ func (x *ModuleVersion) GetOverride() []*ModuleDependencyOverride {
 type ModuleDependencyOverride struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	ModuleName string                 `protobuf:"bytes,5,opt,name=module_name,json=moduleName,proto3" json:"module_name,omitempty"`
+	Code       string                 `protobuf:"bytes,6,opt,name=code,proto3" json:"code,omitempty"`
 	// Types that are valid to be assigned to Override:
 	//
 	//	*ModuleDependencyOverride_GitOverride
@@ -648,6 +649,13 @@ func (*ModuleDependencyOverride) Descriptor() ([]byte, []int) {
 func (x *ModuleDependencyOverride) GetModuleName() string {
 	if x != nil {
 		return x.ModuleName
+	}
+	return ""
+}
+
+func (x *ModuleDependencyOverride) GetCode() string {
+	if x != nil {
+		return x.Code
 	}
 	return ""
 }
@@ -1457,10 +1465,11 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\tpresubmit\x18\t \x01(\v2&.build.stack.bazel.bzlmod.v1.PresubmitR\tpresubmit\x124\n" +
 	"\x16toolchains_to_register\x18\n" +
 	" \x03(\tR\x14toolchainsToRegister\x12Q\n" +
-	"\boverride\x18\v \x03(\v25.build.stack.bazel.bzlmod.v1.ModuleDependencyOverrideR\boverride\"\xc1\x03\n" +
+	"\boverride\x18\v \x03(\v25.build.stack.bazel.bzlmod.v1.ModuleDependencyOverrideR\boverride\"\xd5\x03\n" +
 	"\x18ModuleDependencyOverride\x12\x1f\n" +
 	"\vmodule_name\x18\x05 \x01(\tR\n" +
-	"moduleName\x12M\n" +
+	"moduleName\x12\x12\n" +
+	"\x04code\x18\x06 \x01(\tR\x04code\x12M\n" +
 	"\fgit_override\x18\x01 \x01(\v2(.build.stack.bazel.bzlmod.v1.GitOverrideH\x00R\vgitOverride\x12Y\n" +
 	"\x10archive_override\x18\x02 \x01(\v2,.build.stack.bazel.bzlmod.v1.ArchiveOverrideH\x00R\x0farchiveOverride\x12l\n" +
 	"\x17single_version_override\x18\x03 \x01(\v22.build.stack.bazel.bzlmod.v1.SingleVersionOverrideH\x00R\x15singleVersionOverride\x12`\n" +

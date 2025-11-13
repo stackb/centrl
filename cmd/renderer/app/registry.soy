@@ -1,10 +1,13 @@
 {namespace soy.registry}
 
 import {
+    GitOverride,
+    LocalPathOverride,
     Maintainer,
     Module,
     Registry,
     ModuleDependency,
+    ModuleDependencyOverride,
     ModuleVersion,
     ModuleSource,
     ModuleMetadata
@@ -37,13 +40,20 @@ import {
 
 {template moduleDependencyLink kind="html<a>"}
   {@param dep: ModuleDependency}
-<a class="mr-2" href="{moduleVersionUrl(name: $dep.getName(), version: $dep.getVersion())}">{$dep.getName()}@{$dep.getVersion()}</a>
+<a class="mr-2" href="{moduleVersionUrl(name: $dep.getName(), version: $dep.getVersion())}">{$dep.getName()} @ {$dep.getVersion()}</a>
+{/template}
+
+{template moduleDependencyOverrideLink kind="html<span>"}
+  {@param dep: ModuleDependency}
+<span>
+<a class="mr-2" href="{moduleVersionUrl(name: $dep.getName(), version: $dep.getVersion())}">{$dep.getName()}</a>@ <strike>{$dep.getVersion()}</strike>
+</span>
 {/template}
 
 {template clippy}
     {@param? text: string}
 <button type="button" class="mb-1 btn-octicon {css('clippy')}" {if $text}data-clippy="{$text}"{/if}>
-    <i class="octicon octicon-clippy text-gray">{sp}</i>
+    <i class="octicon octicon-clippy">{sp}</i>
 </button>
 {/template}
 
@@ -51,6 +61,13 @@ import {
   {@param name: string}
   {@param version: string}
 bazel_dep(name = "{$name}", version = "{$version}")
+{/template}
+
+{template copyToClipboardButton}
+  {@param content: string}
+<button class="btn btn-octicon" aria-label="Copy to clipboard" data-clippy='{$content}'>
+    <i class="octicon octicon-clippy">{sp}</i>
+</button>
 {/template}
 
 {template moduleVersionModuleBazel}
@@ -62,13 +79,11 @@ bazel_dep(name = "{$name}", version = "{$version}")
         <div class="text-mono">
         MODULE.bazel
         </div>
-        <button class="btn btn-secondary" aria-label="Copy to clipboard" data-clippy='{moduleVersionBazelDep(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}'>
-            <i class="octicon octicon-clippy">{sp}</i>
-        </button>
+        {copyToClipboardButton(content: moduleVersionBazelDep(name: $moduleVersion.getName(), version: $moduleVersion.getVersion()))}
       </div>
   </div>
-  <div class="">
-      <pre class="width-full m-3"><code class="{css('shiki')}" lang="python">{moduleVersionBazelDep(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}</code></pre>
+  <div class="Box-body">
+      <pre class="width-full m-3 {css('shiki')}" lang="py"><code lang="py">{moduleVersionBazelDep(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}</code></pre>
   </div>
 </div>
 
@@ -99,9 +114,32 @@ bazel_dep(name = "{$name}", version = "{$version}")
   <div class="Box-body width-full">
     {for $dep in $deps}
         <div class="mx-1 my-2">
+            {if $dep.getOverride()}
+            {moduleDependencyOverrideLink(dep: $dep)}            
+            {else}
             {moduleDependencyLink(dep: $dep)}
+            {/if}
         </div>
     {/for}
+  </div>
+</div>
+{/template}
+
+
+{template moduleDependencyOverride}
+  {@param override: ModuleDependencyOverride}
+<div class="Box Box--condensed">
+  <div class="Box-header">
+      <div class="Box-title d-flex flex-justify-between flex-items-center">
+      <span>override <code>{$override.getModuleName()}</code></span>
+     {copyToClipboardButton(content: $override.getCode())}
+      </div>
+
+  </div>
+  <div class="Box-body width-full overflow-auto">
+    <pre class="{css('shiki')}"><code>
+{$override.getCode()}
+    </code></pre>
   </div>
 </div>
 {/template}
@@ -170,27 +208,30 @@ bazel_dep(name = "{$name}", version = "{$version}")
         <span class="text-light text-italic">Unspecified</span>
     {/if}
   </div>
-</div>
+]</div>
 {/template}
 
 {template moduleVersionTable}
   {@param module: Module}
   {@param? currentVersion: string}
+  {@param yanked: map<string,string>}
 <div>
   <div class="f3 pb-2">
       Versions {counterLabel(count: length($module.getVersionsList()))}
   </div>
   <div class="d-flex flex-wrap">
     {for $version in $module.getVersionsList()}
-        {if ($currentVersion === $version.getVersion())}
-            <span class="mr-2 text-bold">{$version.getVersion()}</span>
-        {else}
-            <a class="mr-2" href="{moduleVersionUrl(name: $version.getName(), version: $version.getVersion())}">{$version.getVersion()}</a>
-        {/if}
+        <a href="{moduleVersionUrl(name: $version.getName(), version: $version.getVersion())}"
+           class="mr-2 {if ($currentVersion === $version.getVersion())}Box-row-link{/if}"
+           style="{if $yanked.get($version.getVersion())}text-decoration: line-through; color: rgba(0, 0, 0, 0.18);{/if}"
+        >
+            {$version.getVersion()}
+        </a>
     {/for}
   </div>
 </div>
 {/template}
+
 
 {template moduleVersions}
   {@param registry: Registry}
@@ -263,6 +304,20 @@ https://github.com/{$name}
 mailto:{$to}
 {/template}
 
+{template repositoryUrl kind="uri"}
+  {@param repo: string}
+{if $repo.startsWith("github:")}
+https://github.com/{$repo.substring("github:".length)}
+{elseif $repo.startsWith("gitlab:")}
+https://gitlab.com/{$repo.substring("gitlab:".length)}
+{elseif $repo.startsWith("https:")}
+{$repo}
+{else}
+{$repo}
+{/if}
+{/template}
+
+
 // ====================================================================
 // LINK HELPERS
 // ====================================================================
@@ -288,32 +343,9 @@ mailto:{$to}
 {template registryModuleVersions}
   {@param moduleVersions: list<ModuleVersion>}
 <div class="mt-3">
-  <div class="f3 mb-2 d-flex flex-items-center">
-      Modules {counterLabel(count: length($moduleVersions))}
-  </div>
-  <div>
-    {for $moduleVersion in $moduleVersions}
-        {moduleVersionCard(moduleVersion: $moduleVersion)}
-    {/for}
-  </div>
-</div>
-{/template}
-
-{template registryModules}
-  {@param registry: Registry}
-<div class="mt-3">
-  <div>
-      <span class="f2 mb-2">Modules {counterLabel(count: length($registry.getModulesList()))}</span>
-  </div>
-  <div class="mt-2 d-flex flex-wrap border-top">
-    {for $module in $registry.getModulesList()}
-        {if length($module.getVersionsList()) > 0}
-            <div class="anim-fade-in">
-            {moduleAvatar(module: $module)}
-            </div>
-        {/if}
-    {/for}
-  </div>
+{for $moduleVersion in $moduleVersions}
+    {moduleVersionCard(moduleVersion: $moduleVersion)}
+{/for}
 </div>
 {/template}
 
@@ -332,9 +364,9 @@ mailto:{$to}
 {template moduleVersionCard}
   {@param moduleVersion: ModuleVersion}
 <div class="Box Box-condensed mr-2 mb-2 p-2 anim-hover-grow d-inline-block">
-    <a class="no-underline Box-row-link" href="{moduleUrl(name: $moduleVersion.getName())}">
-        <div class="">
-            <i class="octicon octicon-package mr-2">{sp}</i>
+    <a class="no-underline Box-row-link" href="{moduleVersionUrl(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}">
+        <div>
+            <i class="octicon octicon-package mr-2" {if $moduleVersion.getAttestations()}style="color: var(--color-ansi-magenta);"{/if}>{sp}</i>
             {sp}
             <span class="f4 text-bold">{$moduleVersion.getName()|truncate:32}</span>
             {sp}
@@ -431,10 +463,6 @@ mailto:{$to}
 {template maintainersList}
   {@param maintainers: map<string,Maintainer>}
 <div class="mt-3">
-  <div class="f3 mb-2 d-flex flex-items-center">
-      Maintainers {counterLabel(count: $maintainers.size)}
-  </div>
-
   <div class="d-flex flex-wrap">
     {for $name in $maintainers.keys()}
         {let $maintainer: $maintainers.get($name) /}
@@ -450,17 +478,95 @@ mailto:{$to}
 {/template}
 
 {template moduleVersionHeader}
+  {@param metadata: ModuleMetadata}
   {@param moduleVersion: ModuleVersion}
-<div class="SubHead mt-3 mb-2">
-  <div class="SubHead-heading f2-light" style="margin-left: -40px">
-    <a class="Box-row-link anim-hover-grow-in" href="{modulesUrl()}"><i class="octicon octicon-package mr-2" style="font-size: 1.8rem; color: rgba(0,0,0,0.36)">{sp}</i></a>
+<div class="Subhead my-3">
+  <div class="Subhead-heading f2-light" style="margin-left: -40px">
+    <a class="Box-row-link anim-hover-grow-in" href="{modulesUrl()}">
+        <i class="octicon octicon-package mr-2" style="font-size: 1.8rem; color: var({if $moduleVersion.getAttestations()}--color-ansi-magenta-bright{else}--color-ansi-gray{/if}">{sp}</i>
+    </a>
     {sp}
     <span class="f1 text-semibold">{$moduleVersion.getName()}</span>
     {sp}
     <span class="f2">{$moduleVersion.getVersion()}</span>
+    {if $moduleVersion.getAttestations()}
+        <span class="ml-1" title="Source Attestations Present">
+            <i class="octicon octicon-verified anim-hover-grow-in" style="font-size: 1.2rem; color: var(--color-ansi-magenta-bright); transform: translateY(-0.8rem);">{sp}</i>
+        </span>
+    {/if}
   </div>
+  <div class="Subhead-actions"></div>
+  <div class="Subhead-description">
+    {for $repo in $metadata.getRepositoryList()}
+        {if $repo != $metadata.getHomepage()}
+        <div>
+            <div class="d-inline-block mr-2">
+                <i class="octicon octicon-repo">{sp}</i>
+                {sp}
+                <a href="{repositoryUrl(repo: $repo)}">{$repo}</a>
+            </div>
+        </div>
+        {/if}
+    {/for}
+    {if $metadata.getHomepage()}
+        <div>
+            <div class="d-inline-block">
+                <i class="octicon octicon-bookmark">{sp}</i>
+                {sp}
+                <a href="{$metadata.getHomepage()}">{$metadata.getHomepage()}</a>
+            </div>
+        </div>
+    {/if}
+    {if $moduleVersion.getSource()?.getDocsUrl()}
+        <div>
+            <div class="d-inline-block">
+                <i class="octicon octicon-book">{sp}</i>
+                {sp}
+                <a href="{$moduleVersion.getSource()?.getDocsUrl()}">{$moduleVersion.getSource()?.getDocsUrl()}</a>
+            </div>
+        </div>
+    {/if}
+  </div>
+  {if $metadata.getYankedVersionsMap()}
+    {for $version in $metadata.getYankedVersionsMap().keys()}
+        {if $version == $moduleVersion.getVersion()}
+            {let $message: $metadata.getYankedVersionsMap().get($version) /}
+            <div class="Subhead-description">
+                {yankedMessage(message: $message)}
+            </div>
+        {/if}
+    {/for}
+  {/if}
+  {if $metadata.getDeprecated()}
+  <div class="Subhead-description">
+    {deprecationMessage(message: $metadata.getDeprecated())}
+  </div>
+  {/if}
 </div>
 {/template}
+
+{template deprecationMessage}
+    {@param message: string}
+<div class="warning p-2 mt-2 border rounded">
+<i class="octicon octicon-megaphone mr-1">{sp}</i>
+{sp}
+Deprecation Notice:
+{sp}
+<span class="text-italic">{$message}</span>
+</div>
+{/template}
+
+{template yankedMessage}
+    {@param? message: string}
+<div class="warning p-2 mt-2 border rounded">
+<i class="octicon octicon-megaphone mr-1">{sp}</i>
+{sp}
+Yanked Version:
+{sp}
+<span class="text-italic">{$message || 'No message provided'}</span>
+</div>
+{/template}
+
 
 {template moduleVersionBreadcrumb}
   {@param moduleVersion: ModuleVersion}

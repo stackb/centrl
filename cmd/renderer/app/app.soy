@@ -11,11 +11,13 @@ import {
 } from 'build/stack/bazel/bzlmod/v1/bcr.proto';
 import {
   bazelCompatibilityTable,
+  counterLabel,
   maintainerBreadcrumb,
   maintainerModuleVersionTable,
   maintainerProfile,
   maintainersList,
   maintainersTable,
+  moduleDependencyOverride,
   moduleDependencyTable,
   moduleAvatar,
   moduleVersionBreadcrumb,
@@ -24,8 +26,7 @@ import {
   moduleVersions,
   moduleVersionHeader,
   moduleVersionTable,
-  moduleVersionSourceDetails,
-  registryModules
+  moduleVersionSourceDetails
 } from 'cmd/renderer/app/registry.soy';
 
 {template heading}
@@ -44,7 +45,7 @@ import {
 </section>
 {/template}
 
-{template app}
+{template registryApp}
 <div class="container-lg mx-auto">
   <div class="{css('app-main')}"></div>
 </div>
@@ -107,7 +108,7 @@ import {
 </div>
 {/template}
 
-{template body}
+{template bodySelect}
 <div class="PageLayout">
   {call header}{/call}
   <div class="{css('content')} PageLayout-content"></div>
@@ -116,7 +117,7 @@ import {
 {/template}
 
 
-{template home}
+{template homeSelect}
 <div>
   <div class="{css('app-home')}">
       {call heading}
@@ -136,7 +137,7 @@ import {
 </div>
 {/template}
 
-{template maintainerList}
+{template maintainersMapComponent}
   {@param maintainers: map<string,Maintainer>}
 <div>
     {call maintainersList}
@@ -145,16 +146,7 @@ import {
 </div>
 {/template}
 
-{template moduleList}
-  {@param registry: Registry}
-<div>
-    {call registryModules}
-        {param registry: $registry /}
-    {/call}
-</div>
-{/template}
-
-{template moduleComponent}
+{template moduleSelect}
   {@param name: string}
   {@param module: Module}
 <div>
@@ -162,30 +154,54 @@ import {
 </div>
 {/template}
 
-{template modulesComponent}
+{template navItem kind="html<a>"}
+  {@param label: string}
+  {@param? count: int}
+  <a class="UnderlineNav-item">
+    {$label}
+    {if $count}
+    {counterLabel(count: $count)}
+    {/if}
+  </a>
+{/template}
+
+{template navItemUrl kind="uri"}
+  {@param name: string}
+/#/modules/{$name}
+{/template}
+
+{template modulesMapSelect}
 <div>
+</div>
+{/template}
+
+{template modulesMapSelectNav}
+<div>
+  <nav class="UnderlineNav">
+    <div class="UnderlineNav-body {css('nav')}">
+      <div class="f4">Modules:</div>
+    </div>
+  </nav>
   <div class="{css('content')}"></div>
 </div>
 {/template}
 
-
-{template moduleVersionComponent}
+{template moduleVersionSelect}
   {@param moduleVersion: ModuleVersion}
-// {call moduleVersionBreadcrumb}
-//     {param moduleVersion: $moduleVersion /}
-// {/call}
 <div class="{css('content')}"></div>
 {/template}
 
-{template moduleVersionOverviewComponent}
+{template moduleVersionComponent}
   {@param module: Module}
   {@param metadata: ModuleMetadata}
   {@param moduleVersion: ModuleVersion}
   {@param deps: list<ModuleDependency>}
   {@param devDeps: list<ModuleDependency>}
+  {@param yanked: map<string,string>}
 <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider">
     <div class="PageLayout-header">
         {call moduleVersionHeader}
+          {param metadata: $metadata /}
           {param moduleVersion: $moduleVersion /}
         {/call}
     </div>
@@ -212,10 +228,18 @@ import {
             {/call}
           </div>
         {/if}
+
+        {for $override in $moduleVersion.getOverrideList()}
+          <div class="mt-3">
+            {call moduleDependencyOverride}
+              {param override: $override /}
+            {/call}
+          </div>
+        {/for}
       </div>
 
       <div class="PageLayout-pane">
-        <div style="margin-top: -2rem">
+        <div>
           {call bazelCompatibilityTable}
             {param moduleVersion: $moduleVersion /}
           {/call}
@@ -228,6 +252,7 @@ import {
             {call moduleVersionTable}
               {param module: $module /}
               {param currentVersion: $moduleVersion.getVersion() /}
+              {param yanked: $yanked /}
             {/call}
           </div>
           <div class="mt-3">
@@ -242,8 +267,19 @@ import {
 </div>
 {/template}
 
-{template maintainersComponent}
+{template maintainersSelect}
 <div>
+  <div class="{css('content')}"></div>
+</div>
+{/template}
+
+{template maintainersMapSelectNav}
+<div>
+  <nav class="UnderlineNav">
+    <div class="UnderlineNav-body {css('nav')}">
+      <div class="f4">Maintainers:</div>
+    </div>
+  </nav>
   <div class="{css('content')}"></div>
 </div>
 {/template}
@@ -290,7 +326,7 @@ import {
   {/for}
 {/template}
 
-{template notFound}
+{template notFoundComponent}
   {@param? msg: string}
 <div class="blankslate-container">
   <div class="blankslate">
@@ -307,8 +343,21 @@ import {
   <code>{$value}</code>
 {/template}
 
-{template moduleSearchRow kind="html<code>"}
+{template moduleSearchRow kind="html<div>"}
   {@param module: Module}
-  <code>{$module.getName()}</code>
+  <div class="f4">
+    <i class="octicon octicon-package mr-2">{sp}</i>
+    {$module.getName()}
+  </div>
+{/template}
+
+{template toastSuccess}
+    {@param message: string}
+<div class="Toast Toast--success Toast--animateIn" style="position: fixed; top: 10px; left: 10px; max-width: 100%">
+  <span class="Toast-icon">
+      <i class="octicon octicon-check">{sp}</i>
+  </span>
+  <span class="Toast-content">{$message|truncate:256}</span>
+</div>
 {/template}
 

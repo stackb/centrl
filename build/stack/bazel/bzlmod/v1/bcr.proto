@@ -124,6 +124,8 @@ message ModuleVersion {
 message ModuleDependencyOverride {
     // The module name this override applies to
     string module_name = 5;
+    // the textual representation
+    string code = 6;
     oneof override {
         GitOverride git_override = 1;
         ArchiveOverride archive_override = 2;

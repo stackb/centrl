@@ -13,7 +13,11 @@ import (
 
 // ExecFile evaluates a MODULE.bazel as starlark file into a ModuleVersion protobuf
 func ExecFile(filename string) (*bzpb.ModuleVersion, error) {
-	module, err := loadStarlarkModuleBazelFile(filename,
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	module, err := loadStarlarkModuleBazelFile(filename, data,
 		func(msg string) {
 			log.Printf("starlark module out> %s", msg)
 		}, func(err error) {
@@ -23,6 +27,21 @@ func ExecFile(filename string) (*bzpb.ModuleVersion, error) {
 	if err != nil {
 		return nil, fmt.Errorf("evaluating %s: %v", filename, err)
 	}
+
+	// collect rule source text for overrides for raw display in the UI
+	if len(module.Override) > 0 {
+		f, err := build.ParseModule(filename, data)
+		if err != nil {
+			return nil, err
+		}
+		overridesMap := buildOverridesMap(f)
+		for _, override := range module.Override {
+			if rule, ok := overridesMap[override.ModuleName]; ok {
+				override.Code = formatBuildRules(rule)
+			}
+		}
+	}
+
 	return module, nil
 }
 
@@ -144,4 +163,20 @@ func parseBool(value string) bool {
 func parseInt32(value string) int32 {
 	result, _ := strconv.ParseInt(value, 10, 32)
 	return int32(result)
+}
+
+// func formatRules(rules ...*rule.Rule) string {
+// 	file := rule.EmptyFile("", "")
+// 	for _, r := range rules {
+// 		r.Insert(file)
+// 	}
+// 	return string(file.Format())
+// }
+
+func formatBuildRules(rules ...*build.Rule) string {
+	file := &build.File{}
+	for _, r := range rules {
+		file.Stmt = append(file.Stmt, r.Call)
+	}
+	return string(build.Format(file))
 }
