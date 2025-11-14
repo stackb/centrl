@@ -9,10 +9,41 @@ const base64 = goog.require("goog.crypt.base64");
  * Main entry point for the browser application.
  *
  * @param {string} registryDataBase64 the raw base64 encoded registry protobuf data
+ * @suppress {reportUnknownTypes, missingProperties, checkTypes}
  */
-function main(registryDataBase64) {
-    const registryData = base64.decodeStringToUint8Array(registryDataBase64);
-    const registry = Registry.deserializeBinary(registryData);
+async function main(registryDataBase64) {
+    const binaryString = base64.decodeToBinaryString(registryDataBase64);
+    const binaryData = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        binaryData[i] = binaryString.charCodeAt(i);
+    }
+    const decompressor = new DecompressionStream('gzip');
+    const input = new ReadableStream({
+        /**
+         * @param {!ReadableStreamDefaultController} controller 
+         */
+        start(controller) {
+            controller.enqueue(binaryData);
+            controller.close();
+        }
+    });
+    const output = input.pipeThrough(decompressor);
+    const reader = output.getReader();
+    const chunks = [];
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+    }
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const decompressed = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+        decompressed.set(chunk, offset);
+        offset += chunk.length;
+    }
+    const data = decompressed;
+    const registry = Registry.deserializeBinary(data);
     const app = new RegistryApp(registry);
     app.render(document.body);
     app.start();

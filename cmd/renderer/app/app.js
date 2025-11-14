@@ -338,7 +338,7 @@ class RegistryApp extends App {
         const routeEvent = /** @type {!RouteEvent} */ (e);
         this.activeComponent_ = routeEvent.component || null;
         this.rebuildSearch();
-
+        console.info(`route done.  active component:`, this.activeComponent_);
     }
 
     /**
@@ -629,7 +629,7 @@ class ModuleVersionComponent extends Component {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(moduleVersionSelect, {
+        this.setElementInternal(soy.renderAsElement(moduleVersionComponent, {
             module: this.module_,
             metadata: asserts.assertObject(this.module_.getMetadata()),
             deps: this.moduleVersion_.getDepsList().filter(d => !d.getDev()),
@@ -696,16 +696,6 @@ class MaintainersSelect extends Select {
      * @param {!Route} route
      */
     selectFail(name, route) {
-        const maintainer = this.maintainers_.get(name);
-
-        if (maintainer) {
-            this.addTab(name, new MaintainerComponent(this.registry_, name, maintainer));
-            this.select(name, route);
-            return;
-        } else {
-            console.warn(`failed to get maintainer for ${name}`, this.maintainers_.keys());
-        }
-
         if (name === TabName.LIST) {
             this.addTab(
                 TabName.LIST,
@@ -713,6 +703,15 @@ class MaintainersSelect extends Select {
             );
             this.select(name, route);
             return;
+        }
+
+        const maintainer = this.maintainers_.get(name);
+        if (maintainer) {
+            this.addTab(name, new MaintainerComponent(this.registry_, name, maintainer));
+            this.select(name, route);
+            return;
+        } else {
+            console.warn(`failed to get maintainer for ${name}`, this.maintainers_.keys());
         }
 
         super.selectFail(name, route);
@@ -839,6 +838,12 @@ class ModulesMapSelect extends Select {
      * @param {!Route} route
      */
     selectFail(name, route) {
+        if (name === TabName.LIST) {
+            this.addTab(name, new ModulesMapSelectNav(this.registry_, this.modules_, this.dom_));
+            this.select(name, route);
+            return;
+        }
+
         const module = this.modules_.get(name);
         if (module) {
             this.addTab(name, new ModuleSelect(name, module));
@@ -846,12 +851,6 @@ class ModulesMapSelect extends Select {
             return;
         } else {
             console.warn(`failed to get module for ${name}`, this.modules_.keys());
-        }
-
-        if (name === TabName.LIST) {
-            this.addTab(name, new ModulesMapSelectNav(this.registry_, this.modules_, this.dom_));
-            this.select(name, route);
-            return;
         }
 
         super.selectFail(name, route);
@@ -1290,7 +1289,7 @@ function maintainerModuleVersions(registry, maintainer) {
 async function syntaxHighlight(window, el) {
     const code = el.querySelector('code');
     const text = code ? code.textContent : el.textContent;
-    const html = await window.codeToHtml(text, {
+    const html = await window['codeToHtml'](text, {
         'lang': 'py',
         'theme': 'min-light',
     });
