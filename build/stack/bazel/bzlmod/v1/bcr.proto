@@ -10,6 +10,18 @@ option go_package = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpb";
 message Registry {
     // list of known modules
     repeated Module modules = 1;
+    // repository URL of the registry (e.g. 'https://github.com/bazelbuild/bazel-central-registry')
+    string repository_url = 2;
+    // URL of the registry UI (e.g. 'https://registry.bazel.build')
+    string registry_url = 3;
+    // branch name of the repository data (e.g. 'main')
+    string branch = 4;
+    // commit sha1 of the repository data
+    string commit_sha = 5;
+    // commit message
+    string commit_message = 6;
+    // timstamp of the commit date
+    string commit_date = 7;
 }
 
 // Aggregate type about a module and all it's versions
@@ -20,8 +32,8 @@ message Module {
     ModuleMetadata metadata = 2;
     // list of known versions
     repeated ModuleVersion versions = 3;
-    // url to an avatar image
-    string avatar_url = 4;
+    // optional (github or potentially gitlab) repo metadata, if applicable.
+    RepositoryMetadata repository_metadata = 4;
 }
 
 // Metadata about a Maitainer.
@@ -52,6 +64,24 @@ message ModuleMetadata {
     map<string,string> yanked_versions = 5;
     // "deprecated": "use opentracing-cpp instead"
     string deprecated = 6;
+}
+
+enum RepositoryType {
+    REPOSITORY_TYPE_UNKNOWN = 0;
+    GITHUB = 1;
+    GITLAB = 2;
+}
+
+// Metadata about a source repository.
+message RepositoryMetadata {
+    RepositoryType type = 1;
+    string organization = 2;
+    string name = 3;
+    string description = 4;
+    int32 stargazers = 5;
+    map<string,int32> languages = 6;
+    string primary_language = 7;
+    string canonical_name = 8;
 }
 
 // Source represents a source.json file for a module version
@@ -119,6 +149,24 @@ message ModuleVersion {
     repeated string toolchains_to_register = 10;
     // Optional overrides
     repeated ModuleDependencyOverride override = 11; 
+    // information about when the MODULE.bazel file for the version was committed.
+    ModuleCommit commit = 12;
+    // repository metadadata.  This is canonically stored and serialized on the
+    // parent Module, but for the sake of the UI, can be attached to the
+    // ModuleVersion for easier template rendering.
+    RepositoryMetadata repository_metadata = 13;
+}
+
+// ModuleCommit captures metadata about a git commit for the MODULE.bazel file.
+message ModuleCommit {
+    // the commit sha
+    string sha1 = 1;
+    // the commit date
+    string date = 2;
+    // the commit message
+    string message = 3;
+    // if the pull_request number could be extracted from the commit message
+    string pull_request = 4;
 }
 
 message ModuleDependencyOverride {
@@ -148,6 +196,9 @@ message ModuleDependency {
     int32 max_compatibility_level = 5;
     // Optional override for the dependency
     ModuleDependencyOverride override = 6;
+    // true of this dependency does not resolve to a version that exists in the
+    // same registry (boost.pin_version has these)
+    bool unresolved = 7;
 }
 
 // GitOverride represents a git_override directive

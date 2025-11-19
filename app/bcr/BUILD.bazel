@@ -1,0 +1,205 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load(
+    "@io_bazel_rules_closure//closure:defs.bzl",
+    "closure_css_binary",
+    "closure_css_library",
+    "closure_js_binary",
+    "closure_js_library",
+    "closure_js_template_library",
+)
+load("@rules_tsickle//rules:defs.bzl", "closure_ts_compile")
+load("//rules:deploy.bzl", "cloudflare_deploy")
+load("//rules:octicons_closure_template_compile.bzl", "octicons_closure_template_compile")
+load("//rules:release.bzl", "release_archive")
+
+string_flag(
+    name = "release_type",
+    build_setting_default = "debug",
+    values = [
+        "debug",
+        "production",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "is_debug_release",
+    flag_values = {
+        ":release_type": "debug",
+    },
+)
+
+# NOTE: closure-templates seems to have issues compiling generated .soy files
+# (or the import path becomes confusing). This rule builds the .soy generated
+# file, and is also a runnable rule that copies it back into the source tree.
+# Regenerate as needed.
+#
+# ProTip: bazel run //app/bcr:octicons
+octicons_closure_template_compile(
+    name = "octicons",
+)
+
+closure_css_library(
+    name = "style_closure_css",
+    srcs = ["style.closure.css"],
+)
+
+closure_css_binary(
+    name = "css",
+    debug = select({
+        ":is_debug_release": True,
+        "//conditions:default": False,
+    }),
+    renaming = True,
+    visibility = ["//visibility:public"],
+    deps = [":style_closure_css"],
+)
+
+closure_js_template_library(
+    name = "soy",
+    srcs = [
+        "app.soy",
+        "octicons.soy",
+        "registry.soy",
+    ],
+    deps = [
+        "//build/stack/bazel/bzlmod/v1:bzpb_js",
+    ],
+)
+
+closure_ts_compile(
+    name = "shiki",
+    srcs = ["shiki.d.ts"],
+)
+
+closure_js_library(
+    name = "common",
+    srcs = ["common.js"],
+    deps = [
+        "@build_stack_ui_js//js/ui:core",
+        "@build_stack_ui_js//js/ui:keyboard",
+        "@build_stack_ui_js//js/ui:select",
+        "@io_bazel_rules_closure//closure/goog/dom",
+        "@io_bazel_rules_closure//closure/goog/ui/ac:autocomplete",
+        "@io_bazel_rules_closure//closure/goog/ui/ac:cachingmatcher",
+        "@io_bazel_rules_closure//closure/goog/ui/ac:inputhandler",
+        "@io_bazel_rules_closure//closure/goog/ui/ac:renderer",
+    ],
+)
+
+closure_js_library(
+    name = "autocompletematcher",
+    srcs = [
+        "autocompletematcher.js",
+        "heap.js",
+    ],
+    deps = [
+        "@io_bazel_rules_closure//closure/goog/asserts",
+        "@io_bazel_rules_closure//closure/goog/string",
+    ],
+)
+
+closure_js_library(
+    name = "app",
+    srcs = [
+        "app.js",
+        "main.js",
+        "search.js",
+        ":shiki",
+    ],
+    deps = [
+        ":autocompletematcher",
+        ":common",
+        ":soy",
+        "//build/stack/bazel/bzlmod/v1:bzpb_js",
+        "@build_stack_ui_js//js/ui:core",
+        "@build_stack_ui_js//js/ui:select",
+        "@io_bazel_rules_closure//closure/goog/array",
+        "@io_bazel_rules_closure//closure/goog/asserts",
+        "@io_bazel_rules_closure//closure/goog/crypt:base64",
+        "@io_bazel_rules_closure//closure/goog/date",
+        "@io_bazel_rules_closure//closure/goog/date:relative",
+        "@io_bazel_rules_closure//closure/goog/dom",
+        "@io_bazel_rules_closure//closure/goog/dom:dataset",
+        "@io_bazel_rules_closure//closure/goog/events",
+        "@io_bazel_rules_closure//closure/goog/events:listenable",
+        "@io_bazel_rules_closure//closure/goog/soy",
+        "@io_bazel_rules_closure//closure/goog/string",
+        "@io_bazel_rules_closure//closure/goog/ui:component",
+        "@io_bazel_rules_closure//closure/goog/ui/ac:autocomplete",
+        "@io_bazel_rules_closure//closure/goog/ui/ac:renderer",
+        "@io_bazel_rules_closure//closure/protobuf:jspb",
+    ],
+)
+
+closure_js_binary(
+    name = "bcr",
+    compilation_level = "ADVANCED",  # "SIMPLE",
+    css = ":css",
+    debug = select({
+        ":is_debug_release": True,
+        "//conditions:default": False,
+    }),
+    entry_points = ["goog:bcr.main"],
+    language = "ECMASCRIPT_2021",
+    output_wrapper = "(function(){%output%}).call(this);" + select({
+        ":is_debug_release": "\n\n//# sourceMappingURL=bcr.js.map",
+        "//conditions:default": "",
+    }),
+    deps = [":app"],
+)
+
+# capture specific outputs of module_registry
+[
+    filegroup(
+        name = output_group,
+        srcs = ["//data/bazel-central-registry/modules:registry"],
+        output_group = output_group,
+    )
+    for output_group in [
+        "colors_css",
+        "sitemap_xml",
+        "robots_txt",
+        "registry_pb",
+    ]
+]
+
+# concatenates css into a single file
+genrule(
+    name = "bcr_css",
+    srcs = [
+        ":colors_css",  # generated language colors
+        ":css",  # css renamed rules
+        "style.css",  # unrenamed rules
+    ],
+    outs = ["bcr.css"],
+    cmd = "cat $(SRCS) > $@",
+)
+
+# builds the release.tar.
+#
+# ProTip: bazel run //app/bcr:release for development server
+release_archive(
+    name = "release",
+    srcs = [
+        "favicon.png",
+        ":robots_txt",
+        ":sitemap_xml",
+    ] + select({
+        ":is_debug_release": ["bcr.js.map"],
+        "//conditions:default": [],
+    }),
+    hashed_srcs = [
+        ":bcr.css",
+        ":bcr.js",
+    ],
+    index_html = "index.html",
+    registry_file = ":registry_pb",
+)
+
+cloudflare_deploy(
+    name = "deploy",
+    account_id = "df53dccd72b4a61d2f8b1323256bc71c",
+    project = "centrl",
+    tarball = ":release",
+)

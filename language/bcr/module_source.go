@@ -35,7 +35,7 @@ func makeModuleSourceRule(source *bzpb.ModuleSource, sourceJsonFile string) *rul
 
 func moduleSourceLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_source.bzl",
+		Name:    "//rules:module_source.bzl",
 		Symbols: []string{"module_source"},
 	}
 }

@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "octiconcompiler_lib",
+    srcs = ["octiconcompiler.go"],
+    importpath = "github.com/stackb/centrl/cmd/octiconcompiler",
+    visibility = ["//visibility:private"],
+    deps = ["//pkg/paramsfile"],
+)
+
+go_binary(
+    name = "octiconcompiler",
+    embed = [":octiconcompiler_lib"],
+    visibility = ["//visibility:public"],
+)

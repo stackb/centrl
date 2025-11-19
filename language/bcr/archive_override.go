@@ -9,7 +9,7 @@ import (
 // archiveOverrideLoadInfo returns load info for the archive_override rule
 func archiveOverrideLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:archive_override.bzl",
+		Name:    "//rules:archive_override.bzl",
 		Symbols: []string{"archive_override"},
 	}
 }

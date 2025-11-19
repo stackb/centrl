@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "sitemapcompiler_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/stackb/centrl/cmd/sitemapcompiler",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//build/stack/bazel/bzlmod/v1:bzlmod",
+        "//pkg/protoutil",
+    ],
+)
+
+go_binary(
+    name = "sitemapcompiler",
+    embed = [":sitemapcompiler_lib"],
+    visibility = ["//visibility:public"],
+)

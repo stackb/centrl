@@ -1,20 +1,23 @@
 package bcr
 
 import (
-	"fmt"
+	"context"
+	"log"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
-	"github.com/bazelbuild/buildtools/build"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
+	"github.com/stackb/centrl/pkg/gh"
+	"github.com/stackb/centrl/pkg/gl"
 )
 
 // repositoryMetadataLoadInfo returns load info for the repository_metadata rule
 func repositoryMetadataLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:repository_metadata.bzl",
+		Name:    "//rules:repository_metadata.bzl",
 		Symbols: []string{"repository_metadata"},
 	}
 }
@@ -23,7 +26,12 @@ func repositoryMetadataLoadInfo() rule.LoadInfo {
 func repositoryMetadataKinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"repository_metadata": {
-			MatchAttrs: []string{"type", "organization", "repo_name"},
+			MatchAttrs: []string{"canonical_name"},
+			ResolveAttrs: map[string]bool{
+				"description":      true,
+				"stargazers":       true,
+				"primary_language": true,
+			},
 		},
 	}
 }
@@ -32,14 +40,23 @@ func repositoryMetadataKinds() map[string]rule.KindInfo {
 func repositoryMetadataImports(r *rule.Rule) []resolve.ImportSpec {
 	return []resolve.ImportSpec{{
 		Lang: bcrLangName,
-		Imp:  fmt.Sprintf("%s:%s/%s", r.AttrString("type"), r.AttrString("organization"), r.AttrString("repo_name")),
+		Imp:  r.AttrString("canonical_name"),
 	}}
 }
 
 // makeRepositoryMetadataRule creates a repository_metadata rule from protobuf metadata
 func makeRepositoryMetadataRule(name string, md *bzpb.RepositoryMetadata) *rule.Rule {
 	r := rule.NewRule("repository_metadata", name)
+	r.SetAttr("canonical_name", formatRepository(md))
+	r.SetAttr("visibility", []string{"//visibility:public"})
 
+	updateRepositoryMetadataRule(md, r)
+
+	return r
+}
+
+// updateRepositoryMetadataRule updates a repository_metadata rule from protobuf metadata
+func updateRepositoryMetadataRule(md *bzpb.RepositoryMetadata, r *rule.Rule) {
 	if md.Type != bzpb.RepositoryType_REPOSITORY_TYPE_UNKNOWN {
 		r.SetAttr("type", strings.ToLower(md.Type.String()))
 	}
@@ -57,24 +74,32 @@ func makeRepositoryMetadataRule(name string, md *bzpb.RepositoryMetadata) *rule.
 	}
 	if len(md.Languages) > 0 {
 		r.SetAttr("languages", makeStringDict(md.Languages))
+		primaryLanguage := computePrimaryLanguage(md.Languages)
+		r.SetAttr("primary_language", primaryLanguage)
+	}
+}
+
+// computePrimaryLanguage returns the language with the highest line count
+func computePrimaryLanguage(languages map[string]int32) string {
+	var maxLang string
+	var maxCount int32
+
+	for lang, count := range languages {
+		if count > maxCount {
+			maxCount = count
+			maxLang = lang
+		}
 	}
 
-	r.SetAttr("visibility", []string{"//visibility:public"})
-	return r
+	return maxLang
 }
 
 // resolveRepositoryMetadataRule resolves the deps and overrides attributes for a module_metadata rule
 // by looking up module_version rules for each version in the versions list
 // and override rules for the module
-func resolveRepositoryMetadataRule(r *rule.Rule, _ *resolve.RuleIndex) {
-	// Increment the stargazers attribute
-	if stargazers, ok := r.Attr("stargazers").(*build.LiteralExpr); ok {
-		stars, err := strconv.ParseInt(string(stargazers.Token), 10, 32)
-		if err == nil {
-			r.SetAttr("stargazers", stars+1)
-		}
-	} else {
-		r.SetAttr("stargazers", 1)
+func resolveRepositoryMetadataRule(r *rule.Rule, _ *resolve.RuleIndex, repositories map[string]*bzpb.RepositoryMetadata) {
+	if md, ok := repositories[r.AttrString("canonical_name")]; ok {
+		updateRepositoryMetadataRule(md, r)
 	}
 }
 
@@ -84,7 +109,206 @@ func makeStringDict(in map[string]int32) map[string]string {
 	}
 	dict := make(map[string]string)
 	for k, v := range in {
-		dict[k] = string(v)
+		dict[k] = strconv.Itoa(int(v))
 	}
 	return dict
+}
+
+func makeRepositoryMetadataMap(registry *bzpb.Registry) map[string]*bzpb.RepositoryMetadata {
+	result := make(map[string]*bzpb.RepositoryMetadata)
+	for _, module := range registry.Modules {
+		if module.RepositoryMetadata != nil {
+			result[formatRepository(module.RepositoryMetadata)] = module.RepositoryMetadata
+		}
+	}
+	return result
+}
+
+func (ext *bcrExtension) reportGithubRateLimits() {
+	if ext.githubClient == nil {
+		return
+	}
+
+	ctx := context.Background()
+
+	// Check API rate limits
+	rateLimits, _, err := ext.githubClient.RateLimit.Get(ctx)
+	if err != nil {
+		log.Printf("warning: failed to get GitHub API rate limits: %v", err)
+		return
+	}
+
+	core := rateLimits.GetCore()
+	log.Printf("GitHub REST API rate limit: %d remaining of %d (resets at %v)",
+		core.Remaining,
+		core.Limit,
+		core.Reset.Time)
+
+	graphql := rateLimits.GetGraphQL()
+	log.Printf("GitHub GraphQL API rate limit: %d remaining of %d (resets at %v)",
+		graphql.Remaining,
+		graphql.Limit,
+		graphql.Reset.Time)
+}
+
+func filterGitlabRepositories(repositories map[string]*bzpb.RepositoryMetadata) []*bzpb.RepositoryMetadata {
+	names := make([]string, 0, len(repositories))
+	for key := range repositories {
+		names = append(names, key)
+	}
+	sort.Strings(names)
+
+	todo := make([]*bzpb.RepositoryMetadata, 0)
+	for _, name := range names {
+		md := repositories[name]
+		if md == nil || md.Type != bzpb.RepositoryType_GITLAB {
+			continue
+		}
+		todo = append(todo, md)
+	}
+	return todo
+}
+
+func filterGithubRepositories(repositories map[string]*bzpb.RepositoryMetadata) []*bzpb.RepositoryMetadata {
+	names := make([]string, 0, len(repositories))
+	for key := range repositories {
+		names = append(names, key)
+	}
+	sort.Strings(names)
+
+	todo := make([]*bzpb.RepositoryMetadata, 0)
+	for _, name := range names {
+		md := repositories[name]
+		if md == nil || md.Type != bzpb.RepositoryType_GITHUB {
+			continue
+		}
+
+		// Skip known bad repos that don't exist
+		if md.Organization == "bazel-contrib" && md.Name == "rules_pex" {
+			continue
+		}
+
+		todo = append(todo, md)
+	}
+	return todo
+}
+
+func propagateBaseRepositoryMetadata(repositories, baseRepositories map[string]*bzpb.RepositoryMetadata) {
+	for name, md := range repositories {
+		if base, ok := baseRepositories[name]; ok {
+			if md.Description == "" && base.Description != "" {
+				md.Description = base.Description
+			}
+			if len(md.Languages) == 0 && len(base.Languages) > 0 {
+				md.Languages = base.Languages
+			}
+			if md.PrimaryLanguage == "" && base.PrimaryLanguage != "" {
+				md.PrimaryLanguage = base.PrimaryLanguage
+			}
+			if md.Stargazers == 0 && base.Stargazers > 0 {
+				md.Stargazers = base.Stargazers
+			}
+		}
+	}
+}
+
+func (ext *bcrExtension) fetchGithubRepositoryMetadata(todo []*bzpb.RepositoryMetadata) {
+	if len(todo) == 0 {
+		log.Printf("No repositories need metadata fetching")
+		return
+	}
+
+	if ext.githubClient == nil {
+		log.Printf("No github client available,  Skipping fetch github metadata...")
+		return
+	}
+
+	ext.reportGithubRateLimits()
+
+	log.Printf("Need to fetch metadata for %d repositories", len(todo))
+
+	// Process in batches of 100 (GitHub GraphQL max)
+	batchSize := 100
+	totalFetched := 0
+
+	ctx := context.Background()
+
+	for i := 0; i < len(todo); i += batchSize {
+		end := min(i+batchSize, len(todo))
+
+		batch := todo[i:end]
+		log.Printf("Fetching metadata for batch %d-%d of %d repositories using GraphQL...", i+1, end, len(todo))
+		for _, repo := range batch {
+			log.Printf(" > %s/%s", repo.Organization, repo.Name)
+
+		}
+		// Fetch using GraphQL
+		if err := gh.FetchRepositoryMetadataBatch(ctx, ext.githubToken, batch); err != nil {
+			log.Printf("warning: failed to fetch repository metadata batch: %v", err)
+			// Continue with next batch instead of failing completely
+			continue
+		}
+
+		// Log what we fetched
+		batchFetched := 0
+		for _, md := range batch {
+			if md.Description != "" {
+				batchFetched++
+			}
+		}
+		totalFetched += batchFetched
+
+		log.Printf("Successfully fetched metadata for %d repositories in this batch", batchFetched)
+	}
+
+	log.Printf("Successfully fetched metadata for %d of %d repositories total", totalFetched, len(todo))
+}
+
+func (ext *bcrExtension) fetchGitlabRepositoryMetadata(todo []*bzpb.RepositoryMetadata) {
+	if len(todo) == 0 {
+		log.Printf("No GitLab repositories need metadata fetching")
+		return
+	}
+
+	if ext.gitlabToken == "" {
+		log.Printf("No GitLab token provided, rate limits may apply")
+	}
+
+	log.Printf("Need to fetch metadata for %d GitLab repositories", len(todo))
+
+	// Process in batches of 100 (GitLab GraphQL max)
+	batchSize := 100
+	totalFetched := 0
+
+	ctx := context.Background()
+
+	for i := 0; i < len(todo); i += batchSize {
+		end := min(i+batchSize, len(todo))
+
+		batch := todo[i:end]
+		log.Printf("Fetching metadata for batch %d-%d of %d GitLab repositories using GraphQL...", i+1, end, len(todo))
+		for _, repo := range batch {
+			log.Printf(" > %s/%s", repo.Organization, repo.Name)
+		}
+
+		// Fetch using GraphQL
+		if err := gl.FetchRepositoryMetadataBatch(ctx, ext.gitlabToken, batch); err != nil {
+			log.Printf("warning: failed to fetch GitLab repository metadata batch: %v", err)
+			// Continue with next batch instead of failing completely
+			continue
+		}
+
+		// Log what we fetched
+		batchFetched := 0
+		for _, md := range batch {
+			if md.Description != "" {
+				batchFetched++
+			}
+		}
+		totalFetched += batchFetched
+
+		log.Printf("Successfully fetched metadata for %d GitLab repositories in this batch", batchFetched)
+	}
+
+	log.Printf("Successfully fetched metadata for %d of %d GitLab repositories total", totalFetched, len(todo))
 }

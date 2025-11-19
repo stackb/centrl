@@ -13,6 +13,7 @@ const EventTarget = goog.require("goog.events.EventTarget");
 const InputHandler = goog.require("goog.ui.ac.InputHandler");
 const ListenableKey = goog.require("goog.events.ListenableKey");
 const Module = goog.require("proto.build.stack.bazel.bzlmod.v1.Module");
+const Registry = goog.require("proto.build.stack.bazel.bzlmod.v1.Registry");
 const Renderer = goog.require("goog.ui.ac.Renderer");
 const soy = goog.require("goog.soy");
 const { Application, DefaultSearchHandlerName, Searchable, SearchableSelect, SearchProvider } = goog.require("centrl.common");
@@ -378,9 +379,13 @@ exports.SearchComponent = SearchComponent;
 class ModuleSearchHandler extends EventTarget {
     /**
      * Construct a new ModuleSearchHandler
+     * @param {!Registry} registry
      */
-    constructor() {
+    constructor(registry) {
         super();
+
+        /** @private @const */
+        this.registry_ = registry;
 
         /** @private @const @type {!Map<string, string>} */
         this.links_ = new Map();
@@ -551,9 +556,35 @@ class ModuleRowRenderer {
      * @param {!Element} row
      */
     renderModule(module, entry, val, row) {
-        let el = soy.renderAsElement(moduleSearchRow, { module });
+        let el = soy.renderAsElement(moduleSearchRow, {
+            module,
+            lang: sanitizeLanguageName(module.getRepositoryMetadata()?.getPrimaryLanguage()),
+            description: module.getRepositoryMetadata()?.getDescription(),
+        });
         // Add a dataset entry on the element for testing
         dom.dataset.set(el, "cy", entry.data);
         dom.append(row, el);
     }
+}
+
+/**
+ * Sanitize a language name for use as a CSS identifier
+ * Matches the logic in pkg/css/identifier.go SanitizeIdentifier
+ * @param {string|undefined} name
+ * @return {string}
+ */
+function sanitizeLanguageName(name) {
+    if (!name) {
+        return '';
+    }
+    // Replace spaces and special characters
+    let sanitized = name
+        .replace(/ /g, '-')
+        .replace(/\+/g, 'plus')
+        .replace(/#/g, 'sharp');
+
+    // Remove any remaining invalid characters (keep only alphanumeric, hyphen, underscore)
+    sanitized = sanitized.replace(/[^a-zA-Z0-9\-_]/g, '');
+
+    return sanitized;
 }

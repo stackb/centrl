@@ -7,7 +7,7 @@ import (
 
 func modulePresubmitLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_presubmit.bzl",
+		Name:    "//rules:module_presubmit.bzl",
 		Symbols: []string{"module_presubmit"},
 	}
 }

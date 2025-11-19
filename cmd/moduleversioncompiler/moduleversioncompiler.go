@@ -6,7 +6,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
+	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 	"github.com/stackb/centrl/pkg/attestationsjson"
 	"github.com/stackb/centrl/pkg/modulebazel"
 	"github.com/stackb/centrl/pkg/paramsfile"
@@ -23,6 +26,10 @@ type Config struct {
 	SourceJsonFile       string
 	AttestationsJsonFile string
 	PresubmitYmlFile     string
+	CommitSha1           string
+	CommitDate           string
+	CommitMessage        string
+	UnresolvedDeps       string
 }
 
 func main() {
@@ -89,6 +96,24 @@ func run(args []string) error {
 		module.Attestations = attestations
 	}
 
+	// Add commit information (optional)
+	if cfg.CommitSha1 != "" && cfg.CommitDate != "" {
+		module.Commit = &bzpb.ModuleCommit{
+			Sha1:        cfg.CommitSha1,
+			Date:        cfg.CommitDate,
+			Message:     cfg.CommitMessage,
+			PullRequest: parsePullRequestFromCommitMessage(cfg.CommitMessage),
+		}
+	}
+
+	if cfg.UnresolvedDeps != "" {
+		depNames := strings.Split(cfg.UnresolvedDeps, ",")
+		for _, name := range depNames {
+			dep := mustFindDependencyByName(module, name)
+			dep.Unresolved = true
+		}
+	}
+
 	// Write the compiled ModuleVersion to output file
 	if err := protoutil.WriteFile(cfg.OutputFile, module); err != nil {
 		return fmt.Errorf("failed to write output file: %v", err)
@@ -104,7 +129,12 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs.StringVar(&cfg.SourceJsonFile, "source_json_file", "", "the source.json file to read (optional)")
 	fs.StringVar(&cfg.PresubmitYmlFile, "presubmit_yml_file", "", "the presubmit.yml file to read (optional)")
 	fs.StringVar(&cfg.AttestationsJsonFile, "attestations_json_file", "", "the attestations.json file to read (optional)")
+	fs.StringVar(&cfg.CommitSha1, "commit_sha1", "", "the git commit SHA-1 hash (optional)")
+	fs.StringVar(&cfg.CommitDate, "commit_date", "", "the git commit date in ISO 8601 format (optional)")
+	fs.StringVar(&cfg.CommitMessage, "commit_message", "", "the git commit message (optional)")
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
+	fs.StringVar(&cfg.UnresolvedDeps, "unresolved_deps", "", "comma-separated list of dep names that failed to resolve to a known version")
+
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "usage: %s @PARAMS_FILE", toolName)
 		fs.PrintDefaults()
@@ -128,4 +158,26 @@ func listFiles(dir string) error {
 		log.Println(path)
 		return nil
 	})
+}
+
+func mustFindDependencyByName(module *bzpb.ModuleVersion, name string) *bzpb.ModuleDependency {
+	for _, dep := range module.Deps {
+		if name == dep.Name {
+			return dep
+		}
+	}
+	log.Fatalf("unable to find dependency %s in module version %s/%s (this is a bug)", name, module.Name, module.Version)
+	return nil
+}
+
+var pullRequestRegex = regexp.MustCompile(`\(#(\d+)\)`)
+
+// parsePullRequestFromCommitMessage extracts the pull request number from a commit message.
+// Example: "Add basic support for Boost 1.89.0 (#5514)" returns "5514"
+func parsePullRequestFromCommitMessage(message string) string {
+	matches := pullRequestRegex.FindStringSubmatch(message)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
 }

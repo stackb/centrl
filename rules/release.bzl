@@ -1,0 +1,76 @@
+"provides the release_archive rule"
+
+def _write_executable_action(ctx, archive_file):
+    ctx.actions.write(
+        output = ctx.outputs.executable,
+        content = """
+{server} {archive_file}
+""".format(
+            server = ctx.executable._releaseserver.short_path,
+            archive_file = archive_file.short_path,
+        ),
+        is_executable = True,
+    )
+
+def _compile_release_action(ctx):
+    output = ctx.actions.declare_file(ctx.label.name + ".tar")
+
+    # Build arguments for the compiler
+    args = ctx.actions.args()
+    args.add("--output_file")
+    args.add(output)
+    args.add("--index_html_file")
+    args.add(ctx.file.index_html)
+    args.add("--registry_file")
+    args.add(ctx.file.registry_file)
+    if len(ctx.files.srcs) > 0:
+        args.add("--exclude_from_hash", ",".join([src.basename for src in ctx.files.srcs]))
+
+    args.add_all(ctx.files.srcs)
+    args.add_all(ctx.files.hashed_srcs)
+
+    # Build inputs list
+    inputs = [ctx.file.index_html, ctx.file.registry_file] + ctx.files.srcs + ctx.files.hashed_srcs
+
+    ctx.actions.run(
+        executable = ctx.executable._releasecompiler,
+        arguments = [args],
+        inputs = inputs,
+        outputs = [output],
+        mnemonic = "CompileRelease",
+        progress_message = "Compiling app release",
+    )
+
+    return output
+
+def _release_archive_impl(ctx):
+    archive_file = _compile_release_action(ctx)
+    _write_executable_action(ctx, archive_file)
+
+    return [
+        DefaultInfo(
+            files = depset([archive_file]),
+            runfiles = ctx.runfiles(files = [archive_file, ctx.executable._releaseserver]),
+        ),
+    ]
+
+release_archive = rule(
+    implementation = _release_archive_impl,
+    attrs = {
+        "hashed_srcs": attr.label_list(allow_files = True),
+        "srcs": attr.label_list(allow_files = True),
+        "index_html": attr.label(allow_single_file = True, mandatory = True),
+        "registry_file": attr.label(allow_single_file = True),
+        "_releasecompiler": attr.label(
+            default = "//cmd/releasecompiler",
+            executable = True,
+            cfg = "exec",
+        ),
+        "_releaseserver": attr.label(
+            default = "//cmd/releaseserver",
+            executable = True,
+            cfg = "exec",
+        ),
+    },
+    executable = True,
+)

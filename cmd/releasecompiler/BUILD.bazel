@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "releasecompiler_lib",
+    srcs = ["releasecompiler.go"],
+    importpath = "github.com/stackb/centrl/cmd/releasecompiler",
+    visibility = ["//visibility:private"],
+    deps = ["//pkg/paramsfile"],
+)
+
+go_binary(
+    name = "releasecompiler",
+    embed = [":releasecompiler_lib"],
+    visibility = ["//visibility:public"],
+)

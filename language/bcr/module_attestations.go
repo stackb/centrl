@@ -42,7 +42,7 @@ func makeModuleAttestationsRule(attestations *bzpb.Attestations, attestationsJso
 
 func moduleAttestationsLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_attestations.bzl",
+		Name:    "//rules:module_attestations.bzl",
 		Symbols: []string{"module_attestations"},
 	}
 }

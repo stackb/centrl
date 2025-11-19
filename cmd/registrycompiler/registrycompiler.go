@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
+	"github.com/stackb/centrl/pkg/gh"
 	"github.com/stackb/centrl/pkg/paramsfile"
 	"github.com/stackb/centrl/pkg/protoutil"
 )
@@ -14,8 +16,14 @@ import (
 const toolName = "registrycompiler"
 
 type Config struct {
-	OutputFile  string
-	ModuleFiles []string
+	OutputFile    string
+	ModuleFiles   []string
+	GithubToken   string
+	RepositoryURL string
+	RegistryURL   string
+	Branch        string
+	Commit        string
+	CommitDate    string
 }
 
 func main() {
@@ -48,6 +56,13 @@ func run(args []string) error {
 
 	var registry bzpb.Registry
 
+	// Populate registry metadata fields
+	registry.RepositoryUrl = cfg.RepositoryURL
+	registry.RegistryUrl = cfg.RegistryURL
+	registry.Branch = cfg.Branch
+	registry.CommitSha = cfg.Commit
+	registry.CommitDate = cfg.CommitDate
+
 	for _, file := range cfg.ModuleFiles {
 		var module bzpb.Module
 		if err := protoutil.ReadFile(file, &module); err != nil {
@@ -68,6 +83,11 @@ func run(args []string) error {
 func parseFlags(args []string) (cfg Config, err error) {
 	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
+	fs.StringVar(&cfg.RepositoryURL, "repository_url", "", "repository URL of the registry (e.g. 'https://github.com/bazelbuild/bazel-central-registry')")
+	fs.StringVar(&cfg.RegistryURL, "registry_url", "", "URL of the registry UI (e.g. 'https://registry.bazel.build')")
+	fs.StringVar(&cfg.Branch, "branch", "", "branch name of the repository data (e.g. 'main')")
+	fs.StringVar(&cfg.Commit, "commit", "", "commit sha1 of the repository data")
+	fs.StringVar(&cfg.CommitDate, "commit_date", "", "timestamp of the commit date (ISO 8601 format)")
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "usage: %s @PARAMS_FILE", toolName)
 		fs.PrintDefaults()
@@ -80,4 +100,117 @@ func parseFlags(args []string) (cfg Config, err error) {
 	cfg.ModuleFiles = fs.Args()
 
 	return
+}
+
+// // enrichWithGitHubData fetches GitHub repository metadata and populates it into the registry
+// func enrichWithGitHubData(token string, registry *bzpb.Registry, maxCount int) error {
+// 	ctx := context.Background()
+// 	client := gh.NewClient(token)
+
+// 	// Collect all repos to fetch
+// 	repoToModule := make(map[gh.Repo]*bzpb.Module)
+
+// 	for _, module := range registry.Modules {
+// 		if module.Metadata == nil {
+// 			continue
+// 		}
+
+// 		for _, repoStr := range module.Metadata.Repository {
+// 			repo, ok := parseGitHubRepo(repoStr)
+// 			if !ok {
+// 				continue
+// 			}
+
+// 			// Skip if we've already seen this repo (map handles dedup)
+// 			if _, exists := repoToModule[repo]; exists {
+// 				continue
+// 			}
+
+// 			repoToModule[repo] = module
+
+// 			if len(repoToModule) > 10 {
+// 				break
+// 			}
+// 		}
+// 	}
+
+// 	// Convert map keys to slice
+// 	repos := make([]gh.Repo, 0, len(repoToModule))
+// 	for repo := range repoToModule {
+// 		repos = append(repos, repo)
+// 		if len(repos) > maxCount {
+// 			break
+// 		}
+// 	}
+
+// 	if len(repos) == 0 {
+// 		log.Printf("No GitHub repositories found to enrich")
+// 		return nil
+// 	}
+
+// 	log.Printf("Fetching GitHub data for %d repositories...", len(repos))
+
+// 	// Fetch repo info in batch
+// 	results, err := gh.FetchRepoInfoBatch(ctx, client, repos)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to fetch repo info batch: %w", err)
+// 	}
+
+// 	// Populate results back to modules
+// 	successCount := 0
+// 	for _, info := range results {
+// 		if info.Error != nil {
+// 			log.Printf("Warning: failed to fetch %s/%s: %v", info.Repo.Owner, info.Repo.Name, info.Error)
+// 			continue
+// 		}
+
+// 		module := repoToModule[info.Repo]
+// 		if module.Metadata.RepositoryMetadata == nil {
+// 			module.Metadata.RepositoryMetadata = &bzpb.RepositoryMetadata{}
+// 		}
+
+// 		module.Metadata.RepositoryMetadata.Organization = info.Repo.Owner
+// 		module.Metadata.RepositoryMetadata.Name = info.Repo.Name
+// 		module.Metadata.RepositoryMetadata.Description = info.Description
+// 		module.Metadata.RepositoryMetadata.Stargazers = int32(info.StargazerCount)
+
+// 		// Convert languages map from int to int32
+// 		if len(info.Languages) > 0 {
+// 			module.Metadata.RepositoryMetadata.Languages = make(map[string]int32)
+// 			for lang, bytes := range info.Languages {
+// 				module.Metadata.RepositoryMetadata.Languages[lang] = int32(bytes)
+// 			}
+// 		}
+
+// 		successCount++
+// 	}
+
+// 	log.Printf("Successfully enriched %d/%d repositories with GitHub data", successCount, len(repos))
+// 	return nil
+// }
+
+// parseGitHubRepo parses a repository string like "github:owner/repo" and returns owner and repo name
+func parseGitHubRepo(repoStr string) (gh.Repo, bool) {
+	// Handle formats like:
+	// - "github:owner/repo"
+	// - "https://github.com/owner/repo"
+	// - "owner/repo"
+
+	if after, found := strings.CutPrefix(repoStr, "github:"); found {
+		repoStr = after
+	} else if after, found := strings.CutPrefix(repoStr, "https://github.com/"); found {
+		repoStr = after
+	} else if after, found := strings.CutPrefix(repoStr, "http://github.com/"); found {
+		repoStr = after
+	}
+
+	parts := strings.Split(repoStr, "/")
+	if len(parts) < 2 {
+		return gh.Repo{}, false
+	}
+
+	return gh.Repo{
+		Owner: parts[0],
+		Name:  parts[1],
+	}, true
 }

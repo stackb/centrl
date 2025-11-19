@@ -1,3 +1,5 @@
-[submodule "bazel-central-registry"]
-	path = bazel-central-registry
-	url = https://github.com/bazelbuild/bazel-central-registry
+# git sparse-checkout set --no-cone modules
+[submodule "data/bazel-central-registry"]
+	path = data/bazel-central-registry
+	url = https://github.com/bazelbuild/bazel-central-registry.git
+	sparse-checkout = modules

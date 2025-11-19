@@ -12,14 +12,15 @@ ModuleMaintainerInfo = provider(
 ModuleMetadataInfo = provider(
     doc = "Info about a Module Metadata",
     fields = {
+        "name": "The module name",
         "homepage": "Homepage URL for the module",
         "maintainers": "List of maintainer targets providing ModuleMaintainerInfo",
         "repository": "List of repository URLs",
+        "repository_metadata": "the RepositoryMetadataInfo provider",
         "versions": "List of version strings",
         "yanked_versions": "Dictionary mapping version to reason for yanking",
         "deprecated": "Deprecation message if deprecated",
         "deps": "List of module version targets providing ModuleVersionInfo",
-        "overrides": "List of override targets providing ModuleOverrideInfo",
         "metadata_json": "The metadata.json file",
         "proto": "The compiled Module proto file",
     },
@@ -31,6 +32,7 @@ ModuleDependencyInfo = provider(
         "name": "Dependency module name",
         "version": "Dependency module version",
         "dev": "Whether this is a dev dependency",
+        "unresolved": "Whether this is an unresolved dependency",
         "module": "Module version target providing ModuleVersionInfo",
         "cycle": "Cycle target providing ModuleDependencyCycleInfo if this dependency is part of a cycle",
         "override": "Override target providing ModuleOverrideInfo",
@@ -71,6 +73,7 @@ ModuleVersionInfo = provider(
         "source": "Source target providing ModuleSourceInfo",
         "attestations": "Attestations target providing ModuleAttestationsInfo",
         "presubmit": "Presubmit target providing ModulePresubmitInfo",
+        "commit": "Commit target providing ModuleCommitInfo",
         "module_bazel": "The MODULE.bazel file",
         "proto": "The compiled ModuleVersion proto file",
     },
@@ -158,10 +161,22 @@ RepositoryMetadataInfo = provider(
     doc = "Info about a Repository Metadata",
     fields = {
         "type": "Repository type (e.g., 'GITHUB')",
+        "canonical_name": "Repository canonical name",
+        "json_file": "The emitted json file",
         "organization": "Organization or owner name",
         "repo_name": "Repository name",
         "description": "Repository description",
         "stargazers": "Number of stargazers",
         "languages": "Map of programming languages to line counts",
+        "primary_language": "primary language name based on counts",
+    },
+)
+
+ModuleCommitInfo = provider(
+    doc = "Info about a Module Commit",
+    fields = {
+        "sha1": "Git commit SHA-1 hash",
+        "date": "Commit date in ISO 8601 format",
+        "message": "Commit message",
     },
 )

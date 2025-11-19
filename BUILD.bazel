@@ -28,7 +28,6 @@ gazelle_binary(
         "@bazel_gazelle//language/go",
         "@bazel_gazelle//language/proto",
         "@build_stack_rules_proto//language/protobuf",
-        "//language/bcr",
     ],
     visibility = ["//visibility:public"],
 )
@@ -36,8 +35,30 @@ gazelle_binary(
 proto_gazelle(
     name = "gazelle",
     cfgs = ["//:rules_proto_config.yaml"],
+    data = ["@registry_pb//file"],
     external = "static",
     gazelle = "//:gazelle-custom",
+)
+
+gazelle_binary(
+    name = "gazelle-bcr",
+    languages = [
+        "//language/bcr",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+proto_gazelle(
+    name = "bcr",
+    args = [
+        "--registry-file=$(rootpath @registry_pb//file)",
+        "--registry-root=data/bazel-central-registry",
+        "--registry-url=https://registry.bazel.build",
+    ],
+    cfgs = ["//:rules_proto_config.yaml"],
+    data = ["@registry_pb//file"],
+    external = "static",
+    gazelle = "//:gazelle-bcr",
 )
 
 proto_go_modules(

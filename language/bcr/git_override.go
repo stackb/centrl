@@ -9,7 +9,7 @@ import (
 // gitOverrideLoadInfo returns load info for the git_override rule
 func gitOverrideLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:git_override.bzl",
+		Name:    "//rules:git_override.bzl",
 		Symbols: []string{"git_override"},
 	}
 }

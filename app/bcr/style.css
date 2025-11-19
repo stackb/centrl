@@ -1,0 +1,20 @@
+/**
+ * style.css contains assorted css classes that are used directly, not subject
+ * to closure_css_binary.
+ */
+.btn-language {
+    color: var(--lang-fg) !important;
+    background-color: var(--lang-bg) !important;
+    border: 1px solid;
+    border-color: color-mix(in srgb, var(--lang-bg) 70%, black) !important;
+}
+
+.octicon {
+    display: inline-block;
+    text-decoration: none;
+    text-rendering: auto;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    speak: none;
+}

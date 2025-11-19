@@ -1,0 +1,3 @@
+exports_files([
+    "octicons.json",  # last updated: Wed Nov 12 20:26:25 2025 +0100 (d2627d3109bd49958e3a54638fa40bf169640ed5); update-by; git clone https://github.com/primer/octicons.git npm i, npm run build, cp lib/build/data.json octicons.json
+])

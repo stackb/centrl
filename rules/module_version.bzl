@@ -1,8 +1,8 @@
 "provides the module_version rule"
 
-load("//rules:providers.bzl", "ModuleAttestationsInfo", "ModuleDependencyInfo", "ModulePresubmitInfo", "ModuleSourceInfo", "ModuleVersionInfo")
+load("//rules:providers.bzl", "ModuleAttestationsInfo", "ModuleCommitInfo", "ModuleDependencyInfo", "ModulePresubmitInfo", "ModuleSourceInfo", "ModuleVersionInfo")
 
-def _compile_action(ctx, source, attestations, presubmit):
+def _compile_action(ctx, source, deps, attestations, presubmit, commit):
     # Declare output file for compiled proto
     proto_out = ctx.actions.declare_file(ctx.label.name + ".moduleversion.pb")
 
@@ -12,6 +12,14 @@ def _compile_action(ctx, source, attestations, presubmit):
     args.add(ctx.file.module_bazel)
     args.add("--output_file")
     args.add(proto_out)
+
+    # All of the module dependency info is in the MODULE.bazel file, but the
+    # 'unresolved' property is discovered during gazelle resolution.  Pass that
+    # information into the compiler.
+    unresolved_deps = [dep.name for dep in deps if dep.unresolved]
+    if unresolved_deps:
+        args.add("--unresolved_deps")
+        args.add(",".join(unresolved_deps))
 
     # Collect all input files
     inputs = [ctx.file.module_bazel]
@@ -34,6 +42,15 @@ def _compile_action(ctx, source, attestations, presubmit):
         args.add(attestations.attestations_json)
         inputs.append(attestations.attestations_json)
 
+    # Add optional commit metadata
+    if commit:
+        args.add("--commit_sha1")
+        args.add(commit.sha1)
+        args.add("--commit_date")
+        args.add(commit.date)
+        args.add("--commit_message")
+        args.add(commit.message)
+
     # Run the compiler action
     ctx.actions.run(
         executable = ctx.executable._compiler,
@@ -51,7 +68,8 @@ def _module_version_impl(ctx):
     source = ctx.attr.source[ModuleSourceInfo] if ctx.attr.source and ModuleSourceInfo in ctx.attr.source else None
     attestations = ctx.attr.attestations[ModuleAttestationsInfo] if ctx.attr.attestations and ModuleAttestationsInfo in ctx.attr.attestations else None
     presubmit = ctx.attr.presubmit[ModulePresubmitInfo] if ctx.attr.presubmit and ModulePresubmitInfo in ctx.attr.presubmit else None
-    proto_out = _compile_action(ctx, source, attestations, presubmit)
+    commit = ctx.attr.commit[ModuleCommitInfo] if ctx.attr.commit and ModuleCommitInfo in ctx.attr.commit else None
+    proto_out = _compile_action(ctx, source, deps, attestations, presubmit, commit)
 
     outputs = [proto_out]
 
@@ -67,6 +85,7 @@ def _module_version_impl(ctx):
             source = source,
             attestations = attestations,
             presubmit = presubmit,
+            commit = commit,
             module_bazel = ctx.file.module_bazel if ctx.file.module_bazel else None,
             proto = proto_out,
         ),
@@ -84,6 +103,7 @@ module_version = rule(
         "source": attr.label(providers = [ModuleSourceInfo]),
         "attestations": attr.label(providers = [ModuleAttestationsInfo]),
         "presubmit": attr.label(providers = [ModulePresubmitInfo]),
+        "commit": attr.label(providers = [ModuleCommitInfo]),
         "module_bazel": attr.label(allow_single_file = True),
         "_compiler": attr.label(
             default = "//cmd/moduleversioncompiler",

@@ -16,6 +16,8 @@ func (ext *bcrExtension) Before(ctx context.Context) {
 // This is the ideal place to detect circular dependencies since the
 // complete dependency graph has been built.
 func (ext *bcrExtension) DoneGeneratingRules() {
+	log.Println("===[DoneGeneratingRules]======================================")
+
 	// Get all detected cycles
 	cycles := ext.getCycles()
 
@@ -25,7 +27,17 @@ func (ext *bcrExtension) DoneGeneratingRules() {
 	// Log any circular dependencies
 	ext.logCycles()
 
-	log.Println("===[DoneGeneratingRules]======================================")
+	// fetch repository metadata now that we know the full list of repos to
+	// gather info for
+	ext.fetchGithubRepositoryMetadata(filterGithubRepositories(ext.repositories))
+	ext.fetchGitlabRepositoryMetadata(filterGitlabRepositories(ext.repositories))
+	// in case we had issues fetching metadata, propagate formward from previous
+	// (base) repository state.
+	if ext.baseRegistry != nil {
+		propagateBaseRepositoryMetadata(ext.repositories, makeRepositoryMetadataMap(ext.baseRegistry))
+	}
+
+	log.Println("===[BeforeResolvingDeps]======================================")
 }
 
 // AfterResolvingDeps is called after all dependencies have been resolved.

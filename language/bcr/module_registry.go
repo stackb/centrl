@@ -1,16 +1,21 @@
 package bcr
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"path/filepath"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
+	gitpkg "github.com/stackb/centrl/pkg/git"
 )
 
 func moduleRegistryLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_registry.bzl",
+		Name:    "//rules:module_registry.bzl",
 		Symbols: []string{"module_registry"},
 	}
 }
@@ -18,13 +23,16 @@ func moduleRegistryLoadInfo() rule.LoadInfo {
 func moduleRegistryKinds() map[string]rule.KindInfo {
 	return map[string]rule.KindInfo{
 		"module_registry": {
-			MatchAny:     true,
-			ResolveAttrs: map[string]bool{"deps": true},
+			MatchAny: true,
+			ResolveAttrs: map[string]bool{
+				"deps":   true,
+				"cycles": true,
+			},
 		},
 	}
 }
 
-func makeModuleRegistryRule(name string, subdirs []string, cycleRules []*rule.Rule) *rule.Rule {
+func makeModuleRegistryRule(name string, subdirs []string, registryURL string, cycleRules []*rule.Rule, cfg *config.Config) *rule.Rule {
 	r := rule.NewRule("module_registry", name)
 	if len(cycleRules) > 0 {
 		cycles := make([]string, len(cycleRules))
@@ -36,6 +44,20 @@ func makeModuleRegistryRule(name string, subdirs []string, cycleRules []*rule.Ru
 
 	r.SetPrivateAttr("subdirs", subdirs)
 	r.SetAttr("visibility", []string{"//visibility:public"})
+
+	// Fetch registry metadata from git submodule
+	ctx := context.Background()
+	submodulePath := filepath.Join(cfg.RepoRoot, "data", "bazel-central-registry")
+	registry, err := getBazelCentralRegistryMetadata(ctx, submodulePath)
+	if err != nil {
+		log.Printf("warning: failed to fetch registry metadata: %v", err)
+	} else {
+		r.SetAttr("registry_url", registryURL)
+		r.SetAttr("repository_url", registry.RepositoryUrl)
+		r.SetAttr("commit", registry.CommitSha)
+		r.SetAttr("commit_date", registry.CommitDate)
+	}
+
 	return r
 }
 
@@ -76,4 +98,25 @@ func resolveModuleRegistryRule(r *rule.Rule, ix *resolve.RuleIndex) {
 	if len(deps) > 0 {
 		r.SetAttr("deps", deps)
 	}
+}
+
+func getBazelCentralRegistryMetadata(ctx context.Context, submodulePath string) (*bzpb.Registry, error) {
+	// Get commit SHA and date using git package
+	commitSHA, commitDate, err := gitpkg.GetRegistryCommit(ctx, submodulePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the remote URL using git package
+	repositoryURL, err := gitpkg.GetRemoteURL(ctx, submodulePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var registry bzpb.Registry
+	registry.RepositoryUrl = repositoryURL
+	registry.CommitSha = commitSHA
+	registry.CommitDate = commitDate
+
+	return &registry, nil
 }

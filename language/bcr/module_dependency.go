@@ -13,7 +13,7 @@ import (
 // moduleDependencyLoadInfo returns load info for the module_dependency rule
 func moduleDependencyLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_dependency.bzl",
+		Name:    "//rules:module_dependency.bzl",
 		Symbols: []string{"module_dependency"},
 	}
 }
@@ -88,7 +88,7 @@ func makeOverrideRule(moduleName string, override *bzpb.ModuleDependencyOverride
 }
 
 // resolveModuleDependencyRule resolves the module and cycle attributes for a module_dependency rule
-func resolveModuleDependencyRule(cfg *Config, r *rule.Rule, ix *resolve.RuleIndex, from label.Label, moduleToCycle map[string]string) {
+func resolveModuleDependencyRule(cfg *Config, modulesRoot string, r *rule.Rule, ix *resolve.RuleIndex, from label.Label, moduleToCycle map[string]string) {
 	// Get the dependency name and version to construct the import spec
 	depName := r.AttrString("dep_name")
 	version := r.AttrString("version")
@@ -114,6 +114,7 @@ func resolveModuleDependencyRule(cfg *Config, r *rule.Rule, ix *resolve.RuleInde
 	if len(results) == 0 {
 		if override == "" {
 			log.Printf("%s: No module_version (or override) found for %s", from, moduleVersion)
+			r.SetAttr("unresolved", true)
 		}
 		return
 	}
@@ -124,7 +125,7 @@ func resolveModuleDependencyRule(cfg *Config, r *rule.Rule, ix *resolve.RuleInde
 	// Check if this module is part of a cycle
 	if cycleName, inCycle := moduleToCycle[moduleVersion]; inCycle {
 		// Set the cycle attr to point to the cycle rule
-		cycleLabel := fmt.Sprintf("//%s:%s", cfg.modulesRoot, cycleName)
+		cycleLabel := fmt.Sprintf("//%s:%s", modulesRoot, cycleName)
 		r.SetAttr("cycle", cycleLabel)
 	} else {
 		// Set the module attr to point to the found module_version rule

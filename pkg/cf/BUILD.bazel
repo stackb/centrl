@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cf",
+    srcs = [
+        "client.go",
+        "pages.go",
+    ],
+    importpath = "github.com/stackb/centrl/pkg/cf",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "cf_test",
+    srcs = ["pages_test.go"],
+    embed = [":cf"],
+)

@@ -10,7 +10,7 @@ import (
 // moduleMaintainerLoadInfo returns load info for the module_maintainer rule
 func moduleMaintainerLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_maintainer.bzl",
+		Name:    "//rules:module_maintainer.bzl",
 		Symbols: []string{"module_maintainer"},
 	}
 }

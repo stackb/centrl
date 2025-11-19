@@ -1,43 +1,45 @@
 "provides the cloudflare_deploy rule"
 
 def _write_executable_action(ctx):
-    index = ctx.files.srcs[0]
-
     ctx.actions.write(
         output = ctx.outputs.executable,
         content = """
-set -x
-ls -al {cwd}
-pwd
-wrangler pages deploy . --project-name {project} --no-bundle --cwd {cwd}
-exit 1
+{cfdeploy} --account_id {account_id} --project {project} --tarball {tarball}
 """.format(
-            cwd = ctx.label.package,
+            cfdeploy = ctx.executable._cfdeploy.short_path,
+            account_id = ctx.attr.account_id,
             project = ctx.attr.project,
+            tarball = ctx.file.tarball.short_path,
         ),
         is_executable = True,
     )
 
 def _cloudflare_deploy_impl(ctx):
-    srcs = ctx.files.srcs
-
     _write_executable_action(ctx)
 
     return [
         DefaultInfo(
             files = depset([ctx.outputs.executable]),
-            runfiles = ctx.runfiles(files = srcs, collect_data = True, collect_default = True),
+            runfiles = ctx.runfiles(files = [ctx.file.tarball, ctx.executable._cfdeploy]),
         ),
     ]
 
 cloudflare_deploy = rule(
     implementation = _cloudflare_deploy_impl,
     attrs = {
-        "srcs": attr.label_list(
-            allow_files = True,
+        "account_id": attr.string(
+            mandatory = True,
         ),
         "project": attr.string(
             mandatory = True,
+        ),
+        "tarball": attr.label(
+            allow_single_file = [".tar"],
+        ),
+        "_cfdeploy": attr.label(
+            default = "//cmd/cfdeploy",
+            executable = True,
+            cfg = "exec",
         ),
     },
     executable = True,

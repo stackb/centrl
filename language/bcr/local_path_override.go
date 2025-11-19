@@ -9,7 +9,7 @@ import (
 // localPathOverrideLoadInfo returns load info for the local_path_override rule
 func localPathOverrideLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:local_path_override.bzl",
+		Name:    "//rules:local_path_override.bzl",
 		Symbols: []string{"local_path_override"},
 	}
 }

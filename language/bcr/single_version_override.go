@@ -9,7 +9,7 @@ import (
 // singleVersionOverrideLoadInfo returns load info for the single_version_override rule
 func singleVersionOverrideLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:single_version_override.bzl",
+		Name:    "//rules:single_version_override.bzl",
 		Symbols: []string{"single_version_override"},
 	}
 }

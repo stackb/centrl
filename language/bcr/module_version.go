@@ -12,7 +12,7 @@ import (
 // moduleVersionLoadInfo returns load info for the module_version rule
 func moduleVersionLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_version.bzl",
+		Name:    "//rules:module_version.bzl",
 		Symbols: []string{"module_version"},
 	}
 }
@@ -26,13 +26,15 @@ func moduleVersionKinds() map[string]rule.KindInfo {
 				"deps":         true,
 				"source":       true,
 				"attestations": true,
+				"presubmit":    true,
+				"commit":       true,
 			},
 		},
 	}
 }
 
 // makeModuleVersionRule creates a module_version rule from parsed MODULE.bazel data
-func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules []*rule.Rule, sourceRule *rule.Rule, attestationsRule *rule.Rule, presubmitRule *rule.Rule, moduleBazelFile string) *rule.Rule {
+func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules []*rule.Rule, sourceRule *rule.Rule, attestationsRule *rule.Rule, presubmitRule *rule.Rule, commitRule *rule.Rule, moduleBazelFile string) *rule.Rule {
 	r := rule.NewRule("module_version", version)
 	if module.Name != "" {
 		r.SetAttr("module_name", module.Name)
@@ -64,6 +66,9 @@ func makeModuleVersionRule(module *bzpb.ModuleVersion, version string, depRules 
 	}
 	if presubmitRule != nil {
 		r.SetAttr("presubmit", fmt.Sprintf(":%s", presubmitRule.Name()))
+	}
+	if commitRule != nil {
+		r.SetAttr("commit", fmt.Sprintf(":%s", commitRule.Name()))
 	}
 	if moduleBazelFile != "" {
 		r.SetAttr("module_bazel", moduleBazelFile)

@@ -85,7 +85,6 @@ func resolveModuleDependencyCycleRule(r *rule.Rule, ix *resolve.RuleIndex) {
 	// Resolve each module@version to its module_version rule
 	deps := make([]string, 0, len(cycleModules))
 	for _, moduleVersion := range cycleModules {
-		// Construct the import spec: "module_name@version"
 		importSpec := resolve.ImportSpec{
 			Lang: bcrLangName,
 			Imp:  moduleVersion,
@@ -112,7 +111,7 @@ func resolveModuleDependencyCycleRule(r *rule.Rule, ix *resolve.RuleIndex) {
 
 func moduleDependencyCycleLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_dependency_cycle.bzl",
+		Name:    "//rules:module_dependency_cycle.bzl",
 		Symbols: []string{"module_dependency_cycle"},
 	}
 }

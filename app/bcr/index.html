@@ -1,18 +1,18 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html lang="en" xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en" xml:lang="en" xmlns="http://www.w3.org/1999/xhtml" data-color-mode="light" data-light-theme="light"
+  data-dark-theme="dark_dimmed">
 
 <head>
   <title>Bazel Module Registry</title>
   <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="/style.css" type="text/css" rel="stylesheet" />
-  <!-- <link href="/primer.css" type="text/css" rel="stylesheet" /> -->
+  <link rel="icon" href="/favicon.png" />
+  <link href="/{bcr.css}" type="text/css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Primer/21.1.1/primer.css"
     integrity="sha512-DQRZcDaNuIkb4JiH6PHalnncWllAK5txkJVocLdyfglJSavW/HxQaJRJeRw5eEPnp+kD1QImSxCwUiOsRrCMEw=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/octicons/4.4.0/font/octicons.min.css" />
-  <script src="/bundle.js"></script>
-  <script src="/registry.pb.gz.b64.js"></script>
+  <script src="/{bcr.js}"></script>
+  <script src="/{registry.pb.gz.b64.js}"></script>
 </head>
 
 <body style="margin: 0 auto">
@@ -20,8 +20,8 @@
     import { codeToHtml } from 'https://esm.sh/shiki@3.0.0'
     // Make codeToHtml available globally
     window.codeToHtml = codeToHtml;
-    // Initialize the app
-    centrl.main(REGISTRY_DATA);
+
+    bcr.main(REGISTRY_DATA);
   </script>
 </body>
 

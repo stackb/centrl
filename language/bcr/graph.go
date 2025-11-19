@@ -7,7 +7,8 @@ import (
 	"github.com/dominikbraun/graph"
 )
 
-// initDepGraph creates and returns a new directed graph for tracking module dependencies
+// initDepGraph creates and returns a new directed graph for tracking module
+// dependencies
 func initDepGraph() graph.Graph[string, string] {
 	return graph.New(graph.StringHash, graph.Directed())
 }
@@ -48,8 +49,8 @@ func (ext *bcrExtension) addDependencyEdge(fromModule, fromVersion, toModule, to
 	}
 }
 
-// detectCycles finds all strongly connected components (cycles) in the dependency graph
-// Returns only SCCs with more than one node (actual cycles)
+// detectCycles finds all strongly connected components (cycles) in the
+// dependency graph Returns only SCCs with more than one node (actual cycles)
 func (ext *bcrExtension) detectCycles() ([][]string, error) {
 	sccs, err := graph.StronglyConnectedComponents(ext.depGraph)
 	if err != nil {
@@ -67,8 +68,8 @@ func (ext *bcrExtension) detectCycles() ([][]string, error) {
 	return cycles, nil
 }
 
-// getCycles returns all detected circular dependencies
-// Returns an empty slice if no cycles are found or if an error occurs
+// getCycles returns all detected circular dependencies Returns an empty slice
+// if no cycles are found or if an error occurs
 func (ext *bcrExtension) getCycles() [][]string {
 	cycles, err := ext.detectCycles()
 	if err != nil {

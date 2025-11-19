@@ -1,7 +1,9 @@
 package bcr
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"log"
 	"maps"
 	"os"
@@ -17,7 +19,11 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/dominikbraun/graph"
+	"github.com/google/go-github/v66/github"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
+	"github.com/stackb/centrl/pkg/gh"
+	gitpkg "github.com/stackb/centrl/pkg/git"
+	"github.com/stackb/centrl/pkg/metadatajson"
 	"github.com/stackb/centrl/pkg/modulebazel"
 	"github.com/stackb/centrl/pkg/protoutil"
 )
@@ -28,19 +34,25 @@ func NewLanguage() language.Language {
 	return &bcrExtension{
 		depGraph:      initDepGraph(),
 		moduleToCycle: make(map[string]string),
-		repositories:  make(map[string]bool),
+		repositories:  make(map[string]*bzpb.RepositoryMetadata),
 	}
 }
 
 // bcrExtension implements language.Language.
 type bcrExtension struct {
-	name          string
-	depGraph      graph.Graph[string, string]
-	modulesRoot   string
-	registryFile  string
-	moduleToCycle map[string]string // maps "module@version" to cycle rule name
-	repositories  map[string]bool   // tracks unique repository strings (e.g., "github:org/repo")
-	registry      *bzpb.Registry
+	name             string
+	depGraph         graph.Graph[string, string]
+	registryRoot     string
+	registryURL      string
+	modulesRoot      string
+	baseRegistryFile string
+	githubToken      string
+	gitlabToken      string
+	moduleToCycle    map[string]string                   // maps "module@version" to cycle rule name
+	repositories     map[string]*bzpb.RepositoryMetadata // tracks unique repository strings (e.g., "github:org/repo")
+	baseRegistry     *bzpb.Registry
+	moduleCommits    map[string]*bzpb.ModuleCommit // cache of all module commits (preloaded)
+	githubClient     *github.Client
 }
 
 // Name returns the name of the language. This should be a prefix of the kinds
@@ -54,42 +66,61 @@ func (ext *bcrExtension) Name() string {
 // https://pkg.go.dev/github.com/bazelbuild/bazel-gazelle/resolve?tab=doc#Resolver
 // interface, but are otherwise unused.
 func (ext *bcrExtension) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	fs.StringVar(&ext.modulesRoot, "modules-root", "modules", "root package dir of the bcr modules")
-	fs.StringVar(&ext.registryFile, "registry-file", "", "path to repository.pb file containing registry data to use as a base data set (repository metadata)")
+	fs.StringVar(&ext.registryRoot, "registry-root", "", "root dir for the bcr registry")
+	fs.StringVar(&ext.registryURL, "registry-url", "", "base URL for the deployed registry")
+	fs.StringVar(&ext.baseRegistryFile, "registry-file", "", "path to repository.pb file containing registry data to use as a base data set (repository metadata)")
+	fs.StringVar(&ext.githubToken, "github-token", os.Getenv("GITHUB_TOKEN"), "GitHub API token (defaults to GITHUB_TOKEN env var)")
+	fs.StringVar(&ext.gitlabToken, "gitlab-token", os.Getenv("GITLAB_TOKEN"), "GitLab API token (defaults to GITLAB_TOKEN env var)")
 }
 
 func (ext *bcrExtension) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
-	ext.registry = &bzpb.Registry{}
-	if ext.registryFile != "" {
-		if err := protoutil.ReadFile(os.ExpandEnv(ext.registryFile), ext.registry); err != nil {
+	// ensure registryRoot has been set
+	if ext.registryRoot == "" {
+		return fmt.Errorf("--registry-root is required")
+	}
+	if ext.registryURL == "" {
+		return fmt.Errorf("--registry-url is required")
+	}
+	ext.modulesRoot = filepath.Join(ext.registryRoot, "modules")
+
+	// Initialize GitHub client
+	ext.githubClient = gh.NewClient(ext.githubToken)
+
+	ext.baseRegistry = &bzpb.Registry{}
+	if ext.baseRegistryFile != "" {
+		if err := protoutil.ReadFile(os.ExpandEnv(ext.baseRegistryFile), ext.baseRegistry); err != nil {
 			return err
 		}
 	}
+
+	// Preload all module commits in one git call for performance
+	ctx := context.Background()
+	submodulePath := filepath.Join(c.RepoRoot, ext.registryRoot)
+	log.Printf("Preloading module commits from %s...", submodulePath)
+	commits, err := gitpkg.GetAllModuleCommits(ctx, submodulePath, "modules/*/*/MODULE.bazel")
+	if err != nil {
+		log.Printf("warning: failed to preload module commits: %v", err)
+		ext.moduleCommits = make(map[string]*bzpb.ModuleCommit)
+	} else {
+		ext.moduleCommits = commits
+		log.Printf("Preloaded %d module commits", len(commits))
+	}
+
 	return nil
 }
 
 func (*bcrExtension) KnownDirectives() []string {
-	return []string{bcrModulesRootDirective}
+	return []string{}
 }
 
 // Configure implements config.Configurer
 func (ext *bcrExtension) Configure(c *config.Config, rel string, f *rule.File) {
-	log.Println("rel:", rel)
-	cfg := getOrCreateConfig(c, rel)
-	if rel == "vendor/+_repo_rules+bazel_central_registry/" {
-		log.Println("rel:", rel)
-	}
-	if ext.modulesRoot != "" && ext.modulesRoot == rel {
-		cfg.modulesRoot = rel
+	log.Println("visiting:", rel)
+	cfg := getOrCreateConfig(c)
+
+	// enable this extension once we hit the registry
+	if ext.registryRoot == rel {
 		cfg.enabled = true
-		log.Println("enabled!", rel)
-	} else {
-		if rel == "vendor/+_repo_rules+bazel_central_registry/" {
-			log.Println("not enabled?", rel)
-		}
-	}
-	if f != nil {
-		cfg.parseDirectives(rel, f.Directives)
 	}
 }
 
@@ -101,6 +132,7 @@ func (*bcrExtension) Kinds() map[string]rule.KindInfo {
 	maps.Copy(kinds, moduleMetadataKinds())
 	maps.Copy(kinds, moduleMaintainerKinds())
 	maps.Copy(kinds, moduleVersionKinds())
+	maps.Copy(kinds, moduleCommitKinds())
 	maps.Copy(kinds, moduleDependencyKinds())
 	maps.Copy(kinds, moduleSourceKinds())
 	maps.Copy(kinds, moduleAttestationsKinds())
@@ -123,6 +155,7 @@ func (ext *bcrExtension) Loads() []rule.LoadInfo {
 		moduleMetadataLoadInfo(),
 		moduleMaintainerLoadInfo(),
 		moduleVersionLoadInfo(),
+		moduleCommitLoadInfo(),
 		moduleDependencyLoadInfo(),
 		moduleSourceLoadInfo(),
 		moduleAttestationsLoadInfo(),
@@ -195,7 +228,7 @@ func (ext *bcrExtension) Resolve(
 	// Switch on rule kind to delegate to specific resolver functions
 	switch r.Kind() {
 	case "module_dependency":
-		resolveModuleDependencyRule(cfg, r, ix, from, ext.moduleToCycle)
+		resolveModuleDependencyRule(cfg, ext.modulesRoot, r, ix, from, ext.moduleToCycle)
 	case "module_dependency_cycle":
 		resolveModuleDependencyCycleRule(r, ix)
 	case "module_metadata":
@@ -203,7 +236,7 @@ func (ext *bcrExtension) Resolve(
 	case "module_registry":
 		resolveModuleRegistryRule(r, ix)
 	case "repository_metadata":
-		resolveRepositoryMetadataRule(r, ix)
+		resolveRepositoryMetadataRule(r, ix, ext.repositories)
 	}
 }
 
@@ -229,24 +262,29 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 
 	var rules []*rule.Rule
 
-	if args.Rel == cfg.modulesRoot {
-		// Generate cycles in the modules root package
+	// Generate repository metadata in the registry root package
+	if args.Rel == ext.registryRoot {
+		// Generate repository_metadata rules from tracked repositories
+		repoRules := makeRepositoryMetadataRules(ext.repositories)
+		rules = append(rules, repoRules...)
+	}
+
+	// Generate cycles and the module registry in the modules root package
+	if args.Rel == ext.modulesRoot {
 		cycles := ext.getCycles()
 		var cycleRules []*rule.Rule
 		if len(cycles) > 0 {
 			cycleRules = makeModuleDependencyCycleRules(cycles)
 			rules = append(rules, cycleRules...)
 		}
-		// Generate repository_metadata rules from tracked repositories
-		repoRules := makeRepositoryMetadataRules(ext.repositories)
-		rules = append(rules, repoRules...)
 		// generate registry in the modules root package
-		rules = append(rules, makeModuleRegistryRule("registry", args.Subdirs, cycleRules))
+		rules = append(rules, makeModuleRegistryRule("registry", args.Subdirs, ext.registryURL, cycleRules, args.Config))
 	}
 
+	// create module_metadata rule in the module root
 	if slices.Contains(args.RegularFiles, "metadata.json") {
 		filename := filepath.Join(args.Config.WorkDir, args.Rel, "metadata.json")
-		md, err := readMetadataJson(filename)
+		md, err := metadatajson.ReadFile(filename)
 		if err != nil {
 			log.Fatalf("reading %s/source.json: %v", args.Rel, err)
 		}
@@ -260,6 +298,16 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 
 	// are we in a module version directory?
 	if !inOverlayDir(args.Rel) && slices.Contains(args.RegularFiles, "MODULE.bazel") {
+		// The BCR should not contain BUILD.bazel files in the same directory as
+		// the MODULE.bazel file, these should exist as patches or overlays.
+		// However, at least one exists which references @rules_cc, and as a
+		// consequence we cannot build.  If this file exists, remove any pre-existing rules.
+		if args.File != nil {
+			for _, r := range args.File.Rules {
+				r.Delete()
+			}
+		}
+
 		moduleBazelFilename := filepath.Join(args.Config.WorkDir, args.Rel, "MODULE.bazel")
 		module, err := modulebazel.ExecFile(moduleBazelFilename)
 		if err != nil {
@@ -272,6 +320,16 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		var sourceRule *rule.Rule
 		var attestationsRule *rule.Rule
 		var presubmitRule *rule.Rule
+		var commitRule *rule.Rule
+
+		// Create module_commit rule with git metadata using preloaded cache
+		commit, err := makeModuleVersionCommitRule(args.Config, ext.registryRoot, args.Rel, ext.moduleCommits)
+		if err != nil {
+			log.Printf("warning: failed to create commit rule for %s: %v", args.Rel, err)
+		} else {
+			commitRule = commit
+			rules = append(rules, commitRule)
+		}
 
 		if slices.Contains(args.RegularFiles, "source.json") {
 			sourceFilename := filepath.Join(args.Config.WorkDir, args.Rel, "source.json")
@@ -317,12 +375,14 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 
 		// Generate dependency and override rules
 		depRules, overrideRules := makeModuleDependencyRules(module.Deps)
-		// Add override rules to the list first (so dependencies can reference them)
+		// Add override rules to the list first (so dependencies can reference
+		// them)
 		rules = append(rules, overrideRules...)
 		// Add dependency rules to the list
 		rules = append(rules, depRules...)
-		// Add module version rule with references to dependencies, source, attestations, and presubmit
-		rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule, presubmitRule, "MODULE.bazel"))
+		// Add module version rule with references to dependencies, source,
+		// attestations, presubmit, and commit
+		rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule, presubmitRule, commitRule, "MODULE.bazel"))
 	}
 
 	imports := make([]interface{}, len(rules))

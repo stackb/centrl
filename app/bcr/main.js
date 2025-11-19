@@ -1,4 +1,4 @@
-goog.module("centrl.main");
+goog.module("bcr.main");
 
 const Registry = goog.require("proto.build.stack.bazel.bzlmod.v1.Registry");
 const RegistryApp = goog.require("centrl.App");
@@ -44,12 +44,29 @@ async function main(registryDataBase64) {
     }
     const data = decompressed;
     const registry = Registry.deserializeBinary(data);
+    setupRegistry(registry);
     const app = new RegistryApp(registry);
     app.render(document.body);
     app.start();
 }
 
 /**
+ * Setup the registry once deserialized.  Currently this involves propagating
+ * RepositoryMetadata from Module down to ModuleVersion.
+ * @param {!Registry} registry 
+ */
+function setupRegistry(registry) {
+    for (const module of registry.getModulesList()) {
+        const md = module.getRepositoryMetadata();
+        if (md) {
+            for (const moduleVersion of module.getVersionsList()) {
+                moduleVersion.setRepositoryMetadata(md);
+            }
+        }
+    }
+}
+
+/**
  * Export the entry point.
  */
-goog.exportSymbol('centrl.main', main);
+goog.exportSymbol('bcr.main', main);

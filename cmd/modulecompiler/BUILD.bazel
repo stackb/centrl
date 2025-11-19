@@ -10,6 +10,7 @@ go_library(
         "//pkg/metadatajson",
         "//pkg/paramsfile",
         "//pkg/protoutil",
+        "//pkg/repositorymetadatajson",
     ],
 )
 

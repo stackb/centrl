@@ -7,13 +7,12 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
-	"github.com/stackb/centrl/pkg/metadatajson"
 )
 
 // moduleMetadataLoadInfo returns load info for the module_metadata rule
 func moduleMetadataLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
-		Name:    "@centrl//rules:module_metadata.bzl",
+		Name:    "//rules:module_metadata.bzl",
 		Symbols: []string{"module_metadata"},
 	}
 }
@@ -24,10 +23,9 @@ func moduleMetadataKinds() map[string]rule.KindInfo {
 		"module_metadata": {
 			MatchAny: true,
 			ResolveAttrs: map[string]bool{
-				"maintainers": true,
-				"deps":        true,
-				"overrides":   true,
-				"repos":       true,
+				"maintainers":         true,
+				"deps":                true,
+				"repository_metadata": true,
 			},
 		},
 	}
@@ -115,53 +113,26 @@ func resolveModuleMetadataRule(r *rule.Rule, ix *resolve.RuleIndex) {
 		}
 	}
 
-	repositories := r.AttrStrings("repository")
-	if len(repositories) > 0 {
-		repos := make(map[string]string)
-		for _, repo := range repositories {
-			normalizedRepo := normalizeRepository(repo)
-			// Construct the import spec: "module_name@version"
-			importSpec := resolve.ImportSpec{
-				Lang: bcrLangName,
-				Imp:  normalizedRepo,
-			}
-
-			// Find the module_version rule that provides this import
-			results := ix.FindRulesByImport(importSpec, bcrLangName)
-
-			if len(results) == 0 {
-				log.Printf("resolveModuleMetadataRule: No repository_metadata found for %s", normalizedRepo)
-				continue
-			}
-
-			// Use the first result (should only be one)
-			result := results[0]
-			repos[repo] = result.Label.String()
+	for _, repo := range r.AttrStrings("repository") {
+		normalizedRepo := normalizeRepository(repo)
+		importSpec := resolve.ImportSpec{
+			Lang: bcrLangName,
+			Imp:  normalizedRepo,
 		}
 
-		// Set the deps attr
-		if len(repos) > 0 {
-			r.SetAttr("repos", repos)
+		// Find the module_version rule that provides this import
+		results := ix.FindRulesByImport(importSpec, bcrLangName)
+
+		if len(results) == 0 {
+			log.Printf("resolveModuleMetadataRule: No repository_metadata found for %s", normalizedRepo)
+			continue
 		}
-	}
 
-	// Resolve overrides by looking up override rules for this module
-	overrideSpec := resolve.ImportSpec{
-		Lang: "bcr_override",
-		Imp:  moduleName,
-	}
+		// Use the first result (should only be one)
+		result := results[0]
+		r.SetAttr("repository_metadata", result.Label.String())
 
-	overrideResults := ix.FindRulesByImport(overrideSpec, bcrLangName)
-	if len(overrideResults) > 0 {
-		overrides := make([]string, len(overrideResults))
-		for i, result := range overrideResults {
-			overrides[i] = result.Label.String()
-		}
-		r.SetAttr("overrides", overrides)
+		// use the first found repository_metadata
+		break
 	}
-}
-
-// readMetadataJson reads and parses a metadata.json file
-func readMetadataJson(filename string) (*bzpb.ModuleMetadata, error) {
-	return metadatajson.ReadFile(filename)
 }
