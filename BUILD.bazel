@@ -1,6 +1,5 @@
-load("@bazel_gazelle//:def.bzl", "gazelle_binary")
+load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 load("@build_stack_rules_proto//rules:proto_gazelle.bzl", "proto_gazelle")
-load("@build_stack_rules_proto//rules/go:proto_go_modules.bzl", "proto_go_modules")
 
 exports_files([
     "rules_proto_config.yaml",
@@ -12,8 +11,6 @@ exports_files([
 # ----------------------------------------------------
 #
 # -- Gazelle language "walk" ---
-# gazelle:exclude vendor
-# gazelle:exclude bazel-central-registry/tools/bzlmod_migration_test_examples
 #
 # -- Gazelle language "go" ---
 # gazelle:prefix github.com/stackb/centrl
@@ -42,29 +39,17 @@ proto_gazelle(
 
 gazelle_binary(
     name = "gazelle-bcr",
-    languages = [
-        "//language/bcr",
-    ],
+    languages = ["//language/bcr"],
     visibility = ["//visibility:public"],
 )
 
-proto_gazelle(
+gazelle(
     name = "bcr",
     args = [
         "--registry-file=$(rootpath @registry_pb//file)",
         "--registry-root=data/bazel-central-registry",
         "--registry-url=https://registry.bazel.build",
     ],
-    cfgs = ["//:rules_proto_config.yaml"],
     data = ["@registry_pb//file"],
-    external = "static",
     gazelle = "//:gazelle-bcr",
-)
-
-proto_go_modules(
-    name = "proto_go_modules",
-    # imports = [
-    #     "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1",
-    # ],
-    srcroot = "genproto",
 )

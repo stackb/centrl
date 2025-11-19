@@ -238,10 +238,11 @@ func (ext *bcrExtension) fetchGithubRepositoryMetadata(todo []*bzpb.RepositoryMe
 
 		batch := todo[i:end]
 		log.Printf("Fetching metadata for batch %d-%d of %d repositories using GraphQL...", i+1, end, len(todo))
-		for _, repo := range batch {
-			log.Printf(" > %s/%s", repo.Organization, repo.Name)
+		// var repos []string
+		// for _, repo := range batch {
+		// 	repos(" > %s/%s", repo.Organization, repo.Name)
 
-		}
+		// }
 		// Fetch using GraphQL
 		if err := gh.FetchRepositoryMetadataBatch(ctx, ext.githubToken, batch); err != nil {
 			log.Printf("warning: failed to fetch repository metadata batch: %v", err)

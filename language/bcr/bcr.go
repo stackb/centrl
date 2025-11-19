@@ -83,8 +83,11 @@ func (ext *bcrExtension) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	}
 	ext.modulesRoot = filepath.Join(ext.registryRoot, "modules")
 
-	// Initialize GitHub client
-	ext.githubClient = gh.NewClient(ext.githubToken)
+	if ext.githubToken != "" {
+		ext.githubClient = gh.NewClient(ext.githubToken)
+	} else {
+		log.Printf("No github-token available.  GitHub API operations will be disabled.")
+	}
 
 	ext.baseRegistry = &bzpb.Registry{}
 	if ext.baseRegistryFile != "" {
@@ -301,11 +304,26 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		// The BCR should not contain BUILD.bazel files in the same directory as
 		// the MODULE.bazel file, these should exist as patches or overlays.
 		// However, at least one exists which references @rules_cc, and as a
-		// consequence we cannot build.  If this file exists, remove any pre-existing rules.
+		// consequence we cannot build.  If this file exists, remove all
+		// pre-existing rules that are not one of ours.
 		if args.File != nil {
+			kinds := ext.Kinds()
+			removed := make(map[string]bool)
 			for _, r := range args.File.Rules {
-				r.Delete()
+				if _, ok := kinds[r.Kind()]; !ok {
+					removed[r.Kind()] = true
+					r.Delete()
+				}
 			}
+			var keep []*rule.Load
+			for kind := range removed {
+				for _, load := range args.File.Loads {
+					if !load.Has(kind) {
+						keep = append(keep, load)
+					}
+				}
+			}
+			args.File.Loads = keep
 		}
 
 		moduleBazelFilename := filepath.Join(args.Config.WorkDir, args.Rel, "MODULE.bazel")

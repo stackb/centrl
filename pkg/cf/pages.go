@@ -3,6 +3,8 @@ package cf
 import (
 	"archive/tar"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -83,13 +85,37 @@ func (c *Client) UploadDeployment(projectName string, tarballPath string) (*Depl
 		return nil, fmt.Errorf("failed to read tarball: %w", err)
 	}
 
+	// Create manifest - map of file paths to their SHA-256 hashes
+	manifest := make(map[string]string)
+	for filename, content := range tarData {
+		hash := sha256.Sum256(content)
+		manifest[filename] = hex.EncodeToString(hash[:])
+	}
+
 	// Create multipart form
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 
-	// Add files from tarball
+	// Add required branch field
+	if err := writer.WriteField("branch", "main"); err != nil {
+		return nil, fmt.Errorf("failed to write branch field: %w", err)
+	}
+
+	// Add manifest field (required by Cloudflare Pages API)
+	manifestJSON, err := json.Marshal(manifest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+	if err := writer.WriteField("manifest", string(manifestJSON)); err != nil {
+		return nil, fmt.Errorf("failed to write manifest field: %w", err)
+	}
+
+	// Add files from tarball - each file as a separate form field with the hash as the field name
 	for filename, content := range tarData {
-		part, err := writer.CreateFormFile("files", filename)
+		hash := sha256.Sum256(content)
+		hashStr := hex.EncodeToString(hash[:])
+
+		part, err := writer.CreateFormFile(hashStr, filename)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create form file for %s: %w", filename, err)
 		}

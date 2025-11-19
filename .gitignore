@@ -1,3 +1,4 @@
 /bazel-*
 /data/bazel-central-registry/
 /thirdparty/
+.env

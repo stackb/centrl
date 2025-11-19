@@ -15,7 +15,7 @@ func main() {
 	log.SetFlags(0)
 
 	var (
-		apiToken    = flag.String("api_token", "", "Cloudflare API token (or set CF_API_TOKEN env var)")
+		apiToken    = flag.String("api_token", "", "Cloudflare API token (or set CLOUDFLARE_API_TOKEN env var)")
 		accountID   = flag.String("account_id", "", "Cloudflare account ID (or set CF_ACCOUNT_ID env var)")
 		projectName = flag.String("project", "", "Cloudflare Pages project name")
 		tarball     = flag.String("tarball", "", "Path to tarball containing deployment files")
@@ -27,10 +27,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nEnvironment Variables:\n")
-		fmt.Fprintf(os.Stderr, "  CF_API_TOKEN    Cloudflare API token (alternative to --api_token)\n")
+		fmt.Fprintf(os.Stderr, "  CLOUDFLARE_API_TOKEN    Cloudflare API token (alternative to --api_token)\n")
 		fmt.Fprintf(os.Stderr, "  CF_ACCOUNT_ID   Cloudflare account ID (alternative to --account_id)\n")
 		fmt.Fprintf(os.Stderr, "\nExample:\n")
-		fmt.Fprintf(os.Stderr, "  export CF_API_TOKEN=your-token-here\n")
+		fmt.Fprintf(os.Stderr, "  export CLOUDFLARE_API_TOKEN=your-token-here\n")
 		fmt.Fprintf(os.Stderr, "  export CF_ACCOUNT_ID=your-account-id-here\n")
 		fmt.Fprintf(os.Stderr, "  %s --project=mysite --tarball=dist.tar\n", os.Args[0])
 	}
@@ -40,10 +40,10 @@ func main() {
 	// Get credentials from flags or environment
 	token := *apiToken
 	if token == "" {
-		token = os.Getenv("CF_API_TOKEN")
+		token = os.Getenv("CLOUDFLARE_API_TOKEN")
 	}
 	if token == "" {
-		log.Fatal("API token required (use --api_token or CF_API_TOKEN env var)")
+		log.Fatal("API token required (use --api_token or CLOUDFLARE_API_TOKEN env var)")
 	}
 
 	acctID := *accountID

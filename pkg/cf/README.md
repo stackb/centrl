@@ -61,7 +61,7 @@ Build and use the `cfdeploy` command:
 bazel build //cmd/cfdeploy
 
 # Set up authentication
-export CF_API_TOKEN=your-cloudflare-api-token
+export CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
 export CF_ACCOUNT_ID=your-cloudflare-account-id
 
 # Deploy
