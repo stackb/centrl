@@ -1,36 +1,42 @@
-# Cut a release whenever a new tag is pushed to the repo.
 name: Release
+
 on:
-  # Can be triggered from the tag.yaml workflow
-  workflow_call:
+  workflow_dispatch:
     inputs:
       tag_name:
-        required: true
+        description: 'Tag name (e.g., v1.0.0)'
+        required: false
         type: string
-    secrets:
-      publish_token:
-        required: true
-  # Or, developers can manually push a tag from their clone
-  push:
-    tags:
-      - "v*.*.*"
-permissions:
-  id-token: write
-  attestations: write
-  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag_name || github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  release:
-    uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.2.3
-    # uses: ./.github/workflows/release_ruleset.yaml # copied-from: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.2.3
-    with:
-      prerelease: false
-      release_files: centrl-*.tar.gz
-      tag_name: ${{ inputs.tag_name || github.ref_name }}
-    secrets: inherit
-  publish:
-    needs: release
-    uses: ./.github/workflows/publish.yaml
-    with:
-      tag_name: ${{ inputs.tag_name || github.ref_name }}
-    secrets:
-      publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
+  test:
+    runs-on: self-hosted
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@0.15.0
+      - name: update submodule
+        run: git submodule update --remote data/bazel-central-registry
+      - name: gazelle central_registry
+        run: >-
+          bazelisk
+          --bazelrc=.github/workflows/ci.bazelrc
+          --bazelrc=.bazelrc
+          run
+          central_registry
+      - name: build release
+        run: >-
+          bazelisk
+          --bazelrc=.github/workflows/ci.bazelrc
+          --bazelrc=.bazelrc
+          build
+          //app/bcr:release
+          --//app/bcr:release_type=production
