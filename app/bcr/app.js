@@ -598,6 +598,8 @@ class ModuleVersionComponent extends Component {
             versionData,
             totalDeps,
         }, {
+            repositoryUrl: this.registry_.getRepositoryUrl(),
+            repositoryCommit: this.registry_.getCommitSha(),
             latestVersions: getLatestModuleVersionsByName(this.registry_),
         }));
     }
@@ -615,6 +617,7 @@ class ModuleVersionComponent extends Component {
             totalDeps += directDeps.length;
             versionData.push(/** @type{!VersionData} **/({
                 version: v.getVersion(),
+                compat: v.getCompatibilityLevel(),
                 commitDate: formatDate(v.getCommit().getDate()),
                 directDeps,
             }));
@@ -1710,6 +1713,7 @@ let LanguageData;
 /**
  * @typedef {{
  *   version: string,
+ *   compat: number,
  *   commitDate: string,
  *   directDeps: !Array<!ModuleDependency>
  * }}

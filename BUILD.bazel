@@ -3,7 +3,7 @@ load("@build_stack_rules_proto//rules:proto_gazelle.bzl", "proto_gazelle")
 
 exports_files([
     "rules_proto_config.yaml",
-    "MODULE.bazel",
+    "protobuf_javascript.patch",
 ])
 
 # ----------------------------------------------------
@@ -11,6 +11,7 @@ exports_files([
 # ----------------------------------------------------
 #
 # -- Gazelle language "walk" ---
+# gazelle:exclude thirdparty
 #
 # -- Gazelle language "go" ---
 # gazelle:prefix github.com/stackb/centrl
@@ -43,13 +44,37 @@ gazelle_binary(
     visibility = ["//visibility:public"],
 )
 
+bcr_exclude_dirs = [
+    ".*",
+    "app",
+    "blaze",
+    "build",
+    "cmd",
+    "language",
+    "pkg",
+    "rules",
+    "thirdparty",
+    "tools",
+]
+
 gazelle(
-    name = "bcr",
+    name = "central_registry",
     args = [
         "--registry-file=$(rootpath @registry_pb//file)",
         "--registry-root=data/bazel-central-registry",
         "--registry-url=https://registry.bazel.build",
-    ],
+        "--exclude=modules",
+    ] + ["--exclude=" + dir for dir in bcr_exclude_dirs],
     data = ["@registry_pb//file"],
+    gazelle = "//:gazelle-bcr",
+)
+
+gazelle(
+    name = "local_registry",
+    args = [
+        "--registry-root=modules",
+        "--registry-url=http://localhost:8080",
+        "--exclude=data",
+    ] + ["--exclude=" + dir for dir in bcr_exclude_dirs],
     gazelle = "//:gazelle-bcr",
 )

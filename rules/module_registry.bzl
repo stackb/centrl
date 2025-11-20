@@ -29,6 +29,30 @@ def _write_registry_languages_json_action(ctx, mds):
 
     return output
 
+def _compile_codesearch_index_action(ctx, deps):
+    output = ctx.actions.declare_file("codesearch.idx")
+    files = []
+
+    for module in deps:
+        for mv in module.deps.to_list():
+            files.append(mv.module_bazel)
+            files.append(mv.source.source_json)
+
+    args = ctx.actions.args()
+    args.add("--output_file")
+    args.add(output)
+    args.add_all(files)
+
+    ctx.actions.run(
+        executable = ctx.executable._codesearchcompiler,
+        arguments = [args],
+        inputs = files,
+        outputs = [output],
+        mnemonic = "CompileCodesearchIndex",
+    )
+
+    return output
+
 def _compile_static_html_action(ctx, deps):
     outputs = []
 
@@ -162,6 +186,7 @@ def _module_registry_impl(ctx):
     sitemap_xml = _compile_sitemap_action(ctx, registry_pb)
     robots_txt = _write_robots_txt_action(ctx)
     static_html = _compile_static_html_action(ctx, deps)
+    codesearch_index = _compile_codesearch_index_action(ctx, deps)
 
     return [
         DefaultInfo(files = depset([registry_pb])),
@@ -173,6 +198,7 @@ def _module_registry_impl(ctx):
             robots_txt = [robots_txt],
             registry_pb = [registry_pb],
             static_html = static_html,
+            codesearch_index = [codesearch_index],
         ),
         ModuleRegistryInfo(
             deps = depset(deps),
@@ -217,6 +243,11 @@ module_registry = rule(
         ),
         "_statichtmlcompiler": attr.label(
             default = "//cmd/statichtmlcompiler",
+            executable = True,
+            cfg = "exec",
+        ),
+        "_codesearchcompiler": attr.label(
+            default = "//cmd/codesearchcompiler",
             executable = True,
             cfg = "exec",
         ),

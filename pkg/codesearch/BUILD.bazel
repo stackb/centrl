@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "codesearch",
+    srcs = ["codesearch.go"],
+    importpath = "github.com/stackb/centrl/pkg/codesearch",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//build/stack/livegrep/v1:livegrep",
+        "//pkg/status",
+        "@com_github_junkblocker_codesearch//index:go_default_library",
+        "@com_github_junkblocker_codesearch//regexp:go_default_library",
+        "@com_github_samthor_sre2//:go_default_library",
+    ],
+)
