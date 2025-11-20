@@ -153,7 +153,7 @@ closure_js_binary(
 [
     filegroup(
         name = output_group,
-        srcs = ["//data/bazel-central-registry/modules:registry"],
+        srcs = ["//data/bazel-central-registry/modules"],
         output_group = output_group,
     )
     for output_group in [

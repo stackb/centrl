@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
+  release:
     runs-on: self-hosted
     permissions:
       contents: write
