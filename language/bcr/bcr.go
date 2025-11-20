@@ -281,7 +281,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			rules = append(rules, cycleRules...)
 		}
 		// generate registry in the modules root package
-		rules = append(rules, makeModuleRegistryRule("registry", args.Subdirs, ext.registryURL, cycleRules, args.Config))
+		rules = append(rules, makeModuleRegistryRule(path.Base(args.Rel), args.Subdirs, ext.registryURL, cycleRules, args.Config))
 	}
 
 	// create module_metadata rule in the module root
@@ -315,13 +315,40 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 					r.Delete()
 				}
 			}
+			// Remove loads that only contain removed kinds
 			var keep []*rule.Load
-			for kind := range removed {
-				for _, load := range args.File.Loads {
-					if !load.Has(kind) {
+			for _, load := range args.File.Loads {
+				hasRemovedKind := false
+				hasKeptKind := false
+				for _, sym := range load.Symbols() {
+					if removed[sym] {
+						hasRemovedKind = true
+					} else {
+						hasKeptKind = true
+					}
+				}
+				// Keep the load if it has any symbols that weren't removed
+				if hasKeptKind {
+					// If it also has removed kinds, we need to filter those out
+					if hasRemovedKind {
+						var newSymbols []string
+						for _, sym := range load.Symbols() {
+							if !removed[sym] {
+								newSymbols = append(newSymbols, sym)
+							}
+						}
+						if len(newSymbols) > 0 {
+							newLoad := rule.NewLoad(load.Name())
+							for _, sym := range newSymbols {
+								newLoad.Add(sym)
+							}
+							keep = append(keep, newLoad)
+						}
+					} else {
 						keep = append(keep, load)
 					}
 				}
+				// If hasRemovedKind && !hasKeptKind, we drop the entire load
 			}
 			args.File.Loads = keep
 		}

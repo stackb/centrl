@@ -3,23 +3,25 @@
 import {
     octiconAlert16,
     octiconBook16,
-    octiconCalendar16,
     octiconCheck16,
     octiconCheckCircleFill16,
     octiconContainer16,
     octiconContainer24,
     octiconDotFill16,
-    octiconLinkExternal16,
+    octiconFileAdded16,
+    octiconFileDiff16,
+    octiconFileZip16,
+    octiconGitCommit16,
+    octiconGitPullRequest16,
+    octiconHome16,
     octiconMail16,
     octiconMarkGithub16,
     octiconPaperclip16,
-    octiconGitPullRequest16,
     octiconSparkleFill16,
     octiconSquareFill16,
     octiconSquareFill24,
     octiconStar16,
-    octiconVerified16,
-    octiconVerified24
+    octiconVerified16
 } from 'app/bcr/octicons.soy';
 
 import {
@@ -183,14 +185,14 @@ bazel_dep(name = "{$name}", version = "{$version}")
 {/template}
 
 
-{template bazelCompatibilityTable}
+{template compatibilityTable}
   {@param moduleVersion: ModuleVersion}
 <div>
-  {sectionHeader(title: 'Bazel Compatibility')}
+  {sectionHeader(title: 'Compatibility')}
   <div class="d-flex flex-wrap">
     {if length($moduleVersion.getBazelCompatibilityList())}
         {for $version in $moduleVersion.getBazelCompatibilityList()}
-            <label class="Label Label--attention">{$version}</label>
+            <label class="Label Label--attention">Bazel {$version}</label>
         {/for}
     {else}
         <span class="text-light text-italic">Unspecified</span>
@@ -200,23 +202,49 @@ bazel_dep(name = "{$name}", version = "{$version}")
 {/template}
 
 
-{template moduleSource}
-  {@param? moduleSource: ModuleSource}
-<div class="Box Box--condensed mt-3">
-  <div class="Box-header">
-      <span class="Box-title">Source Details</span>
-  </div>
-  <div class="Box-body width-full overflow-auto">
-    <pre class="{css('shiki')}"><code lang="py">
-{$moduleSource}
-    </code></pre>
+{template moduleSourceTable}
+  {@param moduleVersion: ModuleVersion}
+  {@param source: ModuleSource}
+<div>
+  {sectionHeader(title: 'Source Details')}
+  <div>
+    <div class="mb-2">
+      {if $moduleVersion.getCommit()}
+          {if $moduleVersion.getCommit().getPullRequest()}
+            <a class="Link--muted d-flex flex-items-center mb-2" href="{registryPullRequestUrl(pr: $moduleVersion.getCommit().getPullRequest())}">
+              <span class="mr-2">{octiconGitPullRequest16(fill: 'var(--color-done-fg)')}</span>
+              <span title="{$moduleVersion.getCommit().getMessage()}"><span class="text-mono">#{$moduleVersion.getCommit().getPullRequest()}</span> <span class="text-light">{$moduleVersion.getCommit().getMessage()|truncate:32}</span></span>
+            </a>
+          {/if}
+      {/if}
+      {if $source.getUrl()}
+          <a class="Link--muted d-flex flex-items-center mb-2" href="{$source.getUrl()}" title="{$source.getUrl()}">
+            <span class="mr-2">{octiconFileZip16()}</span>
+            <span>{$source.getUrl()|truncate:32}</span>
+          </a>
+      {/if}
+    </div>
+    {for $filename in $source.getPatchesMap().keys()}
+      {let $integrity: $source.getPatchesMap().get($filename) /}
+      <a class="Link--muted d-flex flex-items-center mb-1" href="{bcrModuleVersionPatchFileUrl(moduleVersion: $moduleVersion, filename: $filename)}" title="Patch file">
+        <span class="mr-2">{octiconFileDiff16()}</span>
+        <span class="mr-1">{$filename|truncate:48}</span>
+      </a>
+    {/for}
+    {for $filename in $source.getOverlayMap().keys()}
+      {let $integrity: $source.getOverlayMap().get($filename) /}
+      <a class="Link--muted d-flex flex-items-center mb-1" href="{bcrModuleVersionOverlayFileUrl(moduleVersion: $moduleVersion, filename: $filename)}" title="Patch file">
+        <span class="mr-2">{octiconFileAdded16()}</span>
+        <span class="mr-1">{$filename|truncate:48}</span>
+      </a>
+    {/for}
   </div>
 </div>
 {/template}
 
 
 {template moduleVersionTable}
-  {@param versionData: list<[version: string, commitDate: string, directDeps: list<ModuleVersion>]>}
+  {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>]>}
   {@param moduleName: string}
   {@param? currentVersion: string}
   {@param yanked: map<string,string>}
@@ -232,7 +260,7 @@ bazel_dep(name = "{$name}", version = "{$version}")
       {let $percentage: $totalDeps > 0 ? round(($depCount * 100) / $totalDeps) : 0 /}
 
       <tr class="{if ($currentVersion === $version)}Box-row-link{/if}">
-        <td title="{$version}" colspan="2" class="py-1" style="background: linear-gradient(to right, var(--color-accent-muted) {$percentage}%, transparent {$percentage}%);">
+        <td title="{$version}; compatibility level {$data.compat}" colspan="2" class="py-1" style="background: linear-gradient(to right, var(--color-accent-muted) {$percentage}%, transparent {$percentage}%);">
           <div style="display: flex; align-items: center;">
             <span style="position: relative; padding-right: 0.5em;">
               {if $currentVersion === $version}
@@ -362,6 +390,22 @@ https://gitlab.com/{$repo.substring("gitlab:".length)}
 https://github.com/bazelbuild/bazel-central-registry/pull/{$pr}
 {/template}
 
+{template bcrModuleVersionPatchFileUrl kind="uri"}
+  {@inject repositoryUrl: string}
+  {@inject repositoryCommit: string}
+  {@param moduleVersion: ModuleVersion}
+  {@param filename: string}
+{$repositoryUrl}/tree/{$repositoryCommit}/modules/{$moduleVersion.getName()}/{$moduleVersion.getVersion()}/patches/{$filename}
+{/template}
+
+{template bcrModuleVersionOverlayFileUrl kind="uri"}
+  {@inject repositoryUrl: string}
+  {@inject repositoryCommit: string}
+  {@param moduleVersion: ModuleVersion}
+  {@param filename: string}
+{$repositoryUrl}/tree/{$repositoryCommit}/modules/{$moduleVersion.getName()}/{$moduleVersion.getVersion()}/overlay/{$filename}
+{/template}
+
 // ====================================================================
 // LINK HELPERS
 // ====================================================================
@@ -464,7 +508,7 @@ unknown
   <div class="mt-3">
     {if $module.getMetadata()?.getHomepage()}
         <a class="Link--muted d-flex flex-items-center mb-2" href="{$module.getMetadata()?.getHomepage()}">
-          <span class="mr-2">{octiconLinkExternal16()}</span>
+          <span class="mr-2">{octiconHome16()}</span>
           <span>Homepage</span>
         </a>
     {/if}
@@ -475,25 +519,17 @@ unknown
         </a>
     {/if}
     {if $repositoryMetadata?.getStargazers() > 0}
-        <a class="Link--muted d-flex flex-items-center mb-2" href="/stargazers">
+        <div class="d-flex flex-items-center mb-2 color-fg-muted">
           <span class="mr-2">{octiconStar16()}</span>
           <span class="mr-1 text-bold">{$repositoryMetadata.getStargazers()}</span>
           <span>star{if $repositoryMetadata.getStargazers() > 1}s{/if}</span>
-        </a>
-    {/if}
-    {if $commitDate}
-        <div class="Link--muted d-flex flex-items-center mb-2">
-          <span class="mr-2">{octiconCalendar16()}</span>
-          <span>{$commitDate}</span>
         </div>
     {/if}
-    {if $moduleVersion.getCommit()}
-        {if $moduleVersion.getCommit().getPullRequest()}
-          <a class="Link--muted d-flex flex-items-center mb-2" href="{registryPullRequestUrl(pr: $moduleVersion.getCommit().getPullRequest())}">
-            <span class="mr-2">{octiconGitPullRequest16(fill: 'var(--color-done-fg)')}</span>
-            <span title="{$moduleVersion.getCommit().getMessage()}">#{$moduleVersion.getCommit().getPullRequest()} <span class="text-small text-light">{$moduleVersion.getCommit().getMessage()|truncate:32}</span></span>
-          </a>
-        {/if}
+    {if $commitDate}
+        <div class="d-flex flex-items-center mb-2 color-fg-muted">
+          <span class="mr-2">{octiconGitCommit16()}</span>
+          <span>{$commitDate}</span>
+        </div>
     {/if}
   </div>
 </div>

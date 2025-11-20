@@ -11,7 +11,9 @@ require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/dominikbraun/graph v0.23.0
 	github.com/google/go-github/v66 v66.0.0
+	github.com/junkblocker/codesearch v1.4.0
 	github.com/rs/zerolog v1.34.0
+	github.com/samthor/sre2 v0.0.0-20150929104051-385a11de6465
 	github.com/shurcooL/githubv4 v0.0.0-20240727222349-48295856cce7
 	github.com/teacat/noire v1.1.0
 	go.starlark.net v0.0.0-20250906160240-bf296ed553ea

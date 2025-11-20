@@ -1,0 +1,66 @@
+load("@build_stack_rules_proto//rules:proto_compiled_sources.bzl", "proto_compiled_sources")
+load("@build_stack_rules_proto//rules/go:proto_go_library.bzl", "proto_go_library")
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "livegrep_proto",
+    srcs = ["livegrep.proto"],
+    visibility = ["//visibility:public"],
+)
+
+# ProTip: bazel run //build/stack/livegrep/v1:livegrep_go_compiled_sources.update
+proto_compiled_sources(
+    name = "livegrep_go_compiled_sources",
+    srcs = [
+        "livegrep.pb.go",
+        "livegrep_grpc.pb.go",
+    ],
+    output_mappings = [
+        "livegrep.pb.go=github.com/stackb/centrl/build/stack/livegrep/v1/livegrep.pb.go",
+        "livegrep_grpc.pb.go=github.com/stackb/centrl/build/stack/livegrep/v1/livegrep_grpc.pb.go",
+    ],
+    plugins = [
+        "@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go",
+        "@build_stack_rules_proto//plugin/grpc/grpc-go:protoc-gen-go-grpc",
+    ],
+    proto = "livegrep_proto",
+    visibility = ["//visibility:public"],
+)
+
+proto_go_library(
+    name = "livegrep_go_proto",
+    srcs = [
+        "livegrep.pb.go",
+        "livegrep_grpc.pb.go",
+    ],
+    importpath = "github.com/stackb/centrl/build/stack/livegrep/v1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
+)
+
+go_library(
+    name = "livegrep",
+    srcs = [
+        "livegrep.pb.go",
+        "livegrep_grpc.pb.go",
+    ],
+    importpath = "github.com/stackb/centrl/build/stack/livegrep/v1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+        "@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
+        "@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
+    ],
+)
