@@ -26,7 +26,7 @@ jobs:
       - name: update submodule
         run: git submodule update --init --remote data/bazel-central-registry
       - name: cleanup submodule
-        run: rm -f data/bazel-central-registry/modules/rapidcheck/2023.12.14/BUILD.bazel
+        run: rm -f data/bazel-central-registry/modules/rapidcheck/2023.12.14/BUILD.bazel data/bazel-central-registry/BUILD
       - name: gazelle central_registry
         run: >-
           bazelisk
