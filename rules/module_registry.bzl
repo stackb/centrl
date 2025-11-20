@@ -30,7 +30,7 @@ def _write_registry_languages_json_action(ctx, mds):
     return output
 
 def _compile_codesearch_index_action(ctx, deps):
-    output = ctx.actions.declare_file("codesearch.idx")
+    output = ctx.actions.declare_file("csearchindex")
     files = []
 
     for module in deps:

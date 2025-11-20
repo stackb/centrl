@@ -1,44 +1,26 @@
 module(
-    name = "centrl",
+    name = "stackb_centrl",
     version = "0.0.0",
     compatibility_level = 1,
 )
 
 # -------------------------------------------------------------------
-# Bazel Dependencies
+# Dev  Dependencies
 # -------------------------------------------------------------------
 
 bazel_dep(name = "bazel_skylib", version = "1.8.2", dev_dependency = True)
 bazel_dep(name = "build_stack_rules_proto", version = "4.1.1", dev_dependency = True)
-bazel_dep(name = "build_stack_ui_js", version = "0.0.0", dev_dependency = True)
-bazel_dep(name = "gazelle", version = "0.45.0", repo_name = "bazel_gazelle", dev_dependency = True)
-bazel_dep(name = "io_bazel_rules_closure", version = "1.0.0", dev_dependency = True)
+bazel_dep(name = "buildifier_prebuilt", version = "8.2.0.2", dev_dependency = True)
+bazel_dep(name = "gazelle", version = "0.45.0", dev_dependency = True, repo_name = "bazel_gazelle")
+bazel_dep(name = "stackb_rules_closure", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_go", version = "0.57.0", dev_dependency = True)
 bazel_dep(name = "rules_proto", version = "7.1.0", dev_dependency = True)
-bazel_dep(name = "rules_tsickle", version = "1.0.0", dev_dependency = True)
-
-# -------------------------------------------------------------------
-# Dev  Dependencies
-# -------------------------------------------------------------------
-
-bazel_dep(name = "buildifier_prebuilt", version = "8.2.0.2", dev_dependency = True)
+bazel_dep(name = "rules_tsickle", version = "1.1.0", dev_dependency = True)
+bazel_dep(name = "stackb_ui_js", version = "1.0.0", dev_dependency = True)
 
 # -------------------------------------------------------------------
 # Overrides
 # -------------------------------------------------------------------
-
-# Commit: 37aa57e3122fd6e1aeb43ba197ff2a9321f7f8cc
-# Date: 2025-10-09 05:25:00 +0000 UTC
-# URL: https://github.com/stackb/rules_closure/commit/37aa57e3122fd6e1aeb43ba197ff2a9321f7f8cc
-#
-# Resolve maven dep issues
-# Size: 5019879 (5.0 MB)
-# archive_override(
-#     module_name = "io_bazel_rules_closure",
-#     sha256 = "c7368e52196fab7135b4661beb35112d4a82f199667f448976cc5fd1bb9f1c78",
-#     strip_prefix = "rules_closure-37aa57e3122fd6e1aeb43ba197ff2a9321f7f8cc",
-#     urls = ["https://github.com/stackb/rules_closure/archive/37aa57e3122fd6e1aeb43ba197ff2a9321f7f8cc.tar.gz"],
-# )
 
 # Commit: 04fc63fb40bf30d2e5e0b3786028eb41218de979
 # Date: 2025-10-09 04:43:15 +0000 UTC
@@ -55,29 +37,31 @@ archive_override(
     urls = ["https://github.com/stackb/rules_proto/archive/04fc63fb40bf30d2e5e0b3786028eb41218de979.tar.gz"],
 )
 
-# local_path_override(
-#     module_name = "build_stack_rules_proto",
-#     path = "/Users/pcj/go/src/github.com/stackb/rules_proto",
-# )
-
-local_path_override(
-    module_name = "io_bazel_rules_closure",
-    path = "/Users/pcj/go/src/github.com/bazelbuild/rules_closure",
+# Commit: a44b4bc7af840ef4646e41828491691c96e85402
+# Date: 2025-11-20 00:04:01 +0000 UTC
+# URL: https://github.com/stackb/rules_closure/commit/a44b4bc7af840ef4646e41828491691c96e85402
+#
+# Merge pull request #6 from stackb/module_rename
+# Size: 5019979 (5.0 MB)
+archive_override(
+    module_name = "stackb_rules_closure",
+    sha256 = "7d11e93efa87dd27a27c68060cb1b5144a03de80044b58474033546199674083",
+    strip_prefix = "rules_closure-a44b4bc7af840ef4646e41828491691c96e85402",
+    urls = ["https://github.com/stackb/rules_closure/archive/a44b4bc7af840ef4646e41828491691c96e85402.tar.gz"],
 )
 
-local_path_override(
-    module_name = "rules_tsickle",
-    path = "/Users/pcj/go/src/github.com/stackb/rules_tsickle",
+# Commit: a306339df9da4f83594970b0406751798d9818c9
+# Date: 2025-11-20 01:32:03 +0000 UTC
+# URL: https://github.com/stackb/ui.js/commit/a306339df9da4f83594970b0406751798d9818c9
+#
+# Refactor tests location (#11)
+# Size: 68907 (69 kB)
+archive_override(
+    module_name = "stackb_ui_js",
+    sha256 = "82b2f5e96acb760291df86bfa991c863cb2f54ce1380f7bc6e5c901458517193",
+    strip_prefix = "ui.js-a306339df9da4f83594970b0406751798d9818c9",
+    urls = ["https://github.com/stackb/ui.js/archive/a306339df9da4f83594970b0406751798d9818c9.tar.gz"],
 )
-
-local_path_override(
-    module_name = "build_stack_ui_js",
-    path = "/Users/pcj/go/src/github.com/stackb/ui.js",
-)
-
-# -------------------------------------------------------------------
-# Overrides
-# -------------------------------------------------------------------
 
 # NOTE: cannot upgrade past protobuf editions...
 #
@@ -116,7 +100,9 @@ use_repo(
     "com_github_chromedp_chromedp",
     "com_github_dominikbraun_graph",
     "com_github_google_go_github_v66",
+    "com_github_junkblocker_codesearch",
     "com_github_rs_zerolog",
+    "com_github_samthor_sre2",
     "com_github_shurcool_githubv4",
     "com_github_teacat_noire",
     "in_gopkg_yaml_v3",

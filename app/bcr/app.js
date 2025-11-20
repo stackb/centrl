@@ -2017,6 +2017,9 @@ class RegistryApp extends App {
         const routeEvent = /** @type {!RouteEvent} */ (e);
         this.activeComponent_ = routeEvent.component || null;
         this.rebuildSearch();
+        setTimeout(() => {
+            this.focusSearchBox();
+        }, 20);
         // console.info(`route done.  active component:`, this.activeComponent_);
     }
 
