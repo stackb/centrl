@@ -24,6 +24,7 @@ go_library(
         "repository.go",
         "repository_metadata.go",
         "single_version_override.go",
+        "stardoc.go",
     ],
     importpath = "github.com/stackb/centrl/language/bcr",
     visibility = ["//visibility:public"],

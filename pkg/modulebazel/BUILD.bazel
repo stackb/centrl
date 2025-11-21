@@ -11,6 +11,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//build/stack/bazel/bzlmod/v1:bzlmod",
+        "@bazel_gazelle//rule:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@net_starlark_go//starlark:go_default_library",
         "@net_starlark_go//starlarkstruct:go_default_library",

@@ -713,35 +713,33 @@ unknown
   {@param? isLatest: bool}
 {let $lang: $moduleVersion.getRepositoryMetadata()?.getPrimaryLanguage() /}
 {let $sanitizedLang: sanitizeLangName(lang: $lang) /}
-<div class="Subhead mt-3">
-  <div class="Subhead-heading f2-light">
-    <span class="f1 text-semibold">{$moduleVersion.getName()}</span>
-    {sp}
-    <span class="f2 d-inline-block">
-      {$moduleVersion.getVersion()}
-      {if $isLatest}
-          <span class="Label Label--success ml-2" style="transform: translateY(-3px)">Latest {octiconCheck16()}</span>
+<div class="f2-light">
+  <span class="f1 text-semibold">{$moduleVersion.getName()}</span>
+  {sp}
+  <span class="f2 d-inline-block">
+    {$moduleVersion.getVersion()}
+    {if $isLatest}
+        <span class="Label Label--success ml-2" style="transform: translateY(-3px)">Latest {octiconCheck16()}</span>
+    {/if}
+    </span>
+</div>
+
+{if $metadata.getYankedVersionsMap()}
+  {for $version in $metadata.getYankedVersionsMap().keys()}
+      {if $version == $moduleVersion.getVersion()}
+          {let $message: $metadata.getYankedVersionsMap().get($version) /}
+          <div class="Subhead-description">
+              {yankedMessage(message: $message)}
+          </div>
       {/if}
-      </span>
-  </div>
-  <div class="Subhead-actions">
-  </div>
-  {if $metadata.getYankedVersionsMap()}
-    {for $version in $metadata.getYankedVersionsMap().keys()}
-        {if $version == $moduleVersion.getVersion()}
-            {let $message: $metadata.getYankedVersionsMap().get($version) /}
-            <div class="Subhead-description">
-                {yankedMessage(message: $message)}
-            </div>
-        {/if}
-    {/for}
-  {/if}
-  {if $metadata.getDeprecated()}
+  {/for}
+{/if}
+
+{if $metadata.getDeprecated()}
   <div class="Subhead-description">
     {deprecationMessage(message: $metadata.getDeprecated())}
   </div>
-  {/if}
-</div>
+{/if}
 {/template}
 
 
@@ -792,7 +790,6 @@ unknown
 
 {template counterLabel}
   {@param count: int}
-
 <label class="Counter ml-1">{$count}</label>
 {/template}
 

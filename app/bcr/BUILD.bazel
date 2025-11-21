@@ -1,4 +1,5 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_tsickle//rules:defs.bzl", "closure_ts_compile")
 load(
     "@stackb_rules_closure//closure:defs.bzl",
@@ -64,6 +65,7 @@ closure_js_template_library(
     ],
     deps = [
         "//build/stack/bazel/bzlmod/v1:bzpb_js",
+        "//stardoc_output:stardoc_output_js",
     ],
 )
 
@@ -112,6 +114,7 @@ closure_js_library(
         ":common",
         ":soy",
         "//build/stack/bazel/bzlmod/v1:bzpb_js",
+        "//stardoc_output:stardoc_output_js",
         "@stackb_rules_closure//closure/goog/array",
         "@stackb_rules_closure//closure/goog/asserts",
         "@stackb_rules_closure//closure/goog/crypt:base64",
@@ -123,6 +126,8 @@ closure_js_library(
         "@stackb_rules_closure//closure/goog/events:listenable",
         "@stackb_rules_closure//closure/goog/soy",
         "@stackb_rules_closure//closure/goog/string",
+        "@stackb_rules_closure//closure/goog/string:path",
+        "@stackb_rules_closure//closure/goog/structs:trie",
         "@stackb_rules_closure//closure/goog/ui:component",
         "@stackb_rules_closure//closure/goog/ui/ac:autocomplete",
         "@stackb_rules_closure//closure/goog/ui/ac:renderer",
@@ -183,6 +188,7 @@ release_archive(
     name = "release",
     srcs = [
         "favicon.png",
+        "registry_pb",
         ":robots_txt",
         ":sitemap_xml",
     ] + select({
@@ -202,4 +208,10 @@ cloudflare_deploy(
     account_id = "df53dccd72b4a61d2f8b1323256bc71c",
     project = "centrl",
     tarball = ":release",
+)
+
+proto_library(
+    name = "app_bcr_proto",
+    srcs = ["app.proto"],
+    visibility = ["//visibility:public"],
 )

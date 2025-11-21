@@ -49,6 +49,9 @@ ModuleSourceInfo = provider(
         "patch_strip": "Number of path components to strip from patches",
         "patches": "Map of patch filenames to integrity hashes",
         "source_json": "The source.json file",
+        "docs": "List[File]: The set of downloaded docs",
+        "docs_url": "str: docs URL",
+        "documentation_info": "Optional[File]: the compiled DocumentationInfo proto file",
     },
 )
 

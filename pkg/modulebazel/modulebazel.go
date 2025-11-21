@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/buildtools/build"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 )
@@ -45,13 +46,45 @@ func ExecFile(filename string) (*bzpb.ModuleVersion, error) {
 	return module, nil
 }
 
-// ParseFile reads and parses a MODULE.bazel file into a ModuleVersion protobuf
-func ParseFile(filename string) (*bzpb.ModuleVersion, error) {
+// LoadFile parses a MODULE.bazel file from a byte slice and scans it for rules
+// and load statements. The syntax tree within the returned File will be
+// modified by editing methods.
+func LoadFile(path, pkg string) (*rule.File, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	ast, err := build.ParseModule(path, data)
+	if err != nil {
+		return nil, err
+	}
+
+	f := rule.ScanAST(pkg, ast)
+	// checkFile is not part of gazelle public API: skip it and pray
+	// if err := checkFile(f); err != nil {
+	// 	return nil, err
+	// }
+	f.Content = data
+	return f, nil
+}
+
+// ParseFile reads and parses a MODULE.bazel file into build.File
+func ParseFile(filename string) (*build.File, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 	f, err := build.ParseModule(filename, data)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+// ParseFileModuleVersion reads and parses a MODULE.bazel file into a
+// ModuleVersion protobuf
+func ParseFileModuleVersion(filename string) (*bzpb.ModuleVersion, error) {
+	f, err := ParseFile(filename)
 	if err != nil {
 		return nil, err
 	}

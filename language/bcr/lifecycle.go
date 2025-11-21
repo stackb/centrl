@@ -31,6 +31,7 @@ func (ext *bcrExtension) DoneGeneratingRules() {
 	// gather info for
 	// ext.fetchGithubRepositoryMetadata(filterGithubRepositories(ext.repositories))
 	// ext.fetchGitlabRepositoryMetadata(filterGitlabRepositories(ext.repositories))
+
 	// in case we had issues fetching metadata, propagate formward from previous
 	// (base) repository state.
 	if ext.baseRegistry != nil {
@@ -45,4 +46,8 @@ func (ext *bcrExtension) DoneGeneratingRules() {
 func (ext *bcrExtension) AfterResolvingDeps(ctx context.Context) {
 	// Nothing to clean up after resolution
 	log.Println("===[AfterResolvingDeps]======================================")
+
+	// update the MODULE.bazel with
+	// additional http_archives.
+	ext.mergeModuleBazelFile(ext.repoRoot)
 }

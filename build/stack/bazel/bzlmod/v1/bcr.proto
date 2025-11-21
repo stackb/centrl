@@ -6,6 +6,8 @@ package build.stack.bazel.bzlmod.v1;
 
 option go_package = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpb";
 
+import "stardoc_output/stardoc_output.proto";
+
 // Aggregate type about a module registry and all it's modules
 message Registry {
     // list of known modules
@@ -98,7 +100,7 @@ message ModuleSource {
     map<string, string> patches = 5;
     // Map of overlay file names to their integrity hashes
     map<string, string> overlay = 6;
-    // Optional docs url
+    // Optional docs url that, if present, should contain a stardoc binary proto.
     string docs_url = 7;
     // Optional mirrors urls
     repeated string mirror_urls = 8;
@@ -108,6 +110,8 @@ message ModuleSource {
     string type = 10;
     string remote = 11;
     string commit = 12;
+    // optional stardoc derived data
+    DocumentationInfo documentation = 13;
 }
 
 // Attestations represents an attestations.json file for a module version
@@ -333,4 +337,52 @@ message Presubmit {
     PresubmitMatrix matrix = 2;
     // Top-level tasks (if bcr_test_module not present)
     map<string, PresubmitTask> tasks = 3;
+}
+
+// Label represents a Bazel label
+message Label {
+    string repo = 1;
+    string pkg = 2;
+    string name = 3;
+}
+
+// SymbolType represents the type of symbol
+enum SymbolType {
+    SYMBOL_TYPE_UNKNOWN = 0;
+    SYMBOL_TYPE_RULE = 1;
+    SYMBOL_TYPE_FUNCTION = 2;
+    SYMBOL_TYPE_PROVIDER = 3;
+    SYMBOL_TYPE_ASPECT = 4;
+    SYMBOL_TYPE_MODULE_EXTENSION = 5;
+    SYMBOL_TYPE_REPOSITORY_RULE = 6;
+}
+
+// SymbolInfo represents information about a symbol in a Bazel module
+message SymbolInfo {
+    // the type of symbol
+    SymbolType type = 1;
+    // the name of the symbol, which should match the name of the info type (e.g rule_name, provider_name, etc)
+    string name = 2;
+    // the underlying actual info data
+    oneof info {
+        stardoc_output.RuleInfo rule = 3;
+        stardoc_output.StarlarkFunctionInfo func = 4;
+        stardoc_output.ProviderInfo provider = 5;
+        stardoc_output.AspectInfo aspect = 6;
+        stardoc_output.ModuleExtensionInfo module_extension = 7;
+        stardoc_output.RepositoryRuleInfo repository_rule = 8;
+    }
+}
+
+// Set of symbols in a file.
+message FileInfo {
+    // label that provides the symbols (e.g. //lib/private:copy_file.bzl)
+    Label label = 1;
+    // a list of symbols
+    repeated SymbolInfo symbol = 2;
+}
+
+// Set of files.
+message DocumentationInfo {
+    repeated FileInfo file = 1;
 }

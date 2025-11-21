@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@build_stack_rules_proto//rules:proto_compile_assets.bzl", "proto_compile_assets")
 load("@build_stack_rules_proto//rules:proto_gazelle.bzl", "proto_gazelle")
 
 exports_files([
@@ -54,6 +55,7 @@ bcr_exclude_dirs = [
     "pkg",
     "rules",
     "thirdparty",
+    "stardoc_output",
     "tools",
 ]
 
@@ -79,4 +81,15 @@ gazelle(
         "--exclude=data",
     ] + ["--exclude=" + dir for dir in bcr_exclude_dirs],
     gazelle = "//:gazelle-bcr",
+)
+
+# ProTip: bazel run //:proto_assets (to regenerate .pb.go files)
+proto_compile_assets(
+    name = "proto_assets",
+    deps = [
+        "//build/stack/bazel/bzlmod/v1:bzpb_go_compiled_sources",
+        "//build/stack/centrl/render/v1:rnpb_go_compiled_sources",
+        "//build/stack/livegrep/v1:livegrep_go_compiled_sources",
+        "//stardoc_output:stardoc_output_go_compiled_sources",
+    ],
 )

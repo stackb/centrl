@@ -78,6 +78,5 @@ languages:
       - protoc-gen-go
       - protoc-gen-go-grpc
     rules:
-      - proto_go_library
       - proto_compiled_sources
     enabled: false

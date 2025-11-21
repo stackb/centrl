@@ -1,29 +1,41 @@
 goog.module("centrl.App");
 
+const AspectInfo = goog.require("proto.stardoc_output.AspectInfo");
 const ComponentEventType = goog.require("goog.ui.Component.EventType");
+const DocumentationInfo = goog.require("proto.build.stack.bazel.bzlmod.v1.DocumentationInfo");
+const FileInfo = goog.require("proto.build.stack.bazel.bzlmod.v1.FileInfo");
+const Label = goog.require("proto.build.stack.bazel.bzlmod.v1.Label");
 const Maintainer = goog.require("proto.build.stack.bazel.bzlmod.v1.Maintainer");
 const Message = goog.require("jspb.Message");
 const Module = goog.require("proto.build.stack.bazel.bzlmod.v1.Module");
 const ModuleDependency = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleDependency");
+const ModuleExtensionInfo = goog.require("proto.stardoc_output.ModuleExtensionInfo");
+const ModuleInfo = goog.require("proto.stardoc_output.ModuleInfo");
 const ModuleMetadata = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleMetadata");
 const ModuleVersion = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleVersion");
+const ProviderInfo = goog.require("proto.stardoc_output.ProviderInfo");
 const Registry = goog.require("proto.build.stack.bazel.bzlmod.v1.Registry");
 const RepositoryMetadata = goog.require("proto.build.stack.bazel.bzlmod.v1.RepositoryMetadata");
+const RepositoryRuleInfo = goog.require("proto.stardoc_output.RepositoryRuleInfo");
+const RuleInfo = goog.require("proto.stardoc_output.RuleInfo");
 const Select = goog.require("stack.ui.Select");
+const StarlarkFunctionInfo = goog.require("proto.stardoc_output.StarlarkFunctionInfo");
+const SymbolInfo = goog.require("proto.build.stack.bazel.bzlmod.v1.SymbolInfo");
+const Trie = goog.require("goog.structs.Trie");
 const arrays = goog.require("goog.array");
 const asserts = goog.require("goog.asserts");
 const dataset = goog.require("goog.dom.dataset");
 const date = goog.require("goog.date");
 const dom = goog.require("goog.dom");
 const events = goog.require("goog.events");
+const path = goog.require("goog.string.path");
 const relative = goog.require("goog.date.relative");
 const soy = goog.require("goog.soy");
 const strings = goog.require("goog.string");
 const { App, Component, Route, RouteEvent, RouteEventType } = goog.require("stack.ui");
 const { Application, Searchable } = goog.require("centrl.common");
 const { ModuleSearchHandler, SearchComponent } = goog.require('centrl.search');
-const { bodySelect, homeOverviewComponent, homeSelect, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionList, moduleVersionSelect, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, registryApp, settingsAppearanceComponent, settingsSelect, toastSuccess } = goog.require('soy.centrl.app');
-const { moduleVersionsListComponent } = goog.require('soy.registry');
+const { bodySelect, documentationInfoListComponent, documentationInfoSelect, fileInfoListComponent, fileInfoSelect, homeOverviewComponent, homeSelect, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, registryApp, settingsAppearanceComponent, settingsSelect, starlarkFunctionSymbolComponent, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app'); const { moduleVersionsListComponent } = goog.require('soy.registry');
 
 const SYNTAX_HIGHLIGHT = true;
 
@@ -78,7 +90,7 @@ const MaintainersListTabName = {
  * Base Select component that shows a not found page for unknown routes.
  * @abstract
  */
-class BaseSelect extends Select {
+class ContentSelect extends Select {
     /**
      * @param {?dom.DomHelper=} opt_domHelper
      */
@@ -98,19 +110,33 @@ class BaseSelect extends Select {
 
     /**
      * @override
+     * @return {Element} Element to contain child elements (null if none).
+     */
+    getContentElement() {
+        return this.getCssElement(goog.getCssName("content"));
+    }
+
+    /**
+     * @override
      * @param {string} name
      * @param {!Route} route
      */
     selectFail(name, route) {
-        this.addTab(TabName.NOT_FOUND, new NotFoundComponent(this.dom_));
-        this.select(name, route);
+        let tab = this.getTab(TabName.NOT_FOUND);
+        if (tab) {
+            this.showTab(TabName.NOT_FOUND);
+            tab.go(route);
+        } else {
+            this.addTab(TabName.NOT_FOUND, new NotFoundComponent(this.dom_));
+            this.select(name, route);
+        }
     }
 }
 
 /**
  * @abstract
  */
-class SelectNav extends BaseSelect {
+class SelectNav extends ContentSelect {
     /**
      * @param {?dom.DomHelper=} opt_domHelper
      */
@@ -142,14 +168,6 @@ class SelectNav extends BaseSelect {
      */
     goHere(route) {
         this.select(this.getDefaultTabName(), route.add(this.getDefaultTabName()));
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
     }
 
     /**
@@ -230,7 +248,7 @@ class SelectNav extends BaseSelect {
 /**
  * Main body of the application.
  */
-class BodySelect extends BaseSelect {
+class BodySelect extends ContentSelect {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -250,24 +268,6 @@ class BodySelect extends BaseSelect {
             registry: this.registry_,
             lastUpdated: formatRelativePast(this.registry_.getCommitDate()),
         }));
-    }
-
-    /**
-     * @param {string} cssName
-     * @return {!HTMLElement}
-     */
-    getCssElement(cssName) {
-        return /** @type {!HTMLElement} */ (
-            dom.getRequiredElementByClass(cssName, this.getElementStrict())
-        );
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
     }
 
     /**
@@ -322,7 +322,7 @@ class BodySelect extends BaseSelect {
     }
 }
 
-class HomeSelect extends BaseSelect {
+class HomeSelect extends ContentSelect {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -408,7 +408,7 @@ class HomeOverviewComponent extends Component {
 
 
 
-class SettingsSelect extends BaseSelect {
+class SettingsSelect extends ContentSelect {
     /**
      * @param {?dom.DomHelper=} opt_domHelper
      */
@@ -441,14 +441,6 @@ class SettingsSelect extends BaseSelect {
      */
     goHere(route) {
         this.select(TabName.APPEARANCE, route.add(TabName.APPEARANCE));
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
     }
 }
 
@@ -559,111 +551,6 @@ class SettingsAppearanceComponent extends Component {
 
 }
 
-class ModuleVersionComponent extends Component {
-    /**
-     * @param {!Registry} registry
-     * @param {!Module} module
-     * @param {!ModuleVersion} moduleVersion
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(registry, module, moduleVersion, opt_domHelper) {
-        super(opt_domHelper);
-
-        /** @private @const @type {!Registry} */
-        this.registry_ = registry;
-
-        /** @private @const @type {!Module} */
-        this.module_ = module;
-
-        /** @private @const @type {!ModuleVersion} */
-        this.moduleVersion_ = moduleVersion;
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        const { versionData, totalDeps } = this.computeVersionData();
-
-        this.setElementInternal(soy.renderAsElement(moduleVersionComponent, {
-            module: this.module_,
-            metadata: asserts.assertObject(this.module_.getMetadata()),
-            deps: this.moduleVersion_.getDepsList().filter(d => !d.getDev()),
-            devDeps: this.moduleVersion_.getDepsList().filter(d => d.getDev()),
-            directDeps: this.getDirectDeps(this.moduleVersion_.getVersion()),
-            moduleVersion: this.moduleVersion_,
-            yanked: getYankedMap(this.module_.getMetadata()),
-            commitDate: formatRelativePast(this.moduleVersion_.getCommit().getDate()),
-            languageData: computeLanguageData(this.module_.getRepositoryMetadata()),
-            versionData,
-            totalDeps,
-        }, {
-            repositoryUrl: this.registry_.getRepositoryUrl(),
-            repositoryCommit: this.registry_.getCommitSha(),
-            latestVersions: getLatestModuleVersionsByName(this.registry_),
-        }));
-    }
-
-    /**
-     * Compute version data with dependency counts and total dependents
-     * @return {{versionData: !Array<!VersionData>, totalDeps: number}}
-     */
-    computeVersionData() {
-        /** @type {!Array<!VersionData>} */
-        const versionData = [];
-        let totalDeps = 0;
-        for (const v of this.module_.getVersionsList()) {
-            const directDeps = this.getDirectDeps(v.getVersion());
-            totalDeps += directDeps.length;
-            versionData.push(/** @type{!VersionData} **/({
-                version: v.getVersion(),
-                compat: v.getCompatibilityLevel(),
-                commitDate: formatDate(v.getCommit().getDate()),
-                directDeps,
-            }));
-        }
-
-        return { versionData, totalDeps };
-    }
-
-    /**
-     * @override
-     */
-    enterDocument() {
-        super.enterDocument();
-
-        if (SYNTAX_HIGHLIGHT) {
-            const preEls = this.dom_.getElementsByTagNameAndClass(dom.TagName.PRE, goog.getCssName('shiki'), this.getElementStrict());
-            arrays.forEach(preEls, preEl => syntaxHighlight(this.dom_.getWindow(), preEl));
-        }
-    }
-
-    /**
-     * @param {string} version
-     * @returns {!Array<!ModuleDependency>}
-     */
-    getDirectDeps(version) {
-        const result = [];
-        for (const module of this.registry_.getModulesList()) {
-            if (module.getName() === this.module_.getName()) {
-                continue;
-            }
-            versionLoop: for (const moduleVersion of module.getVersionsList()) {
-                for (const dep of moduleVersion.getDepsList()) {
-                    if (dep.getName() === this.moduleVersion_.getName() && dep.getVersion() === version) {
-                        const direct = new ModuleDependency();
-                        direct.setName(moduleVersion.getName());
-                        direct.setVersion(moduleVersion.getVersion());
-                        result.push(direct);
-                        break versionLoop;
-                    }
-                }
-            }
-        }
-        return result;
-    }
-}
-
 
 class ModuleBlankslateComponent extends Component {
     /**
@@ -715,7 +602,7 @@ class ModuleVersionBlankslateComponent extends Component {
     }
 }
 
-class MaintainersSelect extends BaseSelect {
+class MaintainersSelect extends ContentSelect {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -770,14 +657,6 @@ class MaintainersSelect extends BaseSelect {
         }
 
         super.selectFail(name, route);
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
     }
 }
 
@@ -841,7 +720,7 @@ class MaintainersMapSelectNav extends SelectNav {
     }
 }
 
-class ModulesMapSelect extends BaseSelect {
+class ModulesMapSelect extends ContentSelect {
     /**
      * @param {!Registry} registry
      * @param {?dom.DomHelper=} opt_domHelper
@@ -1177,7 +1056,7 @@ class ModulesMapSelectNav extends SelectNav {
 }
 
 
-class ModuleVersionsFilterSelect extends BaseSelect {
+class ModuleVersionsFilterSelect extends ContentSelect {
     /**
      * @param {!Map<string,!Module>} modules
      * @param {!Array<!ModuleVersion>} moduleVersions
@@ -1300,14 +1179,6 @@ class ModuleVersionsFilterSelect extends BaseSelect {
         }
         return result;
     }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
-    }
 }
 
 class ModuleVersionsListComponent extends Component {
@@ -1387,7 +1258,7 @@ class MaintainerComponent extends Component {
 }
 
 
-class ModuleSelect extends BaseSelect {
+class ModuleSelect extends ContentSelect {
     /**
      * @param {string} name
      * @param {!Registry} registry
@@ -1440,7 +1311,7 @@ class ModuleSelect extends BaseSelect {
         const moduleVersion = this.moduleVersions_.get(name);
 
         if (moduleVersion) {
-            this.addTab(name, new ModuleVersionSelect(this.registry_, this.module_, moduleVersion));
+            this.addTab(name, new ModuleVersionSelectNav(this.registry_, this.module_, moduleVersion));
             this.select(name, route);
             return;
         }
@@ -1448,18 +1319,10 @@ class ModuleSelect extends BaseSelect {
         this.addTab(name, new ModuleVersionBlankslateComponent(this.module_, name));
         this.select(name, route);
     }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
-    }
 }
 
 
-class ModuleVersionSelect extends BaseSelect {
+class ModuleVersionSelectNav extends SelectNav {
     /**
      * @param {!Registry} registry
      * @param {!Module} module
@@ -1477,23 +1340,31 @@ class ModuleVersionSelect extends BaseSelect {
 
         /** @private @const @type {!ModuleVersion} */
         this.moduleVersion_ = moduleVersion;
+
+        /** @private @const @type {{versionData: !Array<!VersionData>, totalDeps: number}} */
+        this.versionData_ = this.computeVersionData();
     }
 
     /**
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(moduleVersionSelect, {
+        const { versionData, totalDeps } = this.versionData_;
+
+        this.setElementInternal(soy.renderAsElement(moduleVersionSelectNav, {
             moduleVersion: this.moduleVersion_,
+            metadata: asserts.assertObject(this.module_.getMetadata()),
+            versionData,
+            totalDeps,
         }));
     }
 
     /**
      * @override
-     * @param {!Route} route
+     * @returns {string}
      */
-    goHere(route) {
-        this.select(TabName.OVERVIEW, route.add(TabName.OVERVIEW));
+    getDefaultTabName() {
+        return TabName.OVERVIEW;
     }
 
     /**
@@ -1502,7 +1373,473 @@ class ModuleVersionSelect extends BaseSelect {
     enterDocument() {
         super.enterDocument();
 
-        this.addTab(TabName.OVERVIEW, new ModuleVersionComponent(this.registry_, this.module_, this.moduleVersion_));
+        this.addNavTab(
+            TabName.OVERVIEW,
+            'Overview',
+            'Module Version Overview',
+            undefined,
+            new ModuleVersionComponent(this.registry_, this.module_, this.moduleVersion_, this.versionData_),
+        );
+
+        const docs = this.moduleVersion_.getSource().getDocumentation();
+        if (docs) {
+            this.addNavTab(
+                'docs',
+                'Rule Documentation',
+                'Generated Stardoc Rule Documentation',
+                undefined,
+                new DocumentationInfoSelect(this.moduleVersion_, docs),
+            );
+
+        }
+    }
+
+    /**
+     * Compute version data with dependency counts and total dependents
+     * @return {{versionData: !Array<!VersionData>, totalDeps: number}}
+     */
+    computeVersionData() {
+        /** @type {!Array<!VersionData>} */
+        const versionData = [];
+        let totalDeps = 0;
+        for (const v of this.module_.getVersionsList()) {
+            const directDeps = this.getDirectDeps(v.getVersion());
+            totalDeps += directDeps.length;
+            versionData.push(/** @type{!VersionData} **/({
+                version: v.getVersion(),
+                compat: v.getCompatibilityLevel(),
+                commitDate: formatDate(v.getCommit().getDate()),
+                directDeps,
+            }));
+        }
+
+        return { versionData, totalDeps };
+    }
+
+    /**
+     * @param {string} version
+     * @returns {!Array<!ModuleDependency>}
+     */
+    getDirectDeps(version) {
+        const result = [];
+        for (const module of this.registry_.getModulesList()) {
+            if (module.getName() === this.module_.getName()) {
+                continue;
+            }
+            versionLoop: for (const moduleVersion of module.getVersionsList()) {
+                for (const dep of moduleVersion.getDepsList()) {
+                    if (dep.getName() === this.moduleVersion_.getName() && dep.getVersion() === version) {
+                        const direct = new ModuleDependency();
+                        direct.setName(moduleVersion.getName());
+                        direct.setVersion(moduleVersion.getVersion());
+                        result.push(direct);
+                        break versionLoop;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+}
+
+class ModuleVersionComponent extends Component {
+    /**
+     * @param {!Registry} registry
+     * @param {!Module} module
+     * @param {!ModuleVersion} moduleVersion
+     * @param {{versionData: !Array<!VersionData>, totalDeps: number}} versionData
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(registry, module, moduleVersion, versionData, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const @type {!Registry} */
+        this.registry_ = registry;
+
+        /** @private @const @type {!Module} */
+        this.module_ = module;
+
+        /** @private @const @type {!ModuleVersion} */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const @type {{versionData: !Array<!VersionData>, totalDeps: number}} */
+        this.versionData_ = versionData;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        const { versionData, totalDeps } = this.versionData_;
+
+        this.setElementInternal(soy.renderAsElement(moduleVersionComponent, {
+            module: this.module_,
+            metadata: asserts.assertObject(this.module_.getMetadata()),
+            deps: this.moduleVersion_.getDepsList().filter(d => !d.getDev()),
+            devDeps: this.moduleVersion_.getDepsList().filter(d => d.getDev()),
+            directDeps: this.getDirectDeps(this.moduleVersion_.getVersion()),
+            moduleVersion: this.moduleVersion_,
+            yanked: getYankedMap(this.module_.getMetadata()),
+            commitDate: formatRelativePast(this.moduleVersion_.getCommit().getDate()),
+            languageData: computeLanguageData(this.module_.getRepositoryMetadata()),
+            versionData,
+            totalDeps,
+        }, {
+            repositoryUrl: this.registry_.getRepositoryUrl(),
+            repositoryCommit: this.registry_.getCommitSha(),
+            latestVersions: getLatestModuleVersionsByName(this.registry_),
+        }));
+    }
+
+
+    /**
+     * @override
+     */
+    enterDocument() {
+        super.enterDocument();
+
+        if (SYNTAX_HIGHLIGHT) {
+            const preEls = this.dom_.getElementsByTagNameAndClass(dom.TagName.PRE, goog.getCssName('shiki'), this.getElementStrict());
+            arrays.forEach(preEls, preEl => syntaxHighlight(this.dom_.getWindow(), preEl));
+        }
+    }
+
+    /**
+     * @param {string} version
+     * @returns {!Array<!ModuleDependency>}
+     */
+    getDirectDeps(version) {
+        const result = [];
+        for (const module of this.registry_.getModulesList()) {
+            if (module.getName() === this.module_.getName()) {
+                continue;
+            }
+            versionLoop: for (const moduleVersion of module.getVersionsList()) {
+                for (const dep of moduleVersion.getDepsList()) {
+                    if (dep.getName() === this.moduleVersion_.getName() && dep.getVersion() === version) {
+                        const direct = new ModuleDependency();
+                        direct.setName(moduleVersion.getName());
+                        direct.setVersion(moduleVersion.getVersion());
+                        result.push(direct);
+                        break versionLoop;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+}
+
+
+class DocumentationInfoSelect extends ContentSelect {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!DocumentationInfo} docs
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, docs, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const */
+        this.docs_ = docs;
+
+        /** @const @private @type {!Trie<!FileInfo>}*/
+        this.fileTrie_ = new Trie();
+
+        for (const file of docs.getFileList()) {
+            this.addFile(file);
+        }
+    }
+
+    /**
+     * @param {!FileInfo} file
+     */
+    addFile(file) {
+        let prefix = `${file.getLabel().getPkg() ? file.getLabel().getPkg() + '/' : ''}${file.getLabel().getName()}`;
+        this.fileTrie_.add(prefix, file);
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        /** @type {!Array<!FileSymbol>} */
+        const rules = [];
+        /** @type {!Array<!FileSymbol>} */
+        const funcs = [];
+        /** @type {!Array<!FileSymbol>} */
+        const providers = [];
+        /** @type {!Array<!FileSymbol>} */
+        const aspects = [];
+        /** @type {!Array<!FileSymbol>} */
+        const moduleExtensions = [];
+        /** @type {!Array<!FileSymbol>} */
+        const repositoryRules = [];
+
+        for (const file of this.docs_.getFileList()) {
+            for (const sym of file.getSymbolList()) {
+                switch (sym.getType()) {
+                    case 1: // SYMBOL_TYPE_RULE
+                        rules.push({ file, sym });
+                        break;
+                    case 2: // SYMBOL_TYPE_FUNCTION
+                        funcs.push({ file, sym });
+                        break;
+                    case 3: // SYMBOL_TYPE_PROVIDER
+                        providers.push({ file, sym });
+                        break;
+                    case 4: // SYMBOL_TYPE_ASPECT
+                        aspects.push({ file, sym });
+                        break;
+                    case 5: // SYMBOL_TYPE_MODULE_EXTENSION
+                        moduleExtensions.push({ file, sym });
+                        break;
+                    case 6: // SYMBOL_TYPE_REPOSITORY_RULE
+                        repositoryRules.push({ file, sym });
+                        break;
+                }
+            }
+        }
+
+        this.setElementInternal(soy.renderAsElement(documentationInfoSelect, {
+            aspects,
+            funcs,
+            moduleExtensions,
+            providers,
+            repositoryRules,
+            rules,
+        }, {
+            baseUrl: this.getPathUrl(),
+        }));
+    }
+
+    /**
+     * @override
+     * @param {!Route} route
+     */
+    goHere(route) {
+        this.select(TabName.LIST, route.add(TabName.LIST));
+    }
+
+    /**
+     * @override
+     * @param {string} name
+     * @param {!Route} route
+     */
+    selectFail(name, route) {
+        if (name === TabName.LIST) {
+            this.addTab(name, new DocumentationInfoListComponent(this.moduleVersion_, this.docs_, this.dom_));
+            this.select(name, route);
+            return;
+        }
+
+        // try to find the longest matching prefix by popping path elements off
+        // the remaining part of the route URL.
+        const unmatched = route.unmatchedPath();
+        while (unmatched.length) {
+            const prefix = unmatched.join("/");
+            const file = this.fileTrie_.get(prefix);
+            if (file) {
+                let tab = this.getTab(prefix);
+                if (!tab) {
+                    tab = this.addTab(prefix, new FileInfoSelect(this.moduleVersion_, file, this.dom_));
+                }
+                this.showTab(prefix);
+                tab.go(route.advance(unmatched.length - 1));
+                return;
+            }
+            unmatched.pop();
+        }
+
+        super.selectFail(name, route);
+    }
+
+}
+
+
+class FileInfoSelect extends ContentSelect {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const */
+        this.file_ = file;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(fileInfoSelect, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+        }, {
+            baseUrl: this.getPathUrl(),
+        }));
+    }
+
+    /**
+     * @override
+     * @param {!Route} route
+     */
+    goHere(route) {
+        this.select(TabName.LIST, route.add(TabName.LIST));
+    }
+
+    /**
+     * @override
+     * @param {string} name
+     * @param {!Route} route
+     */
+    selectFail(name, route) {
+        if (name === TabName.LIST) {
+            this.addTab(name, new FileInfoListComponent(this.moduleVersion_, this.file_, this.dom_));
+            this.select(name, route);
+            return;
+        }
+
+        for (const sym of this.file_.getSymbolList()) {
+            if (name !== sym.getName()) {
+                continue;
+            }
+            this.addTab(name, new SymbolInfoComponent(this.moduleVersion_, this.file_, sym));
+            this.select(name, route);
+            return;
+        }
+
+        super.selectFail(name, route);
+    }
+}
+
+
+class SymbolInfoComponent extends Component {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const */
+        this.file_ = file;
+
+        /** @private @const */
+        this.sym_ = sym;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(symbolInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+        }));
+    }
+}
+
+
+class StarlarkFunctionSymbolComponent extends Component {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!StarlarkFunctionInfo} func
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, func, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const */
+        this.func_ = func;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(starlarkFunctionSymbolComponent, {
+            moduleVersion: this.moduleVersion_,
+            func: this.func_,
+        }));
+    }
+}
+
+
+class DocumentationInfoListComponent extends Component {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!DocumentationInfo} docs
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, docs, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const */
+        this.docs_ = docs;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(documentationInfoListComponent, {
+            moduleVersion: this.moduleVersion_,
+            docs: this.docs_,
+        }, {
+            baseUrl: path.dirname(this.getPathUrl()),
+        }));
+    }
+}
+
+
+
+class FileInfoListComponent extends Component {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const */
+        this.file_ = file;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(fileInfoListComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+        }, {
+            baseUrl: path.dirname(this.getPathUrl()),
+        }));
     }
 }
 
@@ -1727,6 +2064,14 @@ let VersionData;
  * }}
  */
 let Language;
+
+/**
+ * @typedef {{
+ *   file: FileInfo,
+ *   sym: SymbolInfo,
+ * }}
+ */
+let FileSymbol;
 
 /**
  * Sanitize a language name for use as a CSS identifier
@@ -2017,9 +2362,6 @@ class RegistryApp extends App {
         const routeEvent = /** @type {!RouteEvent} */ (e);
         this.activeComponent_ = routeEvent.component || null;
         this.rebuildSearch();
-        setTimeout(() => {
-            this.focusSearchBox();
-        }, 20);
         // console.info(`route done.  active component:`, this.activeComponent_);
     }
 

@@ -30,6 +30,11 @@ def _compile_action(ctx, source, deps, attestations, presubmit, commit):
         args.add(source.source_json)
         inputs.append(source.source_json)
 
+    if source and source.documentation_info:
+        args.add("--documentation_info_file")
+        args.add(source.documentation_info)
+        inputs.append(source.documentation_info)
+
     # Add optional presubmit.yml file
     if presubmit and presubmit.presubmit_yml:
         args.add("--presubmit_yml_file")
@@ -65,12 +70,11 @@ def _compile_action(ctx, source, deps, attestations, presubmit, commit):
 
 def _module_version_impl(ctx):
     deps = [dep[ModuleDependencyInfo] for dep in ctx.attr.deps]
-    source = ctx.attr.source[ModuleSourceInfo] if ctx.attr.source and ModuleSourceInfo in ctx.attr.source else None
+    source = ctx.attr.source[ModuleSourceInfo]  # source = ctx.attr.source[ModuleSourceInfo] if ctx.attr.source and ModuleSourceInfo in ctx.attr.source else None
     attestations = ctx.attr.attestations[ModuleAttestationsInfo] if ctx.attr.attestations and ModuleAttestationsInfo in ctx.attr.attestations else None
     presubmit = ctx.attr.presubmit[ModulePresubmitInfo] if ctx.attr.presubmit and ModulePresubmitInfo in ctx.attr.presubmit else None
     commit = ctx.attr.commit[ModuleCommitInfo] if ctx.attr.commit and ModuleCommitInfo in ctx.attr.commit else None
     proto_out = _compile_action(ctx, source, deps, attestations, presubmit, commit)
-
     outputs = [proto_out]
 
     return [

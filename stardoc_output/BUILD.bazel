@@ -5,44 +5,41 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@stackb_rules_closure//closure/protobuf:defs.bzl", "closure_jspb_library")
 
 proto_library(
-    name = "bzpb_proto",
-    srcs = ["bcr.proto"],
+    name = "stardoc_output_proto",
+    srcs = ["stardoc_output.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//stardoc_output:stardoc_output_proto"],
 )
 
 proto_compiled_sources(
-    name = "bzpb_go_compiled_sources",
-    srcs = ["bcr.pb.go"],
-    output_mappings = ["bcr.pb.go=github.com/stackb/centrl/build/stack/bazel/bzlmod/v1/bcr.pb.go"],
+    name = "stardoc_output_go_compiled_sources",
+    srcs = ["stardoc_output.pb.go"],
+    output_mappings = ["stardoc_output.pb.go=github.com/stackb/centrl/stardoc_output/stardoc_output.pb.go"],
     plugins = ["@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go"],
-    proto = "bzpb_proto",
+    proto = "stardoc_output_proto",
     visibility = ["//visibility:public"],
 )
 
 go_library(
-    name = "bzlmod",
-    srcs = ["bcr.pb.go"],
-    importpath = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1",
+    name = "stardoc_output",
+    srcs = ["stardoc_output.pb.go"],
+    importpath = "github.com/stackb/centrl/stardoc_output",
     visibility = ["//visibility:public"],
     deps = [
-        "//stardoc_output",
         "@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
         "@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
     ],
 )
 
 proto_compile(
-    name = "bzpb_js_proto",
-    outputs = ["bzpb.js"],
+    name = "stardoc_output_js_proto",
+    outputs = ["stardoc_output.js"],
     plugins = ["@stackb_rules_closure//closure/protobuf:protoc-gen-js"],
-    proto = "bzpb_proto",
+    proto = "stardoc_output_proto",
 )
 
 closure_jspb_library(
-    name = "bzpb_js",
-    srcs = [":bzpb_js_proto"],
-    internal_descriptors = [":bzpb_proto"],
+    name = "stardoc_output_js",
+    srcs = [":stardoc_output_js_proto"],
+    internal_descriptors = [":stardoc_output_proto"],
     visibility = ["//visibility:public"],
-    deps = ["//stardoc_output:stardoc_output_js"],
 )

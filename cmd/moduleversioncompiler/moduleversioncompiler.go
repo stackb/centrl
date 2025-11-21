@@ -21,15 +21,16 @@ import (
 const toolName = "moduleversioncompiler"
 
 type Config struct {
-	OutputFile           string
-	ModuleBazelFile      string
-	SourceJsonFile       string
-	AttestationsJsonFile string
-	PresubmitYmlFile     string
-	CommitSha1           string
-	CommitDate           string
-	CommitMessage        string
-	UnresolvedDeps       string
+	OutputFile            string
+	ModuleBazelFile       string
+	SourceJsonFile        string
+	AttestationsJsonFile  string
+	PresubmitYmlFile      string
+	DocumentationInfoFile string
+	CommitSha1            string
+	CommitDate            string
+	CommitMessage         string
+	UnresolvedDeps        string
 }
 
 func main() {
@@ -74,6 +75,14 @@ func run(args []string) error {
 			return fmt.Errorf("failed to read source.json: %v", err)
 		}
 		module.Source = source
+
+		if cfg.DocumentationInfoFile != "" {
+			var docs bzpb.DocumentationInfo
+			if err := protoutil.ReadFile(cfg.DocumentationInfoFile, &docs); err != nil {
+				return fmt.Errorf("failed to read docs: %v", err)
+			}
+			module.Source.Documentation = &docs
+		}
 	}
 
 	// Read presubmit.yml file (optional)
@@ -127,6 +136,7 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
 	fs.StringVar(&cfg.ModuleBazelFile, "module_bazel_file", "", "the MODULE.bazel file to read (required)")
 	fs.StringVar(&cfg.SourceJsonFile, "source_json_file", "", "the source.json file to read (optional)")
+	fs.StringVar(&cfg.DocumentationInfoFile, "documentation_info_file", "", "the DocumentationInfo proto file to read")
 	fs.StringVar(&cfg.PresubmitYmlFile, "presubmit_yml_file", "", "the presubmit.yml file to read (optional)")
 	fs.StringVar(&cfg.AttestationsJsonFile, "attestations_json_file", "", "the attestations.json file to read (optional)")
 	fs.StringVar(&cfg.CommitSha1, "commit_sha1", "", "the git commit SHA-1 hash (optional)")
