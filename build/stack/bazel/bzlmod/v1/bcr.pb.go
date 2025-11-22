@@ -1551,9 +1551,10 @@ func (x *Label) GetName() string {
 }
 
 type SymbolInfo struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Type  SymbolType             `protobuf:"varint,1,opt,name=type,proto3,enum=build.stack.bazel.bzlmod.v1.SymbolType" json:"type,omitempty"`
-	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Type        SymbolType             `protobuf:"varint,1,opt,name=type,proto3,enum=build.stack.bazel.bzlmod.v1.SymbolType" json:"type,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	// Types that are valid to be assigned to Info:
 	//
 	//	*SymbolInfo_Rule
@@ -1607,6 +1608,13 @@ func (x *SymbolInfo) GetType() SymbolType {
 func (x *SymbolInfo) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *SymbolInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
 	}
 	return ""
 }
@@ -1677,27 +1685,27 @@ type isSymbolInfo_Info interface {
 }
 
 type SymbolInfo_Rule struct {
-	Rule *stardoc_output.RuleInfo `protobuf:"bytes,3,opt,name=rule,proto3,oneof"`
+	Rule *stardoc_output.RuleInfo `protobuf:"bytes,4,opt,name=rule,proto3,oneof"`
 }
 
 type SymbolInfo_Func struct {
-	Func *stardoc_output.StarlarkFunctionInfo `protobuf:"bytes,4,opt,name=func,proto3,oneof"`
+	Func *stardoc_output.StarlarkFunctionInfo `protobuf:"bytes,5,opt,name=func,proto3,oneof"`
 }
 
 type SymbolInfo_Provider struct {
-	Provider *stardoc_output.ProviderInfo `protobuf:"bytes,5,opt,name=provider,proto3,oneof"`
+	Provider *stardoc_output.ProviderInfo `protobuf:"bytes,6,opt,name=provider,proto3,oneof"`
 }
 
 type SymbolInfo_Aspect struct {
-	Aspect *stardoc_output.AspectInfo `protobuf:"bytes,6,opt,name=aspect,proto3,oneof"`
+	Aspect *stardoc_output.AspectInfo `protobuf:"bytes,7,opt,name=aspect,proto3,oneof"`
 }
 
 type SymbolInfo_ModuleExtension struct {
-	ModuleExtension *stardoc_output.ModuleExtensionInfo `protobuf:"bytes,7,opt,name=module_extension,json=moduleExtension,proto3,oneof"`
+	ModuleExtension *stardoc_output.ModuleExtensionInfo `protobuf:"bytes,9,opt,name=module_extension,json=moduleExtension,proto3,oneof"`
 }
 
 type SymbolInfo_RepositoryRule struct {
-	RepositoryRule *stardoc_output.RepositoryRuleInfo `protobuf:"bytes,8,opt,name=repository_rule,json=repositoryRule,proto3,oneof"`
+	RepositoryRule *stardoc_output.RepositoryRuleInfo `protobuf:"bytes,10,opt,name=repository_rule,json=repositoryRule,proto3,oneof"`
 }
 
 func (*SymbolInfo_Rule) isSymbolInfo_Info() {}
@@ -1716,6 +1724,7 @@ type FileInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Label         *Label                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
 	Symbol        []*SymbolInfo          `protobuf:"bytes,2,rep,name=symbol,proto3" json:"symbol,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1762,6 +1771,13 @@ func (x *FileInfo) GetSymbol() []*SymbolInfo {
 		return x.Symbol
 	}
 	return nil
+}
+
+func (x *FileInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 type DocumentationInfo struct {
@@ -2246,21 +2262,24 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\x05Label\x12\x12\n" +
 	"\x04repo\x18\x01 \x01(\tR\x04repo\x12\x10\n" +
 	"\x03pkg\x18\x02 \x01(\tR\x03pkg\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xe4\x03\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\x86\x04\n" +
 	"\n" +
 	"SymbolInfo\x12;\n" +
 	"\x04type\x18\x01 \x01(\x0e2'.build.stack.bazel.bzlmod.v1.SymbolTypeR\x04type\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12.\n" +
-	"\x04rule\x18\x03 \x01(\v2\x18.stardoc_output.RuleInfoH\x00R\x04rule\x12:\n" +
-	"\x04func\x18\x04 \x01(\v2$.stardoc_output.StarlarkFunctionInfoH\x00R\x04func\x12:\n" +
-	"\bprovider\x18\x05 \x01(\v2\x1c.stardoc_output.ProviderInfoH\x00R\bprovider\x124\n" +
-	"\x06aspect\x18\x06 \x01(\v2\x1a.stardoc_output.AspectInfoH\x00R\x06aspect\x12P\n" +
-	"\x10module_extension\x18\a \x01(\v2#.stardoc_output.ModuleExtensionInfoH\x00R\x0fmoduleExtension\x12M\n" +
-	"\x0frepository_rule\x18\b \x01(\v2\".stardoc_output.RepositoryRuleInfoH\x00R\x0erepositoryRuleB\x06\n" +
-	"\x04info\"\x85\x01\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12.\n" +
+	"\x04rule\x18\x04 \x01(\v2\x18.stardoc_output.RuleInfoH\x00R\x04rule\x12:\n" +
+	"\x04func\x18\x05 \x01(\v2$.stardoc_output.StarlarkFunctionInfoH\x00R\x04func\x12:\n" +
+	"\bprovider\x18\x06 \x01(\v2\x1c.stardoc_output.ProviderInfoH\x00R\bprovider\x124\n" +
+	"\x06aspect\x18\a \x01(\v2\x1a.stardoc_output.AspectInfoH\x00R\x06aspect\x12P\n" +
+	"\x10module_extension\x18\t \x01(\v2#.stardoc_output.ModuleExtensionInfoH\x00R\x0fmoduleExtension\x12M\n" +
+	"\x0frepository_rule\x18\n" +
+	" \x01(\v2\".stardoc_output.RepositoryRuleInfoH\x00R\x0erepositoryRuleB\x06\n" +
+	"\x04info\"\xa7\x01\n" +
 	"\bFileInfo\x128\n" +
 	"\x05label\x18\x01 \x01(\v2\".build.stack.bazel.bzlmod.v1.LabelR\x05label\x12?\n" +
-	"\x06symbol\x18\x02 \x03(\v2'.build.stack.bazel.bzlmod.v1.SymbolInfoR\x06symbol\"N\n" +
+	"\x06symbol\x18\x02 \x03(\v2'.build.stack.bazel.bzlmod.v1.SymbolInfoR\x06symbol\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"N\n" +
 	"\x11DocumentationInfo\x129\n" +
 	"\x04file\x18\x01 \x03(\v2%.build.stack.bazel.bzlmod.v1.FileInfoR\x04file*E\n" +
 	"\x0eRepositoryType\x12\x1b\n" +

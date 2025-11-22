@@ -1,5 +1,4 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_tsickle//rules:defs.bzl", "closure_ts_compile")
 load(
     "@stackb_rules_closure//closure:defs.bzl",
@@ -208,10 +207,4 @@ cloudflare_deploy(
     account_id = "df53dccd72b4a61d2f8b1323256bc71c",
     project = "centrl",
     tarball = ":release",
-)
-
-proto_library(
-    name = "app_bcr_proto",
-    srcs = ["app.proto"],
-    visibility = ["//visibility:public"],
 )

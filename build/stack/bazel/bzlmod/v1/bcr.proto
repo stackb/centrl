@@ -363,14 +363,16 @@ message SymbolInfo {
     SymbolType type = 1;
     // the name of the symbol, which should match the name of the info type (e.g rule_name, provider_name, etc)
     string name = 2;
+    // a truncated description from the underlying info
+    string description = 3;
     // the underlying actual info data
     oneof info {
-        stardoc_output.RuleInfo rule = 3;
-        stardoc_output.StarlarkFunctionInfo func = 4;
-        stardoc_output.ProviderInfo provider = 5;
-        stardoc_output.AspectInfo aspect = 6;
-        stardoc_output.ModuleExtensionInfo module_extension = 7;
-        stardoc_output.RepositoryRuleInfo repository_rule = 8;
+        stardoc_output.RuleInfo rule = 4;
+        stardoc_output.StarlarkFunctionInfo func = 5;
+        stardoc_output.ProviderInfo provider = 6;
+        stardoc_output.AspectInfo aspect = 7;
+        stardoc_output.ModuleExtensionInfo module_extension = 9;
+        stardoc_output.RepositoryRuleInfo repository_rule = 10;
     }
 }
 
@@ -380,6 +382,8 @@ message FileInfo {
     Label label = 1;
     // a list of symbols
     repeated SymbolInfo symbol = 2;
+    // a truncated description from the ModuleInfo.module_docstring
+    string description = 3;
 }
 
 // Set of files.

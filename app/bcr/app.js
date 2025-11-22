@@ -37,8 +37,8 @@ const { Application, Searchable } = goog.require("centrl.common");
 const { ModuleSearchHandler, SearchComponent } = goog.require('centrl.search');
 const { bodySelect, documentationInfoListComponent, documentationInfoSelect, fileInfoListComponent, fileInfoSelect, homeOverviewComponent, homeSelect, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, registryApp, settingsAppearanceComponent, settingsSelect, starlarkFunctionSymbolComponent, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app'); const { moduleVersionsListComponent } = goog.require('soy.registry');
 
-const SYNTAX_HIGHLIGHT = true;
-
+const HIGHLIGHT_SYNTAX = true;
+const FORMAT_MARKDOWN = true;
 
 /**
  * @enum {string}
@@ -1385,8 +1385,8 @@ class ModuleVersionSelectNav extends SelectNav {
         if (docs) {
             this.addNavTab(
                 'docs',
-                'Rule Documentation',
-                'Generated Stardoc Rule Documentation',
+                'Documentation',
+                'Generated Stardoc Documentation',
                 undefined,
                 new DocumentationInfoSelect(this.moduleVersion_, docs),
             );
@@ -1498,10 +1498,14 @@ class ModuleVersionComponent extends Component {
     enterDocument() {
         super.enterDocument();
 
-        if (SYNTAX_HIGHLIGHT) {
-            const preEls = this.dom_.getElementsByTagNameAndClass(dom.TagName.PRE, goog.getCssName('shiki'), this.getElementStrict());
-            arrays.forEach(preEls, preEl => syntaxHighlight(this.dom_.getWindow(), preEl));
+        if (HIGHLIGHT_SYNTAX) {
+            this.enterSyntaxHighlighting();
         }
+    }
+
+    enterSyntaxHighlighting() {
+        const preEls = this.dom_.getElementsByTagNameAndClass(dom.TagName.PRE, goog.getCssName('shiki'), this.getElementStrict());
+        arrays.forEach(preEls, preEl => syntaxHighlight(this.dom_.getWindow(), preEl));
     }
 
     /**
@@ -1834,13 +1838,82 @@ class FileInfoListComponent extends Component {
      * @override
      */
     createDom() {
+        // Construct symbol lists by type
+        const rules = [];
+        const funcs = [];
+        const providers = [];
+        const aspects = [];
+        const moduleExtensions = [];
+        const repositoryRules = [];
+
+        for (const sym of this.file_.getSymbolList()) {
+            switch (sym.getType()) {
+                case 1: // SYMBOL_TYPE_RULE
+                    rules.push(sym);
+                    break;
+                case 2: // SYMBOL_TYPE_FUNCTION
+                    funcs.push(sym);
+                    break;
+                case 3: // SYMBOL_TYPE_PROVIDER
+                    providers.push(sym);
+                    break;
+                case 4: // SYMBOL_TYPE_ASPECT
+                    aspects.push(sym);
+                    break;
+                case 5: // SYMBOL_TYPE_MODULE_EXTENSION
+                    moduleExtensions.push(sym);
+                    break;
+                case 6: // SYMBOL_TYPE_REPOSITORY_RULE
+                    repositoryRules.push(sym);
+                    break;
+            }
+        }
+
         this.setElementInternal(soy.renderAsElement(fileInfoListComponent, {
             moduleVersion: this.moduleVersion_,
             file: this.file_,
+            rules: rules,
+            funcs: funcs,
+            providers: providers,
+            aspects: aspects,
+            moduleExtensions: moduleExtensions,
+            repositoryRules: repositoryRules,
         }, {
-            baseUrl: path.dirname(this.getPathUrl()),
+            baseUrl: path.join('modules', this.moduleVersion_.getName(), this.moduleVersion_.getVersion(), 'docs'),
         }));
     }
+
+    /** @override */
+    enterDocument() {
+        super.enterDocument();
+
+        if (FORMAT_MARKDOWN) {
+            this.enterMarkdownFormatting();
+        }
+
+        this.enterMarkdownFormatting();
+        this.checkDescriptionOverflow();
+    }
+
+    checkDescriptionOverflow() {
+        const descContent = this.getElement().querySelector('.desc-content');
+        const toggleLabel = this.getElement().querySelector('.desc-toggle-label');
+
+        if (descContent && toggleLabel) {
+            // Check if content is overflowing
+            if (descContent.scrollHeight <= 100) {
+                // Content fits, hide the toggle
+                toggleLabel.style.display = 'none';
+                descContent.style.maxHeight = 'none';
+            }
+        }
+    }
+
+    enterMarkdownFormatting() {
+        const divEls = this.dom_.getElementsByTagNameAndClass(dom.TagName.DIV, goog.getCssName('markdown-body'), this.getElementStrict());
+        arrays.forEach(divEls, el => formatMarkdown(this.dom_.getWindow(), el));
+    }
+
 }
 
 class NotFoundComponent extends Component {
@@ -1923,13 +1996,25 @@ async function syntaxHighlight(window, preEl) {
     const codeEl = preEl.firstElementChild;
     const lang = codeEl.getAttribute('lang');
     const text = codeEl.textContent;
-    // const colorMode = preEl.ownerDocument.documentElement.getAttribute('data-color-mode');
     const theme = 'github-' + getEffectiveColorMode(asserts.assertObject(preEl.ownerDocument));
     const html = await window['codeToHtml'](text, {
         'lang': lang,
         'theme': theme,
     });
     preEl.outerHTML = html;
+}
+
+/**
+ * Converts an element text content to html.
+ *
+ * @param {!Window} window
+ * @param {!HTMLElement} el The element to convert
+ * @suppress {reportUnknownTypes, missingSourcesWarnings}
+ */
+function formatMarkdown(window, el) {
+    const text = el.textContent;
+    const html = window['marked']['parse'](text);
+    el.innerHTML = html;
 }
 
 /**

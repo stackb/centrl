@@ -3,9 +3,12 @@
 import {
     octiconCheck16,
     octiconChevronLeft16,
+    octiconChevronLeft24,
+    octiconChevronUp24,
     octiconChevronRight16,
     octiconCode16,
     octiconDotFill16,
+    octiconFile16,
     octiconGear16,
     octiconGitCommit16,
     octiconPaintbrush16,
@@ -53,6 +56,7 @@ import {
   moduleVersionModuleBazel,
   moduleVersions,
   moduleVersionTable,
+  moduleVersionUrl,
   sectionDivider,
   sectionHeader
 } from 'app/bcr/registry.soy';
@@ -508,15 +512,15 @@ import {
   {@param repositoryRules: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param rules: list<[file: FileInfo, sym: SymbolInfo]>}
 <div>
-  <div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider">
+  <div class="PageLayout">
     <div class="PageLayout-wrapper">
       <div class="PageLayout-columns">
         <div class="PageLayout-content {css('content')}"></div>
-        <div class="PageLayout-pane">
+        <div class="PageLayout-pane border-left pl-2">
           <nav class="SideNav" style="background-color: transparent; border: none">
 
             {if length($funcs) + length($rules) + length($aspects) + length($providers) + length($moduleExtensions) + length($repositoryRules) > 0}
-              <div class="text-default pb-2 d-inline-block">
+              <div class="pb-2 d-inline-block">
                 {if length($funcs) > 0}{symbolCount(type: $funcs[0].sym.getType(), n: length($funcs))} {sp}{/if}
                 {if length($rules) > 0}{symbolCount(type: $rules[0].sym.getType(), n: length($rules))} {sp}{/if}
                 {if length($aspects) > 0}{symbolCount(type: $aspects[0].sym.getType(), n: length($aspects))} {sp}{/if}
@@ -579,52 +583,146 @@ import {
 
 {template symbolItem}
   {@param item: [file: FileInfo, sym: SymbolInfo]}
-<div class="SideNav-item d-flex flex-items-center pl-2 rounded" style="border: none; box-shadow: none; padding: 0">
+<div class="SideNav-item d-flex flex-items-center rounded" style="border: none; box-shadow: none; padding: 0">
   {symbolInfoButton(item: $item)}
-  {octiconChevronRight16(fill: 'var(--color-fg-subtle)')}
 </div>
 {/template}
 
 
 {template symbolInfoButton}
   {@param item: [file: FileInfo, sym: SymbolInfo]}
-<a href="/#/{symbolItemUri(item: $item)}" class="btn btn-sm btn-octicon">
+<a href="{symbolInfoUrl(file: $item.file, sym: $item.sym)}" class="btn btn-sm btn-octicon">
   {let $color: symbolColor(type: $item.sym.getType()) /}
   {octiconDotFill16(fill: 'var(' + $color + ')')}
   <code class="text-small text-semibold">{$item.sym.getName()|truncate:32}</code>
 </a>
 {/template}
 
-{template symbolItemUri kind="uri"}
+{template fileInfoUrl kind="uri"}
   {@inject baseUrl: string}
-  {@param item: [file: FileInfo, sym: SymbolInfo]}
-{let $pkg: $item.file.getLabel()?.getPkg() /}
-{let $name: $item.file.getLabel()?.getName() /}
-/#/{$baseUrl}/{if $pkg}{$pkg}/{/if}{$name}/{$item.sym.getName()}
+  {@param file: FileInfo}
+{let $pkg: $file.getLabel()?.getPkg() /}
+{let $name: $file.getLabel()?.getName() /}
+/#/{$baseUrl}/{if $pkg}{$pkg}/{/if}{$name}
+{/template}
+
+{template symbolInfoUrl kind="uri"}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+{fileInfoUrl(file: $file)}/{$sym.getName()}
 {/template}
 
 
 {template documentationInfoListComponent}
+  {@inject baseUrl: string}
   {@param moduleVersion: ModuleVersion}
   {@param docs: DocumentationInfo}
-<div>
-  <ol>
+<div class="Box Box--condensed">
+  <div class="Box-header">
+    <div class="Box-title">Files {counterLabel(count: length($docs.getFileList()))}</div>
+  </div>
+  <div>
     {for $file in $docs.getFileList()}
-      <li>{$file.getLabel()?.getName()}</li>
+      {let $pkg: $file.getLabel()?.getPkg() /}
+      {let $name: $file.getLabel()?.getName() /}
+      <div class="Box-row d-flex flex-items-center">
+        <div class="flex-shrink-0 mr-2">
+          {octiconFile16()}
+        </div>
+        <a href="{fileInfoUrl(file: $file)}" class="flex-auto Link--primary">
+          <span class="text-semibold">{$pkg ? $pkg + '/' : ''}{$name}</span>
+        </a>
+        <span class="text-small text-light ml-2">{$file.getDescription()|truncate:63}</span>
+      </div>
     {/for}
-  </ol>
+  </div>
 </div>
 {/template}
 
 {template fileInfoListComponent}
   {@param moduleVersion: ModuleVersion}
   {@param file: FileInfo}
-<div>
-  <ol>
-    {for $sym in $file.getSymbolList()}
-      <li>{$sym.getName()}</li>
-    {/for}
-  </ol>
+  {@param rules: list<SymbolInfo>}
+  {@param funcs: list<SymbolInfo>}
+  {@param providers: list<SymbolInfo>}
+  {@param aspects: list<SymbolInfo>}
+  {@param moduleExtensions: list<SymbolInfo>}
+  {@param repositoryRules: list<SymbolInfo>}
+<div style="min-width: 0">
+  <div class="Subhead mb-2">
+    <div class="Subhead-heading d-flex flex-items-center">
+      <h3>
+        <span class="text-light f3-light">{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' : ''}</span>
+        {$file.getLabel()?.getName()}</h3>
+      <a class="Link--muted btn btn-sm btn-octicon" href="{moduleVersionUrl(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}/docs">{octiconChevronUp24()}</a>
+    </div>
+    {if $file.getDescription()}
+      <div class="Subhead-description">
+        <label class="desc-toggle-wrapper" style="display: block">
+          <input type="checkbox" class="desc-toggle" style="display: none">
+          <div class="markdown-body mb-1 text-normal desc-content" style="font-size: 14px; overflow-x: auto; max-height: 100px; overflow-y: hidden">
+            {$file.getDescription()}
+          </div>
+          <span class="Link--muted desc-toggle-label" style="cursor: pointer; font-size: 12px; display: block">
+            <span class="show-more">Show more...</span>
+            <span class="show-less" style="display: none">Show less</span>
+          </span>
+        </label>
+      </div>
+    {/if}
+    <div class="Subhead-actions">
+    </div>
+  </div>
+
+  <div class="mt-2">
+    {if length($rules) > 0}
+      {symbolListBox(file: $file, symbols: $rules, title: 'Rules')}
+    {/if}
+    {if length($funcs) > 0}
+      {symbolListBox(file: $file, symbols: $funcs, title: 'Functions')}
+    {/if}
+    {if length($providers) > 0}
+      {symbolListBox(file: $file, symbols: $providers, title: 'Providers')}
+    {/if}
+    {if length($aspects) > 0}
+      {symbolListBox(file: $file, symbols: $aspects, title: 'Aspects')}
+    {/if}
+    {if length($moduleExtensions) > 0}
+      {symbolListBox(file: $file, symbols: $moduleExtensions, title: 'Module Extensions')}
+    {/if}
+    {if length($repositoryRules) > 0}
+      {symbolListBox(file: $file, symbols: $repositoryRules, title: 'Repository Rules')}
+    {/if}
+  </div>
+</div>
+{/template}
+
+{template symbolListBox}
+  {@param file: FileInfo}
+  {@param symbols: list<SymbolInfo>}
+  {@param title: string}
+<div class="Box Box--condensed mb-3">
+  <div class="Box-header">
+    <div class="Box-title">{$title} {counterLabel(count: length($symbols))}</div>
+  </div>
+  {for $sym in $symbols}
+    {symbolListItem(file: $file, sym: $sym)}
+  {/for}
+</div>
+{/template}
+
+{template symbolListItem}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+<div class="Box-row d-flex flex-items-center">
+  <div class="flex-shrink-0 mr-2">
+    {let $color: symbolColor(type: $sym.getType()) /}
+    {octiconDotFill16(fill: 'var(' + $color + ')')}
+  </div>
+  <a href="{symbolInfoUrl(file: $file, sym: $sym)}" class="flex-auto Link--primary">
+    <span class="text-semibold">{$sym.getName()}</span>
+  </a>
+  <span class="text-small text-light ml-2">{$sym.getDescription()|truncate:63}</span>
 </div>
 {/template}
 
