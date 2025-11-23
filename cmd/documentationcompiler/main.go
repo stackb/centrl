@@ -147,6 +147,16 @@ func parseModuleSymbols(module *sdpb.ModuleInfo) []*bzpb.SymbolInfo {
 		})
 	}
 
+	// Process macros
+	for _, macro := range module.MacroInfo {
+		symbols = append(symbols, &bzpb.SymbolInfo{
+			Type:        bzpb.SymbolType_SYMBOL_TYPE_MACRO,
+			Name:        macro.MacroName,
+			Description: truncate(macro.DocString),
+			Info:        &bzpb.SymbolInfo_Macro{Macro: macro},
+		})
+	}
+
 	return symbols
 }
 

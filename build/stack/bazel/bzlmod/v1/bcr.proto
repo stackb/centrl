@@ -355,6 +355,7 @@ enum SymbolType {
     SYMBOL_TYPE_ASPECT = 4;
     SYMBOL_TYPE_MODULE_EXTENSION = 5;
     SYMBOL_TYPE_REPOSITORY_RULE = 6;
+    SYMBOL_TYPE_MACRO = 7;
 }
 
 // SymbolInfo represents information about a symbol in a Bazel module
@@ -373,6 +374,7 @@ message SymbolInfo {
         stardoc_output.AspectInfo aspect = 7;
         stardoc_output.ModuleExtensionInfo module_extension = 9;
         stardoc_output.RepositoryRuleInfo repository_rule = 10;
+        stardoc_output.MacroInfo macro = 11;
     }
 }
 

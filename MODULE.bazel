@@ -80,6 +80,11 @@ archive_override(
     urls = ["https://github.com/protocolbuffers/protobuf-javascript/archive/263ee701cba6b75e1f8eddad5adcdf74718318b1.tar.gz"],
 )
 
+local_path_override(
+    module_name = "build_stack_rules_proto",
+    path = "/Users/pcj/go/src/github.com/stackb/rules_proto",
+)
+
 # -------------------------------------------------------------------
 # Configuration: Go
 # -------------------------------------------------------------------

@@ -2,19 +2,23 @@ goog.module("centrl.App");
 
 const AspectInfo = goog.require("proto.stardoc_output.AspectInfo");
 const AttributeInfo = goog.require("proto.stardoc_output.AttributeInfo");
+const AttributeType = goog.require("proto.stardoc_output.AttributeType");
 const ComponentEventType = goog.require("goog.ui.Component.EventType");
 const DocumentationInfo = goog.require("proto.build.stack.bazel.bzlmod.v1.DocumentationInfo");
 const FileInfo = goog.require("proto.build.stack.bazel.bzlmod.v1.FileInfo");
 const FunctionParamInfo = goog.require("proto.stardoc_output.FunctionParamInfo");
+const FunctionParamRole = goog.require("proto.stardoc_output.FunctionParamRole");
 const Label = goog.require("proto.build.stack.bazel.bzlmod.v1.Label");
 const Maintainer = goog.require("proto.build.stack.bazel.bzlmod.v1.Maintainer");
 const Message = goog.require("jspb.Message");
 const Module = goog.require("proto.build.stack.bazel.bzlmod.v1.Module");
 const ModuleDependency = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleDependency");
 const ModuleExtensionInfo = goog.require("proto.stardoc_output.ModuleExtensionInfo");
+const ModuleExtensionTagClassInfo = goog.require("proto.stardoc_output.ModuleExtensionTagClassInfo");
 const ModuleInfo = goog.require("proto.stardoc_output.ModuleInfo");
 const ModuleMetadata = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleMetadata");
 const ModuleVersion = goog.require("proto.build.stack.bazel.bzlmod.v1.ModuleVersion");
+const ProviderFieldInfo = goog.require("proto.stardoc_output.ProviderFieldInfo");
 const ProviderInfo = goog.require("proto.stardoc_output.ProviderInfo");
 const Registry = goog.require("proto.build.stack.bazel.bzlmod.v1.Registry");
 const RepositoryMetadata = goog.require("proto.build.stack.bazel.bzlmod.v1.RepositoryMetadata");
@@ -37,7 +41,7 @@ const strings = goog.require("goog.string");
 const { App, Component, Route, RouteEvent, RouteEventType } = goog.require("stack.ui");
 const { Application, Searchable } = goog.require("centrl.common");
 const { ModuleSearchHandler, SearchComponent } = goog.require('centrl.search');
-const { bodySelect, documentationInfoListComponent, documentationInfoSelect, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, registryApp, ruleInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app'); const { moduleVersionsListComponent } = goog.require('soy.registry');
+const { aspectInfoComponent, bodySelect, documentationInfoListComponent, documentationInfoSelect, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app'); const { moduleVersionsListComponent } = goog.require('soy.registry');
 
 const HIGHLIGHT_SYNTAX = true;
 const FORMAT_MARKDOWN = true;
@@ -87,6 +91,158 @@ const ModulesListTabName = {
 const MaintainersListTabName = {
     ALL: "all",
 };
+
+/**
+ * Format a Bazel label into string format.
+ * @param {?Label} label The label to format
+ * @returns {string} Formatted label string (e.g., "@repo//pkg:name")
+ */
+function formatLabel(label) {
+    if (!label) {
+        return '';
+    }
+
+    const repo = label.getRepo() || '';
+    const pkg = label.getPkg() || '';
+    const name = label.getName() || '';
+
+    let result = '';
+
+    // Add repository if present
+    if (repo && repo !== '') {
+        result += `@${repo}`;
+    }
+
+    // Add package path
+    if (pkg && pkg !== '') {
+        result += `//${pkg}`;
+    } else {
+        result += '//';
+    }
+
+    // Add target name
+    if (name && name !== '') {
+        result += `:${name}`;
+    }
+
+    return result;
+}
+
+/**
+ * Get an example value for a function parameter based on heuristics.
+ * @param {!FunctionParamInfo} param The function parameter
+ * @returns {string} Example value for the parameter
+ */
+function getParameterExampleValue(param) {
+    const defaultValue = param.getDefaultValue();
+    if (defaultValue && defaultValue !== '') {
+        return defaultValue;
+    }
+
+    // Generic example values based on parameter name patterns
+    const name = param.getName().toLowerCase();
+    if (name.includes('name')) {
+        return '"my_target"';
+    }
+    if (name.includes('label') || name.includes('target')) {
+        return '"//path/to:target"';
+    }
+    if (name.includes('list') || name.includes('files') || name.includes('deps')) {
+        return '[]';
+    }
+    if (name.includes('dict') || name.includes('map')) {
+        return '{}';
+    }
+    if (name.includes('bool') || name.includes('enabled') || name.includes('flag')) {
+        return 'True';
+    }
+    if (name.includes('int') || name.includes('count') || name.includes('size')) {
+        return '1';
+    }
+
+    return '""';
+}
+
+/**
+ * Get an example value for a provider field based on heuristics.
+ * @param {!ProviderFieldInfo} field The provider field
+ * @returns {string} Example value for the field
+ */
+function getFieldExampleValue(field) {
+    // Generic example values based on field name patterns
+    const name = field.getName().toLowerCase();
+
+    if (name.includes('files') || name.includes('srcs') || name.includes('deps')) {
+        return 'depset([])';
+    }
+    if (name.includes('list') || name.includes('array')) {
+        return '[]';
+    }
+    if (name.includes('dict') || name.includes('map') || name.includes('mapping')) {
+        return '{}';
+    }
+    if (name.includes('bool') || name.includes('enabled') || name.includes('flag')) {
+        return 'True';
+    }
+    if (name.includes('int') || name.includes('count') || name.includes('size')) {
+        return '0';
+    }
+    if (name.includes('path') || name.includes('dir')) {
+        return '"path/to/file"';
+    }
+
+    return '""';
+}
+
+/**
+ * Get an example value for an attribute based on its type.
+ * @param {!AttributeInfo} attr The attribute info
+ * @param {string=} defaultName Optional default name to use for NAME type attributes
+ * @returns {string} Example value for the attribute
+ */
+function getAttributeExampleValue(attr, defaultName = 'my_target') {
+    const attrName = attr.getName();
+
+    // Special case for "name" attribute - use provided default or attribute name
+    if (attrName === 'name' && defaultName) {
+        return `"${defaultName}"`;
+    }
+
+    const attrType = attr.getType();
+
+    switch (attrType) {
+        case AttributeType.NAME:
+            return `"${defaultName}"`;
+        case AttributeType.INT:
+            return '1';
+        case AttributeType.LABEL:
+            return '"//path/to:target"';
+        case AttributeType.STRING:
+            return '""';
+        case AttributeType.STRING_LIST:
+            return '[]';
+        case AttributeType.INT_LIST:
+            return '[]';
+        case AttributeType.LABEL_LIST:
+            return '[]';
+        case AttributeType.BOOLEAN:
+            return 'True';
+        case AttributeType.LABEL_STRING_DICT:
+            return '{}';
+        case AttributeType.STRING_DICT:
+            return '{}';
+        case AttributeType.STRING_LIST_DICT:
+            return '{}';
+        case AttributeType.OUTPUT:
+            return '"output.txt"';
+        case AttributeType.OUTPUT_LIST:
+            return '[]';
+        case AttributeType.LABEL_DICT_UNARY:
+            return '{}';
+        default:
+            return '""';
+    }
+}
 
 /**
  * Base Select component that shows a not found page for unknown routes.
@@ -1537,6 +1693,134 @@ class ModuleVersionComponent extends Component {
 }
 
 
+/**
+ * @abstract
+ * TODO: convert to template / generics
+ */
+class NavigableSelect extends ContentSelect {
+    /**
+     * @param {!Array<!Object>} items
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(items, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const  */
+        this.items_ = items;
+    }
+
+    /**
+     * @abstract
+     * @returns {?Object}
+     */
+    getCurrentItem() { }
+
+    /**
+     * @abstract
+     * @param {!Object} item
+     * @returns {!Array<string>}
+     */
+    getItemPath(item) { }
+
+    /** @override */
+    enterDocument() {
+        super.enterDocument();
+        this.enterKeys();
+    }
+
+    /**
+     * Setup keyboard shorcuts.
+     */
+    enterKeys() {
+        this.getHandler().listen(this, ["keydown", "keyup"], this.handleKey);
+    }
+
+    /**
+     * Key down handler for the menu.
+     * @param {events.KeyEvent} e The event object.
+     */
+    handleKey(e) {
+        let handled = false;
+        switch (e.keyCode) {
+            case events.KeyCodes.RIGHT:
+                handled = this.onKeyRight();
+                break;
+            case events.KeyCodes.LEFT:
+                handled = this.onKeyLeft();
+                break;
+            case events.KeyCodes.UP:
+                handled = this.onKeyUp();
+                break;
+        }
+        if (handled) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    /**
+     * @returns {boolean} true if event was handled.
+     */
+    onKeyRight() {
+        this.setSelectedItem(this.getNextPrevItem(false));
+        return true;
+    }
+
+    /**
+     * @returns {boolean} true if event was handled.
+     */
+    onKeyLeft() {
+        this.setSelectedItem(this.getNextPrevItem(true));
+        return true;
+    }
+
+    /**
+     * @returns {boolean} true if event was handled.
+     */
+    onKeyUp() {
+        const app = /** @type {!Application} */ (this.getApp());
+        app.setLocation(this.parent().getPath());
+        return true;
+    }
+
+    /**
+     * 
+     * @param {!Object} item
+     */
+    setSelectedItem(item) {
+        const app = /** @type {!Application} */ (this.getApp());
+        app.setLocation(this.getPath().concat(this.getItemPath(item)));
+    }
+
+    /**
+     * Returns the next or previous item. Used for up/down arrows.
+     * @param {boolean} prev True to go to the previous element instead of next.
+     * @return {!Object} The next or previous symbol.
+     */
+    getNextPrevItem(prev) {
+        const items = this.items_;
+        const count = items.length;
+
+        const currentItem = this.getCurrentItem();
+        if (!currentItem) {
+            const nextIndex = prev ? count - 1 : 0;
+            return items[nextIndex];
+        }
+
+        const currentIndex = items.indexOf(currentItem);
+        let nextIndex = currentIndex + (prev ? -1 : 1);
+
+        // if overflowed/underflowed, wrap around
+        if (nextIndex < 0) {
+            nextIndex += count;
+        } else if (nextIndex >= count) {
+            nextIndex -= count;
+        }
+
+        return items[nextIndex];
+    }
+}
+
 class DocumentationInfoSelect extends ContentSelect {
     /**
      * @param {!ModuleVersion} moduleVersion
@@ -1564,8 +1848,15 @@ class DocumentationInfoSelect extends ContentSelect {
      * @param {!FileInfo} file
      */
     addFile(file) {
-        let prefix = `${file.getLabel().getPkg() ? file.getLabel().getPkg() + '/' : ''}${file.getLabel().getName()}`;
-        this.fileTrie_.add(prefix, file);
+        this.fileTrie_.add(this.getFilePrefix(file), file);
+    }
+
+    /**
+     * @param {!FileInfo} file
+     * @returns {string}
+     */
+    getFilePrefix(file) {
+        return `${file.getLabel().getPkg() ? file.getLabel().getPkg() + '/' : ''}${file.getLabel().getName()}`;
     }
 
     /**
@@ -1584,6 +1875,8 @@ class DocumentationInfoSelect extends ContentSelect {
         const moduleExtensions = [];
         /** @type {!Array<!FileSymbol>} */
         const repositoryRules = [];
+        /** @type {!Array<!FileSymbol>} */
+        const macros = [];
 
         for (const file of this.docs_.getFileList()) {
             for (const sym of file.getSymbolList()) {
@@ -1606,6 +1899,9 @@ class DocumentationInfoSelect extends ContentSelect {
                     case 6: // SYMBOL_TYPE_REPOSITORY_RULE
                         repositoryRules.push({ file, sym });
                         break;
+                    case 7: // SYMBOL_TYPE_MACRO
+                        macros.push({ file, sym });
+                        break;
                 }
             }
         }
@@ -1613,6 +1909,7 @@ class DocumentationInfoSelect extends ContentSelect {
         this.setElementInternal(soy.renderAsElement(documentationInfoSelect, {
             aspects,
             funcs,
+            macros,
             moduleExtensions,
             providers,
             repositoryRules,
@@ -1666,20 +1963,48 @@ class DocumentationInfoSelect extends ContentSelect {
 }
 
 
-class FileInfoSelect extends ContentSelect {
+class FileInfoSelect extends NavigableSelect {
     /**
      * @param {!ModuleVersion} moduleVersion
      * @param {!FileInfo} file
      * @param {?dom.DomHelper=} opt_domHelper
      */
     constructor(moduleVersion, file, opt_domHelper) {
-        super(opt_domHelper);
+        super(file.getSymbolList(), opt_domHelper);
 
         /** @private @const */
         this.moduleVersion_ = moduleVersion;
 
         /** @private @const */
         this.file_ = file;
+    }
+
+    /**
+     * @override
+     * @returns {?Object}
+     */
+    getCurrentItem() {
+        const currentTab = this.getCurrent();
+        if (currentTab && (currentTab instanceof SymbolInfoComponent)) {
+            return /** @type {!SymbolInfoComponent} */(currentTab).getSymbol();
+        }
+        return null;
+    }
+
+    /**
+     * @override
+     * @param {!Object} item
+     * @returns {!Array<string>}
+     */
+    getItemPath(item) {
+        return [/** @type {!SymbolInfo} */(item).getName()];
+    }
+
+    /**
+     * @returns {!FileInfo}
+     */
+    getFile() {
+        return this.file_;
     }
 
     /**
@@ -1692,94 +2017,6 @@ class FileInfoSelect extends ContentSelect {
         }, {
             baseUrl: this.getPathUrl(),
         }));
-    }
-
-    /** @override */
-    enterDocument() {
-        super.enterDocument();
-        this.enterKeys();
-    }
-
-    /**
-     * Setup keyboard shorcuts.
-     */
-    enterKeys() {
-        this.getHandler().listen(this, ["keydown", "keyup"], this.onKey);
-    }
-
-    /**
-     * Key down handler for the menu.
-     * @param {events.KeyEvent} e The event object.
-     */
-    onKey(e) {
-        switch (e.keyCode) {
-            case events.KeyCodes.RIGHT:
-                this.onKeyRight();
-                this.setSelectedSymbol(this.getNextPrevSymbol(false));
-                break;
-            case events.KeyCodes.LEFT:
-                this.onKeyLeft();
-                break;
-            case events.KeyCodes.UP:
-                this.onKeyUp();
-                break;
-        }
-    }
-
-    onKeyRight() {
-        this.setSelectedSymbol(this.getNextPrevSymbol(false));
-    }
-
-    onKeyLeft() {
-        this.setSelectedSymbol(this.getNextPrevSymbol(true));
-    }
-
-    onKeyUp() {
-        const app = /** @type {!Application} */ (this.getApp());
-        app.setLocation(this.parent().getPath());
-    }
-
-    /**
-     * 
-     * @param {!SymbolInfo} sym 
-     */
-    setSelectedSymbol(sym) {
-        const app = /** @type {!Application} */ (this.getApp());
-        app.setLocation(this.getPath().concat([sym.getName()]));
-    }
-
-    /**
-     * Returns the next or previous item. Used for up/down arrows.
-     * @param {boolean} prev True to go to the previous element instead of next.
-     * @return {!SymbolInfo} The next or previous symbol.
-     */
-    getNextPrevSymbol(prev) {
-        const symbols = this.file_.getSymbolList();
-        const count = symbols.length;
-
-        /** @type {!SymbolInfo | undefined} */
-        let currentSymbol = undefined;
-
-        const currentTab = this.getCurrent();
-        if (currentTab) {
-            currentSymbol = /** @type {!SymbolInfoComponent} */(currentTab).getSymbol();
-        }
-
-        if (!currentSymbol) {
-            return symbols[prev ? count - 1 : 0];
-        }
-
-        const currentIndex = symbols.indexOf(currentSymbol);
-        let nextIndex = currentIndex + (prev ? -1 : 1);
-
-        // if overflowed/underflowed, wrap around
-        if (nextIndex < 0) {
-            nextIndex += count;
-        } else if (nextIndex >= count) {
-            nextIndex -= count;
-        }
-
-        return symbols[nextIndex];
     }
 
     /**
@@ -1825,13 +2062,15 @@ class FileInfoSelect extends ContentSelect {
             case 2: // SYMBOL_TYPE_FUNCTION
                 return new FunctionInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             case 3: // SYMBOL_TYPE_PROVIDER
-                return new SymbolInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
+                return new ProviderInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             case 4: // SYMBOL_TYPE_ASPECT
-                return new SymbolInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
+                return new AspectInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             case 5: // SYMBOL_TYPE_MODULE_EXTENSION
-                return new SymbolInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
+                return new ModuleExtensionInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             case 6: // SYMBOL_TYPE_REPOSITORY_RULE
-                return new SymbolInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
+                return new RepositoryRuleInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
+            case 7: // SYMBOL_TYPE_MACRO
+                return new MacroInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             default:
                 return new SymbolInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
         }
@@ -1940,38 +2179,6 @@ class SymbolInfoComponent extends MarkdownComponent {
     }
 
     /**
-     * Format a Label into a Starlark label string
-     * @param {!Label} label
-     * @returns {string}
-     */
-    formatLabel(label) {
-        const repo = label.getRepo() || '';
-        const pkg = label.getPkg() || '';
-        const name = label.getName() || '';
-
-        let result = '';
-
-        // Add repository if present
-        if (repo && repo !== '') {
-            result += `@${repo}`;
-        }
-
-        // Add package path
-        if (pkg && pkg !== '') {
-            result += `//${pkg}`;
-        } else {
-            result += '//';
-        }
-
-        // Add target name
-        if (name && name !== '') {
-            result += `:${name}`;
-        }
-
-        return result;
-    }
-
-    /**
      * Generate a load statement for the current symbol
      * @param {string} symbolName - The name of the symbol to load
      * @returns {string}
@@ -1986,7 +2193,7 @@ class SymbolInfoComponent extends MarkdownComponent {
         const loadLabel = label.clone();
         loadLabel.setRepo(this.moduleVersion_.getName());
 
-        const loadPath = this.formatLabel(loadLabel);
+        const loadPath = formatLabel(loadLabel);
         return `load("${loadPath}", "${symbolName}")`;
     }
 }
@@ -2036,69 +2243,22 @@ class RuleInfoComponent extends SymbolInfoComponent {
 
         // Add attributes
         const attrs = rule.getAttributeList();
-        const requiredAttrs = attrs.filter(attr => attr.getMandatory());
-        const optionalAttrs = attrs.filter(attr => !attr.getMandatory());
+        const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
+        const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
 
-        // Required attributes first
+        // Required attributes first (including 'name')
         requiredAttrs.forEach((attr) => {
-            const value = this.getExampleValue(attr);
+            const value = getAttributeExampleValue(attr, this.sym_.getName());
             lines.push(`    ${attr.getName()} = ${value},`);
         });
         optionalAttrs.forEach((attr) => {
-            const value = this.getExampleValue(attr);
+            const value = getAttributeExampleValue(attr, this.sym_.getName());
             lines.push(`    # ${attr.getName()} = ${value},`);
         });
 
         lines.push(')');
 
         return lines.join('\n');
-    }
-
-    /**
-     * Get an example value for an attribute based on its type
-     * @param {!AttributeInfo} attr
-     * @returns {string}
-     */
-    getExampleValue(attr) {
-        const attrName = attr.getName();
-
-        // Special case for "name" attribute
-        if (attrName === 'name') {
-            return `"${this.sym_.getName()}"`;
-        }
-
-        const attrType = attr.getType();
-
-        switch (attrType) {
-            case 1: // NAME
-                return '"my_target"';
-            case 2: // INT
-                return '1';
-            case 3: // LABEL
-                return '"//path/to:target"';
-            case 4: // STRING
-                return '""';
-            case 5: // STRING_LIST
-                return '[]';
-            case 6: // INT_LIST
-                return '[]';
-            case 7: // LABEL_LIST
-                return '[]';
-            case 8: // BOOLEAN
-                return 'True';
-            case 9: // LABEL_STRING_DICT
-                return '{}';
-            case 10: // STRING_DICT
-                return '{}';
-            case 11: // STRING_LIST_DICT
-                return '{}';
-            case 12: // OUTPUT
-                return '"output.txt"';
-            case 13: // OUTPUT_LIST
-                return '[]';
-            default:
-                return '""';
-        }
     }
 }
 
@@ -2142,59 +2302,378 @@ class FunctionInfoComponent extends SymbolInfoComponent {
         const funcName = this.sym_.getName();
         const lines = [this.generateLoadStatement(funcName), ''];
 
-        // Function invocation
+        // Function invocation with role-aware parameter formatting
         const params = func.getParameterList();
-        const requiredParams = params.filter(param => param.getMandatory());
         const hasReturn = func.getReturn() != null;
         const resultPrefix = hasReturn ? 'result = ' : '';
 
-        if (requiredParams.length === 0) {
+        // Separate parameters by role
+        const positionalParams = params.filter(p => {
+            const role = p.getRole();
+            return (role === FunctionParamRole.PARAM_ROLE_UNSPECIFIED ||
+                role === FunctionParamRole.PARAM_ROLE_ORDINARY ||
+                role === FunctionParamRole.PARAM_ROLE_POSITIONAL_ONLY) && p.getMandatory();
+        });
+        const keywordOnlyParams = params.filter(p => {
+            const role = p.getRole();
+            return role === FunctionParamRole.PARAM_ROLE_KEYWORD_ONLY && p.getMandatory();
+        });
+        const varargsParam = params.find(p => p.getRole() === FunctionParamRole.PARAM_ROLE_VARARGS);
+        const kwargsParam = params.find(p => p.getRole() === FunctionParamRole.PARAM_ROLE_KWARGS);
+
+        const hasParams = positionalParams.length > 0 || keywordOnlyParams.length > 0 || varargsParam || kwargsParam;
+
+        if (!hasParams) {
             lines.push(`${resultPrefix}${funcName}()`);
         } else {
             lines.push(`${resultPrefix}${funcName}(`);
-            requiredParams.forEach((param) => {
-                const value = this.getParameterExampleValue(param);
+
+            // Positional/ordinary parameters (can be passed by position or keyword)
+            positionalParams.forEach((param) => {
+                const value = getParameterExampleValue(param);
                 lines.push(`    ${param.getName()} = ${value},`);
+            });
+
+            // Keyword-only parameters
+            keywordOnlyParams.forEach((param) => {
+                const value = getParameterExampleValue(param);
+                lines.push(`    ${param.getName()} = ${value},`);
+            });
+
+            // Varargs (*args) - show as comment since it's optional
+            if (varargsParam) {
+                lines.push(`    # *${varargsParam.getName()},`);
+            }
+
+            // Kwargs (**kwargs) - show as comment since it's optional
+            if (kwargsParam) {
+                lines.push(`    # **${kwargsParam.getName()},`);
+            }
+
+            lines.push(')');
+        }
+
+        return lines.join('\n');
+    }
+}
+
+class ProviderInfoComponent extends SymbolInfoComponent {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(moduleVersion, file, sym, opt_domHelper);
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        const exampleCode = this.generateProviderExample();
+
+        this.setElementInternal(soy.renderAsElement(providerInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+            exampleCode: exampleCode,
+        }, {
+            baseUrl: this.getDocsBaseUrl(),
+        }));
+    }
+
+    /**
+     * Generate a Starlark example for the provider
+     * @returns {string}
+     */
+    generateProviderExample() {
+        const provider = this.sym_.getProvider();
+        if (!provider) {
+            return '';
+        }
+
+        const providerName = this.sym_.getName();
+        const lines = [this.generateLoadStatement(providerName), ''];
+
+        // Provider instantiation
+        const fields = provider.getFieldInfoList();
+
+        if (fields.length === 0) {
+            lines.push(`info = ${providerName}()`);
+        } else {
+            lines.push(`info = ${providerName}(`);
+            fields.forEach((field) => {
+                const value = getFieldExampleValue(field);
+                lines.push(`    ${field.getName()} = ${value},`);
             });
             lines.push(')');
         }
 
         return lines.join('\n');
     }
+}
+
+class RepositoryRuleInfoComponent extends SymbolInfoComponent {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(moduleVersion, file, sym, opt_domHelper);
+    }
 
     /**
-     * Get an example value for a function parameter
-     * @param {!FunctionParamInfo} param
+     * @override
+     */
+    createDom() {
+        const exampleCode = this.generateRepositoryRuleExample();
+
+        this.setElementInternal(soy.renderAsElement(repositoryRuleInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+            exampleCode: exampleCode,
+        }, {
+            baseUrl: this.getDocsBaseUrl(),
+        }));
+    }
+
+    /**
+     * Generate a Starlark example for the repository rule
      * @returns {string}
      */
-    getParameterExampleValue(param) {
-        const defaultValue = param.getDefaultValue();
-        if (defaultValue && defaultValue !== '') {
-            return defaultValue;
+    generateRepositoryRuleExample() {
+        const repoRule = this.sym_.getRepositoryRule();
+        if (!repoRule) {
+            return '';
         }
 
-        // Generic example values based on parameter name patterns
-        const name = param.getName().toLowerCase();
-        if (name.includes('name')) {
-            return '"my_target"';
-        }
-        if (name.includes('label') || name.includes('target')) {
-            return '"//path/to:target"';
-        }
-        if (name.includes('list') || name.includes('files') || name.includes('deps')) {
-            return '[]';
-        }
-        if (name.includes('dict') || name.includes('map')) {
-            return '{}';
-        }
-        if (name.includes('bool') || name.includes('enabled') || name.includes('flag')) {
-            return 'True';
-        }
-        if (name.includes('int') || name.includes('count') || name.includes('size')) {
-            return '1';
+        const ruleName = this.sym_.getName();
+        const lines = [this.generateLoadStatement(ruleName), ''];
+
+        // Repository rule invocation
+        lines.push(`${ruleName}(`);
+
+        // Add attributes
+        const attrs = repoRule.getAttributeList();
+        const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
+        const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
+
+        // Required attributes first (including 'name')
+        requiredAttrs.forEach((attr) => {
+            const value = getAttributeExampleValue(attr, this.sym_.getName());
+            lines.push(`    ${attr.getName()} = ${value},`);
+        });
+        optionalAttrs.forEach((attr) => {
+            const value = getAttributeExampleValue(attr, this.sym_.getName());
+            lines.push(`    # ${attr.getName()} = ${value},`);
+        });
+
+        lines.push(')');
+
+        return lines.join('\n');
+    }
+}
+
+class AspectInfoComponent extends SymbolInfoComponent {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(moduleVersion, file, sym, opt_domHelper);
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        const exampleCode = this.generateAspectExample();
+
+        this.setElementInternal(soy.renderAsElement(aspectInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+            exampleCode: exampleCode,
+        }, {
+            baseUrl: this.getDocsBaseUrl(),
+        }));
+    }
+
+    /**
+     * Generate a Starlark example for the aspect
+     * @returns {string}
+     */
+    generateAspectExample() {
+        const aspect = this.sym_.getAspect();
+        if (!aspect) {
+            return '';
         }
 
-        return '""';
+        const aspectName = this.sym_.getName();
+        const lines = [this.generateLoadStatement(aspectName), ''];
+
+        // Aspect usage (typically used in a rule's aspects parameter)
+        lines.push('# Example: Apply aspect to a target');
+        lines.push('my_rule(');
+        lines.push('    name = "my_target",');
+        lines.push(`    aspects = [${aspectName}],`);
+        lines.push(')');
+
+        return lines.join('\n');
+    }
+}
+
+class MacroInfoComponent extends SymbolInfoComponent {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(moduleVersion, file, sym, opt_domHelper);
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        const exampleCode = this.generateMacroExample();
+
+        this.setElementInternal(soy.renderAsElement(macroInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+            exampleCode: exampleCode,
+        }, {
+            baseUrl: this.getDocsBaseUrl(),
+        }));
+    }
+
+    /**
+     * Generate a Starlark example for the macro
+     * @returns {string}
+     */
+    generateMacroExample() {
+        const macro = this.sym_.getMacro();
+        if (!macro) {
+            return '';
+        }
+
+        const macroName = this.sym_.getName();
+        const lines = [this.generateLoadStatement(macroName), ''];
+
+        // Macro invocation
+        lines.push(`${macroName}(`);
+
+        // Add attributes
+        const attrs = macro.getAttributeList();
+        const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
+        const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
+
+        // Required attributes first (including 'name')
+        requiredAttrs.forEach((attr) => {
+            const value = getAttributeExampleValue(attr, this.sym_.getName());
+            lines.push(`    ${attr.getName()} = ${value},`);
+        });
+        optionalAttrs.forEach((attr) => {
+            const value = getAttributeExampleValue(attr, this.sym_.getName());
+            lines.push(`    # ${attr.getName()} = ${value},`);
+        });
+
+        lines.push(')');
+
+        return lines.join('\n');
+    }
+}
+
+class ModuleExtensionInfoComponent extends SymbolInfoComponent {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(moduleVersion, file, sym, opt_domHelper);
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        const exampleCode = this.generateModuleExtensionExample();
+
+        this.setElementInternal(soy.renderAsElement(moduleExtensionInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+            exampleCode: exampleCode,
+        }, {
+            baseUrl: this.getDocsBaseUrl(),
+        }));
+    }
+
+    /**
+     * Generate a Starlark example for the module extension
+     * @returns {string}
+     */
+    generateModuleExtensionExample() {
+        const ext = this.sym_.getModuleExtension();
+        if (!ext) {
+            return '';
+        }
+
+        const extName = this.sym_.getName();
+        const tagClasses = ext.getTagClassList();
+
+        const lines = [this.generateLoadStatement(extName), ''];
+
+        // Module extension usage in MODULE.bazel
+        lines.push('# In MODULE.bazel:');
+        lines.push(`${extName} = use_extension("${formatLabel(this.file_.getLabel())}", "${extName}")`);
+        lines.push('');
+
+        // Generate example for each tag class
+        tagClasses.forEach((tagClass, index) => {
+            const tagName = tagClass.getTagName();
+            const attrs = tagClass.getAttributeList();
+            const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
+            const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
+
+            if (index > 0) {
+                lines.push('');
+            }
+
+            if (requiredAttrs.length === 0 && optionalAttrs.length === 0) {
+                lines.push(`${extName}.${tagName}()`);
+            } else {
+                lines.push(`${extName}.${tagName}(`);
+
+                // Required attributes (including 'name')
+                requiredAttrs.forEach((attr) => {
+                    const value = getAttributeExampleValue(attr, this.sym_.getName());
+                    lines.push(`    ${attr.getName()} = ${value},`);
+                });
+
+                // Optional attributes (commented out)
+                optionalAttrs.forEach((attr) => {
+                    const value = getAttributeExampleValue(attr, this.sym_.getName());
+                    lines.push(`    # ${attr.getName()} = ${value},`);
+                });
+
+                lines.push(')');
+            }
+        });
+
+        return lines.join('\n');
     }
 }
 

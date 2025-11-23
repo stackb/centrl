@@ -22,8 +22,10 @@ import {
   FunctionParamInfo,
   FunctionReturnInfo,
   ModuleExtensionInfo,
+  ModuleExtensionTagClassInfo,
   ModuleInfo,
   ProviderInfo,
+  ProviderFieldInfo,
   RepositoryRuleInfo,
   RuleInfo,
   StarlarkFunctionInfo
@@ -512,6 +514,7 @@ import {
 {template documentationInfoSelect}
   {@param aspects: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param funcs: list<[file: FileInfo, sym: SymbolInfo]>}
+  {@param macros: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param moduleExtensions: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param providers: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param repositoryRules: list<[file: FileInfo, sym: SymbolInfo]>}
@@ -524,9 +527,10 @@ import {
         <div class="PageLayout-pane border-left pl-2">
           <nav class="SideNav" style="background-color: transparent; border: none">
 
-            {if length($funcs) + length($rules) + length($aspects) + length($providers) + length($moduleExtensions) + length($repositoryRules) > 0}
+            {if length($funcs) + length($rules) + length($aspects) + length($providers) + length($moduleExtensions) + length($repositoryRules) + length($macros) > 0}
               <div class="pb-2 d-inline-block">
                 {if length($funcs) > 0}{symbolCount(type: $funcs[0].sym.getType(), n: length($funcs))} {sp}{/if}
+                {if length($macros) > 0}{symbolCount(type: $macros[0].sym.getType(), n: length($macros))} {sp}{/if}
                 {if length($rules) > 0}{symbolCount(type: $rules[0].sym.getType(), n: length($rules))} {sp}{/if}
                 {if length($aspects) > 0}{symbolCount(type: $aspects[0].sym.getType(), n: length($aspects))} {sp}{/if}
                 {if length($providers) > 0}{symbolCount(type: $providers[0].sym.getType(), n: length($providers))} {sp}{/if}
@@ -535,47 +539,13 @@ import {
               </div>
             {/if}
 
-            {if length($funcs) > 0}
-              <div id="doc-functions" class="text-semibold mt-2 mb-1">Functions</div>
-              {for $item in $funcs}
-                {symbolItem(item: $item)}
-              {/for}
-            {/if}
-
-            {if length($rules) > 0}
-              <div id="doc-rules" class="text-semibold mt-2 mb-1">Rules</div>
-              {for $item in $rules}
-                {symbolItem(item: $item)}
-              {/for}
-            {/if}
-
-            {if length($providers) > 0}
-              <div id="doc-providers" class="text-semibold mt-2 mb-1">Providers</div>
-              {for $item in $providers}
-                {symbolItem(item: $item)}
-              {/for}
-            {/if}
-
-            {if length($aspects) > 0}
-              <div id="doc-aspects" class="text-semibold mt-2 mb-1">Aspects</div>
-              {for $item in $aspects}
-                {symbolItem(item: $item)}
-              {/for}
-            {/if}
-
-            {if length($moduleExtensions) > 0}
-              <div id="doc-module-extensions" class="text-semibold mt-2 mb-1">Module Extensions</div>
-              {for $item in $moduleExtensions}
-                {symbolItem(item: $item)}
-              {/for}
-            {/if}
-
-            {if length($repositoryRules) > 0}
-              <div id="doc-repository-rules" class="text-semibold mt-2 mb-1">Repository Rules</div>
-              {for $item in $repositoryRules}
-                {symbolItem(item: $item)}
-              {/for}
-            {/if}
+            {symbolSection(title: 'Functions', items: $funcs)}
+            {symbolSection(title: 'Macros', items: $macros)}
+            {symbolSection(title: 'Rules', items: $rules)}
+            {symbolSection(title: 'Providers', items: $providers)}
+            {symbolSection(title: 'Aspects', items: $aspects)}
+            {symbolSection(title: 'Module Extensions', items: $moduleExtensions)}
+            {symbolSection(title: 'Repository Rules', items: $repositoryRules)}
           </nav>
 
         </div>
@@ -589,19 +559,14 @@ import {
 {template symbolItem}
   {@param item: [file: FileInfo, sym: SymbolInfo]}
 <div class="SideNav-item d-flex flex-items-center rounded" style="border: none; box-shadow: none; padding: 0">
-  {symbolInfoButton(item: $item)}
+  <a href="{symbolInfoUrl(file: $item.file, sym: $item.sym)}" class="btn btn-sm btn-octicon">
+    {let $color: symbolColor(type: $item.sym.getType()) /}
+    {octiconDotFill16(fill: 'var(' + $color + ')')}
+    <code class="text-small text-semibold">{$item.sym.getName()|truncate:32}</code>
+  </a>
 </div>
 {/template}
 
-
-{template symbolInfoButton}
-  {@param item: [file: FileInfo, sym: SymbolInfo]}
-<a href="{symbolInfoUrl(file: $item.file, sym: $item.sym)}" class="btn btn-sm btn-octicon">
-  {let $color: symbolColor(type: $item.sym.getType()) /}
-  {octiconDotFill16(fill: 'var(' + $color + ')')}
-  <code class="text-small text-semibold">{$item.sym.getName()|truncate:32}</code>
-</a>
-{/template}
 
 {template fileInfoUrl kind="uri"}
   {@inject baseUrl: string}
@@ -615,6 +580,13 @@ import {
   {@param file: FileInfo}
   {@param sym: SymbolInfo}
 {fileInfoUrl(label: $file.getLabel())}/{$sym.getName()}
+{/template}
+
+{template providerUrl kind="uri"}
+  {@inject baseUrl: string}
+  {@param file: string}
+  {@param name: string}
+/#/{$baseUrl}/{$file}/{$name}
 {/template}
 
 
@@ -755,7 +727,7 @@ import {
   {@param file: FileInfo}
   {@param sym: SymbolInfo}
 <div class="Subhead mb-2">
-  <div class="Subhead-heading d-flex flex-items-center">
+  <div class="Subhead-heading d-flex flex-items-center flex-justify-between">
     <h3 class="d-flex flex-items-center">
       <span class="text-light f3-light">{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' + $file.getLabel()?.getName() : $file.getLabel()?.getName()}</span>
       <span class="mx-2 d-flex flex-items-center">
@@ -764,7 +736,11 @@ import {
       </span>
       <span>{$sym.getName()}</span>
     </h3>
-    <a class="Link--muted btn btn-sm btn-octicon ml-2" href="{fileInfoUrl(label: $file.getLabel())}">{octiconChevronUp24()}</a>
+    <div class="d-flex flex-items-center">
+      {let $labelColor: symbolColor(type: $sym.getType()) /}
+      <span class="Label" style="background-color: var({$labelColor}); color: var(--color-fg-on-emphasis)">{symbolTypeName(type: $sym.getType())}</span>
+      <a class="Link--muted btn btn-sm btn-octicon ml-2" href="{fileInfoUrl(label: $file.getLabel())}">{octiconChevronUp24()}</a>
+    </div>
   </div>
   {if $sym.getDescription()}
     <div class="Subhead-description">
@@ -807,23 +783,34 @@ import {
   {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
 
   {if $exampleCode}
-    <div class="Box Box--condensed mt-3">
-      <div class="Box-header">
-        <div class="Box-title d-flex flex-items-center flex-justify-between">
-          <div class="text-mono">Example</div>
-          {copyToClipboardButton(content: $exampleCode)}
-        </div>
-      </div>
-      <div class="Box-body p-3">
-        <pre class="width-full {css('shiki')}"><code lang="py">{$exampleCode}</code></pre>
-      </div>
-    </div>
+    {exampleCodeBox(exampleCode: $exampleCode)}
   {/if}
 
   {if $sym.getRule()}
     {let $rule: $sym.getRule() /}
     {if length($rule.getAttributeList()) > 0}
       {attributeListBox(attributes: $rule.getAttributeList(), title: 'Attributes')}
+    {/if}
+  {/if}
+</div>
+{/template}
+
+{template macroInfoComponent}
+  {@param moduleVersion: ModuleVersion}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+  {@param? exampleCode: string}
+<div style="min-width: 0">
+  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+
+  {if $exampleCode}
+    {exampleCodeBox(exampleCode: $exampleCode)}
+  {/if}
+
+  {if $sym.getMacro()}
+    {let $macro: $sym.getMacro() /}
+    {if length($macro.getAttributeList()) > 0}
+      {attributeListBox(attributes: $macro.getAttributeList(), title: 'Attributes')}
     {/if}
   {/if}
 </div>
@@ -838,17 +825,7 @@ import {
   {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
 
   {if $exampleCode}
-    <div class="Box Box--condensed mt-3">
-      <div class="Box-header">
-        <div class="Box-title d-flex flex-items-center flex-justify-between">
-          <div class="text-mono">Example</div>
-          {copyToClipboardButton(content: $exampleCode)}
-        </div>
-      </div>
-      <div class="Box-body p-3">
-        <pre class="width-full {css('shiki')}"><code lang="py">{$exampleCode}</code></pre>
-      </div>
-    </div>
+    {exampleCodeBox(exampleCode: $exampleCode)}
   {/if}
 
   {if $sym.getFunc()}
@@ -860,6 +837,154 @@ import {
       {returnInfoBox(returnInfo: $func.getReturn())}
     {/if}
   {/if}
+</div>
+{/template}
+
+{template providerInfoComponent}
+  {@param moduleVersion: ModuleVersion}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+  {@param? exampleCode: string}
+<div style="min-width: 0">
+  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+
+  {if $exampleCode}
+    {exampleCodeBox(exampleCode: $exampleCode)}
+  {/if}
+
+  {if $sym.getProvider()}
+    {let $provider: $sym.getProvider() /}
+    {if length($provider.getFieldInfoList()) > 0}
+      {fieldListBox(fields: $provider.getFieldInfoList(), title: 'Fields')}
+    {/if}
+  {/if}
+</div>
+{/template}
+
+{template repositoryRuleInfoComponent}
+  {@param moduleVersion: ModuleVersion}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+  {@param? exampleCode: string}
+<div style="min-width: 0">
+  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+
+  {if $exampleCode}
+    {exampleCodeBox(exampleCode: $exampleCode)}
+  {/if}
+
+  {if $sym.getRepositoryRule()}
+    {let $repoRule: $sym.getRepositoryRule() /}
+    {if length($repoRule.getAttributeList()) > 0}
+      {attributeListBox(attributes: $repoRule.getAttributeList(), title: 'Attributes')}
+    {/if}
+  {/if}
+</div>
+{/template}
+
+{template aspectInfoComponent}
+  {@param moduleVersion: ModuleVersion}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+  {@param? exampleCode: string}
+<div style="min-width: 0">
+  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+
+  {if $exampleCode}
+    {exampleCodeBox(exampleCode: $exampleCode)}
+  {/if}
+
+  {if $sym.getAspect()}
+    {let $aspect: $sym.getAspect() /}
+    {if length($aspect.getAttributeList()) > 0}
+      {attributeListBox(attributes: $aspect.getAttributeList(), title: 'Attributes')}
+    {/if}
+  {/if}
+</div>
+{/template}
+
+{template moduleExtensionInfoComponent}
+  {@param moduleVersion: ModuleVersion}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+  {@param? exampleCode: string}
+<div style="min-width: 0">
+  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+
+  {if $exampleCode}
+    {exampleCodeBox(exampleCode: $exampleCode)}
+  {/if}
+
+  {if $sym.getModuleExtension()}
+    {let $ext: $sym.getModuleExtension() /}
+    {for $tagClass in $ext.getTagClassList()}
+      {tagClassSection(tagClass: $tagClass)}
+    {/for}
+  {/if}
+</div>
+{/template}
+
+{template tagClassSection}
+  {@param tagClass: ModuleExtensionTagClassInfo}
+<div class="border-top pt-2 mt-5">
+  <div class="d-flex flex-items-center mb-2">
+    <span class="Label Label--secondary mr-2">Tag Class</span>
+    <h4 class="text-semibold">{$tagClass.getTagName()}</h4>
+  </div>
+  {if $tagClass.getDocString()}
+    <div class="markdown-body mb-2" style="overflow-x: auto">
+      {$tagClass.getDocString()}
+    </div>
+  {/if}
+  {if length($tagClass.getAttributeList()) > 0}
+    {attributeListBox(attributes: $tagClass.getAttributeList(), title: 'Attributes')}
+  {/if}
+</div>
+{/template}
+
+{template exampleCodeBox}
+  {@param exampleCode: string}
+<div class="Box Box--condensed mt-3">
+  <div class="Box-header">
+    <div class="d-flex flex-justify-between flex-items-center">
+      <div class="Box-title">Example</div>
+      {copyToClipboardButton(content: $exampleCode)}
+    </div>
+  </div>
+  <div class="Box-body p-3">
+    <pre class="width-full {css('shiki')}"><code lang="py">{$exampleCode}</code></pre>
+  </div>
+</div>
+{/template}
+
+{template fieldListBox}
+  {@param fields: list<ProviderFieldInfo>}
+  {@param title: string}
+<div class="Box Box--condensed mt-3">
+  <div class="Box-header">
+    <div class="Box-title">{$title} {counterLabel(count: length($fields))}</div>
+  </div>
+  <div>
+    {for $field in $fields}
+      {fieldListItem(field: $field)}
+    {/for}
+  </div>
+</div>
+{/template}
+
+{template fieldListItem}
+  {@param field: ProviderFieldInfo}
+<div class="Box-row d-flex flex-items-start">
+  <div class="flex-auto">
+    <div class="d-flex flex-items-center">
+      <span class="text-semibold text-mono">{$field.getName()}</span>
+    </div>
+    {if $field.getDocString()}
+      <div class="markdown-body text-small mt-1" style="overflow-x: auto">
+        {$field.getDocString()}
+      </div>
+    {/if}
+  </div>
 </div>
 {/template}
 
@@ -884,13 +1009,24 @@ import {
   <div class="flex-auto">
     <div class="d-flex flex-items-center">
       <span class="text-semibold text-mono">
-      {$param.getName()}
+      {if $param.getRole() == 4 /* FunctionParamRole.PARAM_ROLE_VARARGS */}
+        *{$param.getName()}
+      {elseif $param.getRole() == 5 /* FunctionParamRole.PARAM_ROLE_KWARGS */}
+        **{$param.getName()}
+      {else}
+        {$param.getName()}
+      {/if}
       {if $param.getDefaultValue()}
         {sp}={sp}<span class="" style="color: var(--color-prettylights-syntax-markup-inserted-text)" title="default value">{$param.getDefaultValue()}</span>
       {/if}
       </span>
       {if $param.getMandatory()}
         <span class="Label Label--danger ml-2">required</span>
+      {/if}
+      {if $param.getRole() == 2 /* FunctionParamRole.PARAM_ROLE_POSITIONAL_ONLY */}
+        <span class="Label Label--secondary ml-2">positional-only</span>
+      {elseif $param.getRole() == 3 /* FunctionParamRole.PARAM_ROLE_KEYWORD_ONLY */}
+        <span class="Label Label--secondary ml-2">keyword-only</span>
       {/if}
     </div>
     {if $param.getDocString()}
@@ -951,10 +1087,35 @@ import {
       {if $attr.getMandatory()}
         <span class="Label Label--danger ml-2">required</span>
       {/if}
+      {if $attr.getNativelyDefined()}
+        <span class="Label Label--accent ml-2" title="Defined in Bazel's native code">native</span>
+      {/if}
     </div>
     {if $attr.getDocString()}
       <div class="markdown-body text-small mt-1" style="overflow-x: auto">
         {$attr.getDocString()}
+      </div>
+    {/if}
+    {if length($attr.getProviderNameGroupList()) > 0}
+      <div class="mt-1">
+        {for $group, $groupIndex in $attr.getProviderNameGroupList()}
+          {if $groupIndex > 0}
+            <span class="text-small text-light"> or </span>
+          {/if}
+          <span class="text-small">
+            {for $providerName, $index in $group.getProviderNameList()}
+              {if $index > 0}
+                <span class="text-light">, </span>
+              {/if}
+              {if $group.getOriginKeyList()[$index] && $group.getOriginKeyList()[$index].getFile() && $group.getOriginKeyList()[$index].getName()}
+                {let $originKey: $group.getOriginKeyList()[$index] /}
+                <a class="Label Label--primary" href="{providerUrl(file: $originKey.getFile(), name: $originKey.getName())}">{$providerName}</a>
+              {else}
+                <span class="Label Label--secondary">{$providerName}</span>
+              {/if}
+            {/for}
+          </span>
+        {/for}
       </div>
     {/if}
   </div>
@@ -997,6 +1158,8 @@ import {
     output
   {case 13} /* OUTPUT_LIST */
     output_list
+  {case 14} /* LABEL_DICT_UNARY */
+    label_dict_unary
   {default}
     type-{$type}
 {/switch}
@@ -1033,6 +1196,8 @@ import {
     --color-prettylights-syntax-markup-changed-text
   {case 13} /* OUTPUT_LIST */
     --color-prettylights-syntax-markup-changed-text
+  {case 14} /* LABEL_DICT_UNARY */
+    --color-prettylights-syntax-meta-diff-range
   {default}
     --color-fg-default
 {/switch}
@@ -1054,7 +1219,18 @@ import {
 {template symbolCount}
   {@param type: int}
   {@param n: int}
-  {counter(n: $n, fg: '--color-fg-on-emphasis', bg: symbolColor(type: $type), title: $n + ' rule' + ($n == 1 ? '' : 's'), anchor: 'doc-rules')}
+  {counter(n: $n, fg: '--color-fg-on-emphasis', bg: symbolColor(type: $type), anchor: 'doc-' + $type)}
+{/template}
+
+{template symbolSection}
+  {@param title: string}
+  {@param items: list<[file: FileInfo, sym: SymbolInfo]>}
+  {if length($items) > 0}
+    <div id="doc-{$items[0].sym.getType()}" class="text-semibold mt-2 mb-1">{$title}</div>
+    {for $item in $items}
+      {symbolItem(item: $item)}
+    {/for}
+  {/if}
 {/template}
 
 {template symbolColor kind="text"}
@@ -1072,8 +1248,32 @@ import {
     --color-prettylights-syntax-keyword
   {case 6} /* SYMBOL_TYPE_REPOSITORY_RULE */
     --color-prettylights-syntax-entity-tag
+  {case 7} /* SYMBOL_TYPE_MACRO */
+    --color-prettylights-syntax-markup-heading
   {default}
     --color-fg-default
+{/switch}
+{/template}
+
+{template symbolTypeName kind="text"}
+  {@param type: int}
+{switch $type}
+  {case 1} /* SYMBOL_TYPE_RULE */
+    Rule
+  {case 2} /* SYMBOL_TYPE_FUNCTION */
+    Function
+  {case 3} /* SYMBOL_TYPE_PROVIDER */
+    Provider
+  {case 4} /* SYMBOL_TYPE_ASPECT */
+    Aspect
+  {case 5} /* SYMBOL_TYPE_MODULE_EXTENSION */
+    Module Extension
+  {case 6} /* SYMBOL_TYPE_REPOSITORY_RULE */
+    Repository Rule
+  {case 7} /* SYMBOL_TYPE_MACRO */
+    Macro
+  {default}
+    Unknown
 {/switch}
 {/template}
 

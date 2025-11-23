@@ -81,6 +81,7 @@ const (
 	SymbolType_SYMBOL_TYPE_ASPECT           SymbolType = 4
 	SymbolType_SYMBOL_TYPE_MODULE_EXTENSION SymbolType = 5
 	SymbolType_SYMBOL_TYPE_REPOSITORY_RULE  SymbolType = 6
+	SymbolType_SYMBOL_TYPE_MACRO            SymbolType = 7
 )
 
 // Enum value maps for SymbolType.
@@ -93,6 +94,7 @@ var (
 		4: "SYMBOL_TYPE_ASPECT",
 		5: "SYMBOL_TYPE_MODULE_EXTENSION",
 		6: "SYMBOL_TYPE_REPOSITORY_RULE",
+		7: "SYMBOL_TYPE_MACRO",
 	}
 	SymbolType_value = map[string]int32{
 		"SYMBOL_TYPE_UNKNOWN":          0,
@@ -102,6 +104,7 @@ var (
 		"SYMBOL_TYPE_ASPECT":           4,
 		"SYMBOL_TYPE_MODULE_EXTENSION": 5,
 		"SYMBOL_TYPE_REPOSITORY_RULE":  6,
+		"SYMBOL_TYPE_MACRO":            7,
 	}
 )
 
@@ -1563,6 +1566,7 @@ type SymbolInfo struct {
 	//	*SymbolInfo_Aspect
 	//	*SymbolInfo_ModuleExtension
 	//	*SymbolInfo_RepositoryRule
+	//	*SymbolInfo_Macro
 	Info          isSymbolInfo_Info `protobuf_oneof:"info"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1680,6 +1684,15 @@ func (x *SymbolInfo) GetRepositoryRule() *stardoc_output.RepositoryRuleInfo {
 	return nil
 }
 
+func (x *SymbolInfo) GetMacro() *stardoc_output.MacroInfo {
+	if x != nil {
+		if x, ok := x.Info.(*SymbolInfo_Macro); ok {
+			return x.Macro
+		}
+	}
+	return nil
+}
+
 type isSymbolInfo_Info interface {
 	isSymbolInfo_Info()
 }
@@ -1708,6 +1721,10 @@ type SymbolInfo_RepositoryRule struct {
 	RepositoryRule *stardoc_output.RepositoryRuleInfo `protobuf:"bytes,10,opt,name=repository_rule,json=repositoryRule,proto3,oneof"`
 }
 
+type SymbolInfo_Macro struct {
+	Macro *stardoc_output.MacroInfo `protobuf:"bytes,11,opt,name=macro,proto3,oneof"`
+}
+
 func (*SymbolInfo_Rule) isSymbolInfo_Info() {}
 
 func (*SymbolInfo_Func) isSymbolInfo_Info() {}
@@ -1719,6 +1736,8 @@ func (*SymbolInfo_Aspect) isSymbolInfo_Info() {}
 func (*SymbolInfo_ModuleExtension) isSymbolInfo_Info() {}
 
 func (*SymbolInfo_RepositoryRule) isSymbolInfo_Info() {}
+
+func (*SymbolInfo_Macro) isSymbolInfo_Info() {}
 
 type FileInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2262,7 +2281,7 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\x05Label\x12\x12\n" +
 	"\x04repo\x18\x01 \x01(\tR\x04repo\x12\x10\n" +
 	"\x03pkg\x18\x02 \x01(\tR\x03pkg\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\x86\x04\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xb9\x04\n" +
 	"\n" +
 	"SymbolInfo\x12;\n" +
 	"\x04type\x18\x01 \x01(\x0e2'.build.stack.bazel.bzlmod.v1.SymbolTypeR\x04type\x12\x12\n" +
@@ -2274,7 +2293,8 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\x06aspect\x18\a \x01(\v2\x1a.stardoc_output.AspectInfoH\x00R\x06aspect\x12P\n" +
 	"\x10module_extension\x18\t \x01(\v2#.stardoc_output.ModuleExtensionInfoH\x00R\x0fmoduleExtension\x12M\n" +
 	"\x0frepository_rule\x18\n" +
-	" \x01(\v2\".stardoc_output.RepositoryRuleInfoH\x00R\x0erepositoryRuleB\x06\n" +
+	" \x01(\v2\".stardoc_output.RepositoryRuleInfoH\x00R\x0erepositoryRule\x121\n" +
+	"\x05macro\x18\v \x01(\v2\x19.stardoc_output.MacroInfoH\x00R\x05macroB\x06\n" +
 	"\x04info\"\xa7\x01\n" +
 	"\bFileInfo\x128\n" +
 	"\x05label\x18\x01 \x01(\v2\".build.stack.bazel.bzlmod.v1.LabelR\x05label\x12?\n" +
@@ -2287,7 +2307,7 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\n" +
 	"\x06GITHUB\x10\x01\x12\n" +
 	"\n" +
-	"\x06GITLAB\x10\x02*\xca\x01\n" +
+	"\x06GITLAB\x10\x02*\xe1\x01\n" +
 	"\n" +
 	"SymbolType\x12\x17\n" +
 	"\x13SYMBOL_TYPE_UNKNOWN\x10\x00\x12\x14\n" +
@@ -2296,7 +2316,8 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\x14SYMBOL_TYPE_PROVIDER\x10\x03\x12\x16\n" +
 	"\x12SYMBOL_TYPE_ASPECT\x10\x04\x12 \n" +
 	"\x1cSYMBOL_TYPE_MODULE_EXTENSION\x10\x05\x12\x1f\n" +
-	"\x1bSYMBOL_TYPE_REPOSITORY_RULE\x10\x06B;Z9github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpbb\x06proto3"
+	"\x1bSYMBOL_TYPE_REPOSITORY_RULE\x10\x06\x12\x15\n" +
+	"\x11SYMBOL_TYPE_MACRO\x10\aB;Z9github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpbb\x06proto3"
 
 var (
 	file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDescOnce sync.Once
@@ -2352,6 +2373,7 @@ var file_build_stack_bazel_bzlmod_v1_bcr_proto_goTypes = []any{
 	(*stardoc_output.AspectInfo)(nil),           // 36: stardoc_output.AspectInfo
 	(*stardoc_output.ModuleExtensionInfo)(nil),  // 37: stardoc_output.ModuleExtensionInfo
 	(*stardoc_output.RepositoryRuleInfo)(nil),   // 38: stardoc_output.RepositoryRuleInfo
+	(*stardoc_output.MacroInfo)(nil),            // 39: stardoc_output.MacroInfo
 }
 var file_build_stack_bazel_bzlmod_v1_bcr_proto_depIdxs = []int32{
 	3,  // 0: build.stack.bazel.bzlmod.v1.Registry.modules:type_name -> build.stack.bazel.bzlmod.v1.Module
@@ -2388,19 +2410,20 @@ var file_build_stack_bazel_bzlmod_v1_bcr_proto_depIdxs = []int32{
 	36, // 31: build.stack.bazel.bzlmod.v1.SymbolInfo.aspect:type_name -> stardoc_output.AspectInfo
 	37, // 32: build.stack.bazel.bzlmod.v1.SymbolInfo.module_extension:type_name -> stardoc_output.ModuleExtensionInfo
 	38, // 33: build.stack.bazel.bzlmod.v1.SymbolInfo.repository_rule:type_name -> stardoc_output.RepositoryRuleInfo
-	18, // 34: build.stack.bazel.bzlmod.v1.FileInfo.label:type_name -> build.stack.bazel.bzlmod.v1.Label
-	19, // 35: build.stack.bazel.bzlmod.v1.FileInfo.symbol:type_name -> build.stack.bazel.bzlmod.v1.SymbolInfo
-	20, // 36: build.stack.bazel.bzlmod.v1.DocumentationInfo.file:type_name -> build.stack.bazel.bzlmod.v1.FileInfo
-	26, // 37: build.stack.bazel.bzlmod.v1.Attestations.AttestationsEntry.value:type_name -> build.stack.bazel.bzlmod.v1.Attestations.Attestation
-	29, // 38: build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.matrix:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.PresubmitMatrix
-	32, // 39: build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.tasks:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.TasksEntry
-	30, // 40: build.stack.bazel.bzlmod.v1.Presubmit.TasksEntry.value:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.PresubmitTask
-	30, // 41: build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.TasksEntry.value:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.PresubmitTask
-	42, // [42:42] is the sub-list for method output_type
-	42, // [42:42] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	39, // 34: build.stack.bazel.bzlmod.v1.SymbolInfo.macro:type_name -> stardoc_output.MacroInfo
+	18, // 35: build.stack.bazel.bzlmod.v1.FileInfo.label:type_name -> build.stack.bazel.bzlmod.v1.Label
+	19, // 36: build.stack.bazel.bzlmod.v1.FileInfo.symbol:type_name -> build.stack.bazel.bzlmod.v1.SymbolInfo
+	20, // 37: build.stack.bazel.bzlmod.v1.DocumentationInfo.file:type_name -> build.stack.bazel.bzlmod.v1.FileInfo
+	26, // 38: build.stack.bazel.bzlmod.v1.Attestations.AttestationsEntry.value:type_name -> build.stack.bazel.bzlmod.v1.Attestations.Attestation
+	29, // 39: build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.matrix:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.PresubmitMatrix
+	32, // 40: build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.tasks:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.TasksEntry
+	30, // 41: build.stack.bazel.bzlmod.v1.Presubmit.TasksEntry.value:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.PresubmitTask
+	30, // 42: build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.TasksEntry.value:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.PresubmitTask
+	43, // [43:43] is the sub-list for method output_type
+	43, // [43:43] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_build_stack_bazel_bzlmod_v1_bcr_proto_init() }
@@ -2421,6 +2444,7 @@ func file_build_stack_bazel_bzlmod_v1_bcr_proto_init() {
 		(*SymbolInfo_Aspect)(nil),
 		(*SymbolInfo_ModuleExtension)(nil),
 		(*SymbolInfo_RepositoryRule)(nil),
+		(*SymbolInfo_Macro)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
