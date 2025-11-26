@@ -37,6 +37,7 @@ java_import(
     jars = ["constellate.jar"],
 )
 
+# ProTip: grpcurl -plaintext localhost:3524 list
 java_binary(
     name = "starlarkserver",
     main_class = "build.stack.devtools.build.constellate.RemoteStarlarkServer",

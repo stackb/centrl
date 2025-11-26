@@ -25,7 +25,7 @@ const toolName = "starlarkcompiler"
 
 type Config struct {
 	BuiltinsBzlPath     string
-	Client              slpb.StarlarkBazelClient
+	Client              slpb.StarlarkClient
 	Cwd                 string
 	JavaInterpreterFile string
 	LogFile             string
@@ -113,7 +113,7 @@ func run(args []string) error {
 	}
 	defer conn.Close()
 
-	cfg.Client = slpb.NewStarlarkBazelClient(conn)
+	cfg.Client = slpb.NewStarlarkClient(conn)
 
 	if cfg.PersistentWorker {
 		if err := persistentWork(&cfg); err != nil {
@@ -176,7 +176,7 @@ func batchWork(cfg *Config) error {
 
 	result, err := extractModules(cfg)
 	if err != nil {
-		return fail(fmt.Errorf("failed to extract moddule info: %v", err))
+		return fail(fmt.Errorf("failed to extract module info: %v", err))
 	}
 
 	if err := protoutil.WriteFile(cfg.OutputFile, result); err != nil {
@@ -211,36 +211,39 @@ func parseFlags(args []string) (cfg Config, err error) {
 	return
 }
 
-func extractModules(cfg *Config) (*slpb.ModuleInfoSet, error) {
+func extractModules(cfg *Config) (*slpb.ModuleSet, error) {
 
-	var result slpb.ModuleInfoSet
+	var result slpb.ModuleSet
 
 	for _, src := range cfg.SourceFiles {
 		module, err := extractModule(cfg, src)
 		if err != nil {
 			return nil, err
 		}
-		result.Module = append(result.Module, module.Info)
+		result.Module = append(result.Module, module)
 	}
 
 	return &result, nil
 }
 
-func extractModule(cfg *Config, src string) (*slpb.ModuleInfoResponse, error) {
+func extractModule(cfg *Config, src string) (*slpb.Module, error) {
 	target, err := label.Parse(src)
 	if err != nil {
 		return nil, fmt.Errorf("invalid label: %v", err)
 	}
 
+	log.Printf("target file label: %v (src=%s)", target, src)
 	var content string
 
 	request := &slpb.ModuleInfoRequest{
 		TargetFileLabel:     target.String(),
+		WorkspaceName:       "_main",
 		WorkspaceCwd:        cfg.WorkspaceCwd,
 		WorkspaceOutputBase: cfg.WorkspaceOutputBase,
 		Rel:                 target.Pkg,
 		BuiltinsBzlPath:     cfg.BuiltinsBzlPath,
 		ModuleContent:       content,
+		DepRoots:            []string{cfg.WorkspaceCwd, cfg.WorkspaceOutputBase},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -248,7 +251,7 @@ func extractModule(cfg *Config, src string) (*slpb.ModuleInfoResponse, error) {
 
 	response, err := cfg.Client.ModuleInfo(ctx, request)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ModuleInfo request error: %v", err)
 	}
 
 	return response, nil

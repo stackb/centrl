@@ -19,101 +19,139 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	StarlarkBazel_ModuleInfo_FullMethodName = "/build.stack.starlark.v1beta1.StarlarkBazel/ModuleInfo"
+	Starlark_ModuleInfo_FullMethodName = "/build.stack.starlark.v1beta1.Starlark/ModuleInfo"
+	Starlark_Ping_FullMethodName       = "/build.stack.starlark.v1beta1.Starlark/Ping"
 )
 
-// StarlarkBazelClient is the client API for StarlarkBazel service.
+// StarlarkClient is the client API for Starlark service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type StarlarkBazelClient interface {
-	ModuleInfo(ctx context.Context, in *ModuleInfoRequest, opts ...grpc.CallOption) (*ModuleInfoResponse, error)
+type StarlarkClient interface {
+	ModuleInfo(ctx context.Context, in *ModuleInfoRequest, opts ...grpc.CallOption) (*Module, error)
+	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 }
 
-type starlarkBazelClient struct {
+type starlarkClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewStarlarkBazelClient(cc grpc.ClientConnInterface) StarlarkBazelClient {
-	return &starlarkBazelClient{cc}
+func NewStarlarkClient(cc grpc.ClientConnInterface) StarlarkClient {
+	return &starlarkClient{cc}
 }
 
-func (c *starlarkBazelClient) ModuleInfo(ctx context.Context, in *ModuleInfoRequest, opts ...grpc.CallOption) (*ModuleInfoResponse, error) {
+func (c *starlarkClient) ModuleInfo(ctx context.Context, in *ModuleInfoRequest, opts ...grpc.CallOption) (*Module, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ModuleInfoResponse)
-	err := c.cc.Invoke(ctx, StarlarkBazel_ModuleInfo_FullMethodName, in, out, cOpts...)
+	out := new(Module)
+	err := c.cc.Invoke(ctx, Starlark_ModuleInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// StarlarkBazelServer is the server API for StarlarkBazel service.
-// All implementations must embed UnimplementedStarlarkBazelServer
-// for forward compatibility.
-type StarlarkBazelServer interface {
-	ModuleInfo(context.Context, *ModuleInfoRequest) (*ModuleInfoResponse, error)
-	mustEmbedUnimplementedStarlarkBazelServer()
+func (c *starlarkClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PingResponse)
+	err := c.cc.Invoke(ctx, Starlark_Ping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-// UnimplementedStarlarkBazelServer must be embedded to have
+// StarlarkServer is the server API for Starlark service.
+// All implementations must embed UnimplementedStarlarkServer
+// for forward compatibility.
+type StarlarkServer interface {
+	ModuleInfo(context.Context, *ModuleInfoRequest) (*Module, error)
+	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	mustEmbedUnimplementedStarlarkServer()
+}
+
+// UnimplementedStarlarkServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedStarlarkBazelServer struct{}
+type UnimplementedStarlarkServer struct{}
 
-func (UnimplementedStarlarkBazelServer) ModuleInfo(context.Context, *ModuleInfoRequest) (*ModuleInfoResponse, error) {
+func (UnimplementedStarlarkServer) ModuleInfo(context.Context, *ModuleInfoRequest) (*Module, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ModuleInfo not implemented")
 }
-func (UnimplementedStarlarkBazelServer) mustEmbedUnimplementedStarlarkBazelServer() {}
-func (UnimplementedStarlarkBazelServer) testEmbeddedByValue()                       {}
+func (UnimplementedStarlarkServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedStarlarkServer) mustEmbedUnimplementedStarlarkServer() {}
+func (UnimplementedStarlarkServer) testEmbeddedByValue()                  {}
 
-// UnsafeStarlarkBazelServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to StarlarkBazelServer will
+// UnsafeStarlarkServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to StarlarkServer will
 // result in compilation errors.
-type UnsafeStarlarkBazelServer interface {
-	mustEmbedUnimplementedStarlarkBazelServer()
+type UnsafeStarlarkServer interface {
+	mustEmbedUnimplementedStarlarkServer()
 }
 
-func RegisterStarlarkBazelServer(s grpc.ServiceRegistrar, srv StarlarkBazelServer) {
-	// If the following call pancis, it indicates UnimplementedStarlarkBazelServer was
+func RegisterStarlarkServer(s grpc.ServiceRegistrar, srv StarlarkServer) {
+	// If the following call pancis, it indicates UnimplementedStarlarkServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&StarlarkBazel_ServiceDesc, srv)
+	s.RegisterService(&Starlark_ServiceDesc, srv)
 }
 
-func _StarlarkBazel_ModuleInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Starlark_ModuleInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ModuleInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(StarlarkBazelServer).ModuleInfo(ctx, in)
+		return srv.(StarlarkServer).ModuleInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: StarlarkBazel_ModuleInfo_FullMethodName,
+		FullMethod: Starlark_ModuleInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StarlarkBazelServer).ModuleInfo(ctx, req.(*ModuleInfoRequest))
+		return srv.(StarlarkServer).ModuleInfo(ctx, req.(*ModuleInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// StarlarkBazel_ServiceDesc is the grpc.ServiceDesc for StarlarkBazel service.
+func _Starlark_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StarlarkServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Starlark_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StarlarkServer).Ping(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Starlark_ServiceDesc is the grpc.ServiceDesc for Starlark service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var StarlarkBazel_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "build.stack.starlark.v1beta1.StarlarkBazel",
-	HandlerType: (*StarlarkBazelServer)(nil),
+var Starlark_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "build.stack.starlark.v1beta1.Starlark",
+	HandlerType: (*StarlarkServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "ModuleInfo",
-			Handler:    _StarlarkBazel_ModuleInfo_Handler,
+			Handler:    _Starlark_ModuleInfo_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _Starlark_Ping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

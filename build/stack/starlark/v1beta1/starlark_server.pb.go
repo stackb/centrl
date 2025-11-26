@@ -7,6 +7,7 @@
 package v1beta1
 
 import (
+	stardoc_output "github.com/stackb/centrl/stardoc_output"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -30,6 +31,8 @@ const (
 	ModuleCategory_BUILTIN                 ModuleCategory = 3
 	ModuleCategory_TOP_LEVEL_TYPE          ModuleCategory = 4
 	ModuleCategory_NONE                    ModuleCategory = 5
+	ModuleCategory_CORE                    ModuleCategory = 6
+	ModuleCategory_LOAD                    ModuleCategory = 7
 )
 
 // Enum value maps for ModuleCategory.
@@ -41,6 +44,8 @@ var (
 		3: "BUILTIN",
 		4: "TOP_LEVEL_TYPE",
 		5: "NONE",
+		6: "CORE",
+		7: "LOAD",
 	}
 	ModuleCategory_value = map[string]int32{
 		"MODULE_CATEGORY_UNKNOWN": 0,
@@ -49,6 +54,8 @@ var (
 		"BUILTIN":                 3,
 		"TOP_LEVEL_TYPE":          4,
 		"NONE":                    5,
+		"CORE":                    6,
+		"LOAD":                    7,
 	}
 )
 
@@ -79,29 +86,28 @@ func (ModuleCategory) EnumDescriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{0}
 }
 
-type Location struct {
+type Position struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	File          string                 `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
-	Line          int64                  `protobuf:"varint,2,opt,name=line,proto3" json:"line,omitempty"`
-	Col           int64                  `protobuf:"varint,3,opt,name=col,proto3" json:"col,omitempty"`
+	Line          int32                  `protobuf:"varint,1,opt,name=line,proto3" json:"line,omitempty"`
+	Character     int32                  `protobuf:"varint,2,opt,name=character,proto3" json:"character,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Location) Reset() {
-	*x = Location{}
+func (x *Position) Reset() {
+	*x = Position{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Location) String() string {
+func (x *Position) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Location) ProtoMessage() {}
+func (*Position) ProtoMessage() {}
 
-func (x *Location) ProtoReflect() protoreflect.Message {
+func (x *Position) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -113,53 +119,48 @@ func (x *Location) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Location.ProtoReflect.Descriptor instead.
-func (*Location) Descriptor() ([]byte, []int) {
+// Deprecated: Use Position.ProtoReflect.Descriptor instead.
+func (*Position) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Location) GetFile() string {
-	if x != nil {
-		return x.File
-	}
-	return ""
-}
-
-func (x *Location) GetLine() int64 {
+func (x *Position) GetLine() int32 {
 	if x != nil {
 		return x.Line
 	}
 	return 0
 }
 
-func (x *Location) GetCol() int64 {
+func (x *Position) GetCharacter() int32 {
 	if x != nil {
-		return x.Col
+		return x.Character
 	}
 	return 0
 }
 
-type LocationRef struct {
+type SymbolLocation struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Start         *Position              `protobuf:"bytes,1,opt,name=start,proto3" json:"start,omitempty"`
+	End           *Position              `protobuf:"bytes,2,opt,name=end,proto3" json:"end,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LocationRef) Reset() {
-	*x = LocationRef{}
+func (x *SymbolLocation) Reset() {
+	*x = SymbolLocation{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LocationRef) String() string {
+func (x *SymbolLocation) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LocationRef) ProtoMessage() {}
+func (*SymbolLocation) ProtoMessage() {}
 
-func (x *LocationRef) ProtoReflect() protoreflect.Message {
+func (x *SymbolLocation) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -171,39 +172,53 @@ func (x *LocationRef) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LocationRef.ProtoReflect.Descriptor instead.
-func (*LocationRef) Descriptor() ([]byte, []int) {
+// Deprecated: Use SymbolLocation.ProtoReflect.Descriptor instead.
+func (*SymbolLocation) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *LocationRef) GetId() int64 {
+func (x *SymbolLocation) GetStart() *Position {
 	if x != nil {
-		return x.Id
+		return x.Start
 	}
-	return 0
+	return nil
 }
 
-type Bool struct {
+func (x *SymbolLocation) GetEnd() *Position {
+	if x != nil {
+		return x.End
+	}
+	return nil
+}
+
+func (x *SymbolLocation) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type ModuleSet struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+	Module        []*Module              `protobuf:"bytes,1,rep,name=module,proto3" json:"module,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Bool) Reset() {
-	*x = Bool{}
+func (x *ModuleSet) Reset() {
+	*x = ModuleSet{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Bool) String() string {
+func (x *ModuleSet) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Bool) ProtoMessage() {}
+func (*ModuleSet) ProtoMessage() {}
 
-func (x *Bool) ProtoReflect() protoreflect.Message {
+func (x *ModuleSet) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -215,39 +230,45 @@ func (x *Bool) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Bool.ProtoReflect.Descriptor instead.
-func (*Bool) Descriptor() ([]byte, []int) {
+// Deprecated: Use ModuleSet.ProtoReflect.Descriptor instead.
+func (*ModuleSet) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *Bool) GetLocation() *LocationRef {
+func (x *ModuleSet) GetModule() []*Module {
 	if x != nil {
-		return x.Location
+		return x.Module
 	}
 	return nil
 }
 
-type Int struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+type Module struct {
+	state          protoimpl.MessageState     `protogen:"open.v1"`
+	Name           string                     `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Category       ModuleCategory             `protobuf:"varint,2,opt,name=category,proto3,enum=build.stack.starlark.v1beta1.ModuleCategory" json:"category,omitempty"`
+	Info           *stardoc_output.ModuleInfo `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
+	Filename       string                     `protobuf:"bytes,4,opt,name=filename,proto3" json:"filename,omitempty"`
+	SymbolLocation []*SymbolLocation          `protobuf:"bytes,5,rep,name=symbol_location,json=symbolLocation,proto3" json:"symbol_location,omitempty"`
+	Global         map[string]*ValueInfo      `protobuf:"bytes,6,rep,name=global,proto3" json:"global,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Load           []*LoadStmt                `protobuf:"bytes,7,rep,name=load,proto3" json:"load,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
-func (x *Int) Reset() {
-	*x = Int{}
+func (x *Module) Reset() {
+	*x = Module{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Int) String() string {
+func (x *Module) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Int) ProtoMessage() {}
+func (*Module) ProtoMessage() {}
 
-func (x *Int) ProtoReflect() protoreflect.Message {
+func (x *Module) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -259,39 +280,82 @@ func (x *Int) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Int.ProtoReflect.Descriptor instead.
-func (*Int) Descriptor() ([]byte, []int) {
+// Deprecated: Use Module.ProtoReflect.Descriptor instead.
+func (*Module) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Int) GetLocation() *LocationRef {
+func (x *Module) GetName() string {
 	if x != nil {
-		return x.Location
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Module) GetCategory() ModuleCategory {
+	if x != nil {
+		return x.Category
+	}
+	return ModuleCategory_MODULE_CATEGORY_UNKNOWN
+}
+
+func (x *Module) GetInfo() *stardoc_output.ModuleInfo {
+	if x != nil {
+		return x.Info
 	}
 	return nil
 }
 
-type String struct {
+func (x *Module) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *Module) GetSymbolLocation() []*SymbolLocation {
+	if x != nil {
+		return x.SymbolLocation
+	}
+	return nil
+}
+
+func (x *Module) GetGlobal() map[string]*ValueInfo {
+	if x != nil {
+		return x.Global
+	}
+	return nil
+}
+
+func (x *Module) GetLoad() []*LoadStmt {
+	if x != nil {
+		return x.Load
+	}
+	return nil
+}
+
+type LoadSymbol struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+	From          string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *String) Reset() {
-	*x = String{}
+func (x *LoadSymbol) Reset() {
+	*x = LoadSymbol{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *String) String() string {
+func (x *LoadSymbol) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*String) ProtoMessage() {}
+func (*LoadSymbol) ProtoMessage() {}
 
-func (x *String) ProtoReflect() protoreflect.Message {
+func (x *LoadSymbol) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -303,39 +367,47 @@ func (x *String) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use String.ProtoReflect.Descriptor instead.
-func (*String) Descriptor() ([]byte, []int) {
+// Deprecated: Use LoadSymbol.ProtoReflect.Descriptor instead.
+func (*LoadSymbol) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *String) GetLocation() *LocationRef {
+func (x *LoadSymbol) GetFrom() string {
 	if x != nil {
-		return x.Location
+		return x.From
 	}
-	return nil
+	return ""
 }
 
-type List struct {
+func (x *LoadSymbol) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type LoadStmt struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	Symbol        []*LoadSymbol          `protobuf:"bytes,2,rep,name=symbol,proto3" json:"symbol,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *List) Reset() {
-	*x = List{}
+func (x *LoadStmt) Reset() {
+	*x = LoadStmt{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *List) String() string {
+func (x *LoadStmt) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*List) ProtoMessage() {}
+func (*LoadStmt) ProtoMessage() {}
 
-func (x *List) ProtoReflect() protoreflect.Message {
+func (x *LoadStmt) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -347,39 +419,48 @@ func (x *List) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use List.ProtoReflect.Descriptor instead.
-func (*List) Descriptor() ([]byte, []int) {
+// Deprecated: Use LoadStmt.ProtoReflect.Descriptor instead.
+func (*LoadStmt) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *List) GetLocation() *LocationRef {
+func (x *LoadStmt) GetLabel() string {
 	if x != nil {
-		return x.Location
+		return x.Label
+	}
+	return ""
+}
+
+func (x *LoadStmt) GetSymbol() []*LoadSymbol {
+	if x != nil {
+		return x.Symbol
 	}
 	return nil
 }
 
-type Dict struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+type Rule struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Info          *stardoc_output.RuleInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Location      *SymbolLocation          `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	Attribute     []*Attribute             `protobuf:"bytes,3,rep,name=attribute,proto3" json:"attribute,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Dict) Reset() {
-	*x = Dict{}
+func (x *Rule) Reset() {
+	*x = Rule{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Dict) String() string {
+func (x *Rule) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Dict) ProtoMessage() {}
+func (*Rule) ProtoMessage() {}
 
-func (x *Dict) ProtoReflect() protoreflect.Message {
+func (x *Rule) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -391,39 +472,55 @@ func (x *Dict) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Dict.ProtoReflect.Descriptor instead.
-func (*Dict) Descriptor() ([]byte, []int) {
+// Deprecated: Use Rule.ProtoReflect.Descriptor instead.
+func (*Rule) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *Dict) GetLocation() *LocationRef {
+func (x *Rule) GetInfo() *stardoc_output.RuleInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+func (x *Rule) GetLocation() *SymbolLocation {
 	if x != nil {
 		return x.Location
 	}
 	return nil
 }
 
-type Struct struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+func (x *Rule) GetAttribute() []*Attribute {
+	if x != nil {
+		return x.Attribute
+	}
+	return nil
+}
+
+type Aspect struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Info          *stardoc_output.AspectInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Location      *SymbolLocation            `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	Attribute     []*Attribute               `protobuf:"bytes,3,rep,name=attribute,proto3" json:"attribute,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Struct) Reset() {
-	*x = Struct{}
+func (x *Aspect) Reset() {
+	*x = Aspect{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Struct) String() string {
+func (x *Aspect) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Struct) ProtoMessage() {}
+func (*Aspect) ProtoMessage() {}
 
-func (x *Struct) ProtoReflect() protoreflect.Message {
+func (x *Aspect) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -435,39 +532,54 @@ func (x *Struct) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Struct.ProtoReflect.Descriptor instead.
-func (*Struct) Descriptor() ([]byte, []int) {
+// Deprecated: Use Aspect.ProtoReflect.Descriptor instead.
+func (*Aspect) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *Struct) GetLocation() *LocationRef {
+func (x *Aspect) GetInfo() *stardoc_output.AspectInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+func (x *Aspect) GetLocation() *SymbolLocation {
 	if x != nil {
 		return x.Location
 	}
 	return nil
 }
 
-type Function struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+func (x *Aspect) GetAttribute() []*Attribute {
+	if x != nil {
+		return x.Attribute
+	}
+	return nil
+}
+
+type Attribute struct {
+	state         protoimpl.MessageState        `protogen:"open.v1"`
+	Info          *stardoc_output.AttributeInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Location      *SymbolLocation               `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Function) Reset() {
-	*x = Function{}
+func (x *Attribute) Reset() {
+	*x = Attribute{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Function) String() string {
+func (x *Attribute) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Function) ProtoMessage() {}
+func (*Attribute) ProtoMessage() {}
 
-func (x *Function) ProtoReflect() protoreflect.Message {
+func (x *Attribute) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -479,12 +591,19 @@ func (x *Function) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Function.ProtoReflect.Descriptor instead.
-func (*Function) Descriptor() ([]byte, []int) {
+// Deprecated: Use Attribute.ProtoReflect.Descriptor instead.
+func (*Attribute) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *Function) GetLocation() *LocationRef {
+func (x *Attribute) GetInfo() *stardoc_output.AttributeInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+func (x *Attribute) GetLocation() *SymbolLocation {
 	if x != nil {
 		return x.Location
 	}
@@ -492,8 +611,10 @@ func (x *Function) GetLocation() *LocationRef {
 }
 
 type Provider struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Info          *stardoc_output.ProviderInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Location      *SymbolLocation              `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	Field         []*ProviderField             `protobuf:"bytes,3,rep,name=field,proto3" json:"field,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -528,429 +649,355 @@ func (*Provider) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *Provider) GetLocation() *LocationRef {
-	if x != nil {
-		return x.Location
-	}
-	return nil
-}
-
-type Aspect struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Aspect) Reset() {
-	*x = Aspect{}
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Aspect) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Aspect) ProtoMessage() {}
-
-func (x *Aspect) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Aspect.ProtoReflect.Descriptor instead.
-func (*Aspect) Descriptor() ([]byte, []int) {
-	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *Aspect) GetLocation() *LocationRef {
-	if x != nil {
-		return x.Location
-	}
-	return nil
-}
-
-type Rule struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Location      *LocationRef           `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Rule) Reset() {
-	*x = Rule{}
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Rule) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Rule) ProtoMessage() {}
-
-func (x *Rule) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Rule.ProtoReflect.Descriptor instead.
-func (*Rule) Descriptor() ([]byte, []int) {
-	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *Rule) GetLocation() *LocationRef {
-	if x != nil {
-		return x.Location
-	}
-	return nil
-}
-
-type Binding struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Types that are valid to be assigned to Value:
-	//
-	//	*Binding_Bool
-	//	*Binding_Int
-	//	*Binding_String_
-	//	*Binding_List
-	//	*Binding_Dict
-	//	*Binding_Struct
-	//	*Binding_Function
-	//	*Binding_Provider
-	//	*Binding_Rule
-	//	*Binding_Aspect
-	Value         isBinding_Value `protobuf_oneof:"value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Binding) Reset() {
-	*x = Binding{}
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Binding) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Binding) ProtoMessage() {}
-
-func (x *Binding) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Binding.ProtoReflect.Descriptor instead.
-func (*Binding) Descriptor() ([]byte, []int) {
-	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *Binding) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Binding) GetValue() isBinding_Value {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
-func (x *Binding) GetBool() *Bool {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Bool); ok {
-			return x.Bool
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetInt() *Int {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Int); ok {
-			return x.Int
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetString_() *String {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_String_); ok {
-			return x.String_
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetList() *List {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_List); ok {
-			return x.List
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetDict() *Dict {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Dict); ok {
-			return x.Dict
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetStruct() *Struct {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Struct); ok {
-			return x.Struct
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetFunction() *Function {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Function); ok {
-			return x.Function
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetProvider() *Provider {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Provider); ok {
-			return x.Provider
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetRule() *Rule {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Rule); ok {
-			return x.Rule
-		}
-	}
-	return nil
-}
-
-func (x *Binding) GetAspect() *Aspect {
-	if x != nil {
-		if x, ok := x.Value.(*Binding_Aspect); ok {
-			return x.Aspect
-		}
-	}
-	return nil
-}
-
-type isBinding_Value interface {
-	isBinding_Value()
-}
-
-type Binding_Bool struct {
-	Bool *Bool `protobuf:"bytes,2,opt,name=bool,proto3,oneof"`
-}
-
-type Binding_Int struct {
-	Int *Int `protobuf:"bytes,3,opt,name=int,proto3,oneof"`
-}
-
-type Binding_String_ struct {
-	String_ *String `protobuf:"bytes,4,opt,name=string,proto3,oneof"`
-}
-
-type Binding_List struct {
-	List *List `protobuf:"bytes,5,opt,name=list,proto3,oneof"`
-}
-
-type Binding_Dict struct {
-	Dict *Dict `protobuf:"bytes,6,opt,name=dict,proto3,oneof"`
-}
-
-type Binding_Struct struct {
-	Struct *Struct `protobuf:"bytes,7,opt,name=struct,proto3,oneof"`
-}
-
-type Binding_Function struct {
-	Function *Function `protobuf:"bytes,8,opt,name=function,proto3,oneof"`
-}
-
-type Binding_Provider struct {
-	Provider *Provider `protobuf:"bytes,9,opt,name=provider,proto3,oneof"`
-}
-
-type Binding_Rule struct {
-	Rule *Rule `protobuf:"bytes,10,opt,name=rule,proto3,oneof"`
-}
-
-type Binding_Aspect struct {
-	Aspect *Aspect `protobuf:"bytes,11,opt,name=aspect,proto3,oneof"`
-}
-
-func (*Binding_Bool) isBinding_Value() {}
-
-func (*Binding_Int) isBinding_Value() {}
-
-func (*Binding_String_) isBinding_Value() {}
-
-func (*Binding_List) isBinding_Value() {}
-
-func (*Binding_Dict) isBinding_Value() {}
-
-func (*Binding_Struct) isBinding_Value() {}
-
-func (*Binding_Function) isBinding_Value() {}
-
-func (*Binding_Provider) isBinding_Value() {}
-
-func (*Binding_Rule) isBinding_Value() {}
-
-func (*Binding_Aspect) isBinding_Value() {}
-
-type StarlarkModule struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Global        []*Binding             `protobuf:"bytes,2,rep,name=global,proto3" json:"global,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StarlarkModule) Reset() {
-	*x = StarlarkModule{}
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StarlarkModule) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StarlarkModule) ProtoMessage() {}
-
-func (x *StarlarkModule) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StarlarkModule.ProtoReflect.Descriptor instead.
-func (*StarlarkModule) Descriptor() ([]byte, []int) {
-	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *StarlarkModule) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *StarlarkModule) GetGlobal() []*Binding {
-	if x != nil {
-		return x.Global
-	}
-	return nil
-}
-
-type Module struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Info          *ModuleInfo            `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
-	Category      ModuleCategory         `protobuf:"varint,3,opt,name=category,proto3,enum=build.stack.starlark.v1beta1.ModuleCategory" json:"category,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Module) Reset() {
-	*x = Module{}
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Module) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Module) ProtoMessage() {}
-
-func (x *Module) ProtoReflect() protoreflect.Message {
-	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Module.ProtoReflect.Descriptor instead.
-func (*Module) Descriptor() ([]byte, []int) {
-	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *Module) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Module) GetInfo() *ModuleInfo {
+func (x *Provider) GetInfo() *stardoc_output.ProviderInfo {
 	if x != nil {
 		return x.Info
 	}
 	return nil
 }
 
-func (x *Module) GetCategory() ModuleCategory {
+func (x *Provider) GetLocation() *SymbolLocation {
 	if x != nil {
-		return x.Category
+		return x.Location
 	}
-	return ModuleCategory_MODULE_CATEGORY_UNKNOWN
+	return nil
+}
+
+func (x *Provider) GetField() []*ProviderField {
+	if x != nil {
+		return x.Field
+	}
+	return nil
+}
+
+type ProviderField struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Info          *stardoc_output.ProviderFieldInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Location      *SymbolLocation                   `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProviderField) Reset() {
+	*x = ProviderField{}
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProviderField) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProviderField) ProtoMessage() {}
+
+func (x *ProviderField) ProtoReflect() protoreflect.Message {
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProviderField.ProtoReflect.Descriptor instead.
+func (*ProviderField) Descriptor() ([]byte, []int) {
+	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ProviderField) GetInfo() *stardoc_output.ProviderFieldInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+func (x *ProviderField) GetLocation() *SymbolLocation {
+	if x != nil {
+		return x.Location
+	}
+	return nil
+}
+
+type Function struct {
+	state         protoimpl.MessageState               `protogen:"open.v1"`
+	Info          *stardoc_output.StarlarkFunctionInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Location      *SymbolLocation                      `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	Param         []*FunctionParam                     `protobuf:"bytes,3,rep,name=param,proto3" json:"param,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Function) Reset() {
+	*x = Function{}
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Function) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Function) ProtoMessage() {}
+
+func (x *Function) ProtoReflect() protoreflect.Message {
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Function.ProtoReflect.Descriptor instead.
+func (*Function) Descriptor() ([]byte, []int) {
+	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *Function) GetInfo() *stardoc_output.StarlarkFunctionInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+func (x *Function) GetLocation() *SymbolLocation {
+	if x != nil {
+		return x.Location
+	}
+	return nil
+}
+
+func (x *Function) GetParam() []*FunctionParam {
+	if x != nil {
+		return x.Param
+	}
+	return nil
+}
+
+type FunctionParam struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Info          *stardoc_output.FunctionParamInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Location      *SymbolLocation                   `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FunctionParam) Reset() {
+	*x = FunctionParam{}
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionParam) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionParam) ProtoMessage() {}
+
+func (x *FunctionParam) ProtoReflect() protoreflect.Message {
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionParam.ProtoReflect.Descriptor instead.
+func (*FunctionParam) Descriptor() ([]byte, []int) {
+	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *FunctionParam) GetInfo() *stardoc_output.FunctionParamInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+func (x *FunctionParam) GetLocation() *SymbolLocation {
+	if x != nil {
+		return x.Location
+	}
+	return nil
+}
+
+type ValueInfo struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Location *SymbolLocation        `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+	// Types that are valid to be assigned to Value:
+	//
+	//	*ValueInfo_String_
+	//	*ValueInfo_Int
+	//	*ValueInfo_Bool
+	//	*ValueInfo_Macro
+	Value         isValueInfo_Value `protobuf_oneof:"value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValueInfo) Reset() {
+	*x = ValueInfo{}
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValueInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValueInfo) ProtoMessage() {}
+
+func (x *ValueInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValueInfo.ProtoReflect.Descriptor instead.
+func (*ValueInfo) Descriptor() ([]byte, []int) {
+	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ValueInfo) GetLocation() *SymbolLocation {
+	if x != nil {
+		return x.Location
+	}
+	return nil
+}
+
+func (x *ValueInfo) GetValue() isValueInfo_Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *ValueInfo) GetString_() string {
+	if x != nil {
+		if x, ok := x.Value.(*ValueInfo_String_); ok {
+			return x.String_
+		}
+	}
+	return ""
+}
+
+func (x *ValueInfo) GetInt() int64 {
+	if x != nil {
+		if x, ok := x.Value.(*ValueInfo_Int); ok {
+			return x.Int
+		}
+	}
+	return 0
+}
+
+func (x *ValueInfo) GetBool() bool {
+	if x != nil {
+		if x, ok := x.Value.(*ValueInfo_Bool); ok {
+			return x.Bool
+		}
+	}
+	return false
+}
+
+func (x *ValueInfo) GetMacro() *MacroFunction {
+	if x != nil {
+		if x, ok := x.Value.(*ValueInfo_Macro); ok {
+			return x.Macro
+		}
+	}
+	return nil
+}
+
+type isValueInfo_Value interface {
+	isValueInfo_Value()
+}
+
+type ValueInfo_String_ struct {
+	String_ string `protobuf:"bytes,2,opt,name=string,proto3,oneof"`
+}
+
+type ValueInfo_Int struct {
+	Int int64 `protobuf:"varint,3,opt,name=int,proto3,oneof"`
+}
+
+type ValueInfo_Bool struct {
+	Bool bool `protobuf:"varint,4,opt,name=bool,proto3,oneof"`
+}
+
+type ValueInfo_Macro struct {
+	Macro *MacroFunction `protobuf:"bytes,5,opt,name=macro,proto3,oneof"`
+}
+
+func (*ValueInfo_String_) isValueInfo_Value() {}
+
+func (*ValueInfo_Int) isValueInfo_Value() {}
+
+func (*ValueInfo_Bool) isValueInfo_Value() {}
+
+func (*ValueInfo_Macro) isValueInfo_Value() {}
+
+type MacroFunction struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	KwargsReceiver []string               `protobuf:"bytes,1,rep,name=kwargs_receiver,json=kwargsReceiver,proto3" json:"kwargs_receiver,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MacroFunction) Reset() {
+	*x = MacroFunction{}
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MacroFunction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MacroFunction) ProtoMessage() {}
+
+func (x *MacroFunction) ProtoReflect() protoreflect.Message {
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MacroFunction.ProtoReflect.Descriptor instead.
+func (*MacroFunction) Descriptor() ([]byte, []int) {
+	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *MacroFunction) GetKwargsReceiver() []string {
+	if x != nil {
+		return x.KwargsReceiver
+	}
+	return nil
 }
 
 type ModuleInfoRequest struct {
@@ -1061,29 +1108,26 @@ func (x *ModuleInfoRequest) GetWorkspaceOutputBase() string {
 	return ""
 }
 
-type ModuleInfoResponse struct {
+type PingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Info          *ModuleInfo            `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
-	Module        *StarlarkModule        `protobuf:"bytes,2,opt,name=module,proto3" json:"module,omitempty"`
-	Locations     []*Location            `protobuf:"bytes,3,rep,name=locations,proto3" json:"locations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ModuleInfoResponse) Reset() {
-	*x = ModuleInfoResponse{}
+func (x *PingRequest) Reset() {
+	*x = PingRequest{}
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ModuleInfoResponse) String() string {
+func (x *PingRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ModuleInfoResponse) ProtoMessage() {}
+func (*PingRequest) ProtoMessage() {}
 
-func (x *ModuleInfoResponse) ProtoReflect() protoreflect.Message {
+func (x *PingRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1095,84 +1139,113 @@ func (x *ModuleInfoResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ModuleInfoResponse.ProtoReflect.Descriptor instead.
-func (*ModuleInfoResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use PingRequest.ProtoReflect.Descriptor instead.
+func (*PingRequest) Descriptor() ([]byte, []int) {
 	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *ModuleInfoResponse) GetInfo() *ModuleInfo {
-	if x != nil {
-		return x.Info
-	}
-	return nil
+type PingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ModuleInfoResponse) GetModule() *StarlarkModule {
-	if x != nil {
-		return x.Module
-	}
-	return nil
+func (x *PingResponse) Reset() {
+	*x = PingResponse{}
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
-func (x *ModuleInfoResponse) GetLocations() []*Location {
+func (x *PingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingResponse) ProtoMessage() {}
+
+func (x *PingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[17]
 	if x != nil {
-		return x.Locations
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
 	}
-	return nil
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PingResponse.ProtoReflect.Descriptor instead.
+func (*PingResponse) Descriptor() ([]byte, []int) {
+	return file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP(), []int{17}
 }
 
 var File_build_stack_starlark_v1beta1_starlark_server_proto protoreflect.FileDescriptor
 
 const file_build_stack_starlark_v1beta1_starlark_server_proto_rawDesc = "" +
 	"\n" +
-	"2build/stack/starlark/v1beta1/starlark_server.proto\x12\x1cbuild.stack.starlark.v1beta1\x1a4build/stack/starlark/v1beta1/starlark_language.proto\"D\n" +
-	"\bLocation\x12\x12\n" +
-	"\x04file\x18\x01 \x01(\tR\x04file\x12\x12\n" +
-	"\x04line\x18\x02 \x01(\x03R\x04line\x12\x10\n" +
-	"\x03col\x18\x03 \x01(\x03R\x03col\"\x1d\n" +
-	"\vLocationRef\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"M\n" +
-	"\x04Bool\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"L\n" +
-	"\x03Int\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"O\n" +
-	"\x06String\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"M\n" +
-	"\x04List\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"M\n" +
-	"\x04Dict\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"O\n" +
-	"\x06Struct\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"Q\n" +
-	"\bFunction\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"Q\n" +
-	"\bProvider\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"O\n" +
-	"\x06Aspect\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"M\n" +
-	"\x04Rule\x12E\n" +
-	"\blocation\x18\x01 \x01(\v2).build.stack.starlark.v1beta1.LocationRefR\blocation\"\x91\x05\n" +
-	"\aBinding\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x128\n" +
-	"\x04bool\x18\x02 \x01(\v2\".build.stack.starlark.v1beta1.BoolH\x00R\x04bool\x125\n" +
-	"\x03int\x18\x03 \x01(\v2!.build.stack.starlark.v1beta1.IntH\x00R\x03int\x12>\n" +
-	"\x06string\x18\x04 \x01(\v2$.build.stack.starlark.v1beta1.StringH\x00R\x06string\x128\n" +
-	"\x04list\x18\x05 \x01(\v2\".build.stack.starlark.v1beta1.ListH\x00R\x04list\x128\n" +
-	"\x04dict\x18\x06 \x01(\v2\".build.stack.starlark.v1beta1.DictH\x00R\x04dict\x12>\n" +
-	"\x06struct\x18\a \x01(\v2$.build.stack.starlark.v1beta1.StructH\x00R\x06struct\x12D\n" +
-	"\bfunction\x18\b \x01(\v2&.build.stack.starlark.v1beta1.FunctionH\x00R\bfunction\x12D\n" +
-	"\bprovider\x18\t \x01(\v2&.build.stack.starlark.v1beta1.ProviderH\x00R\bprovider\x128\n" +
-	"\x04rule\x18\n" +
-	" \x01(\v2\".build.stack.starlark.v1beta1.RuleH\x00R\x04rule\x12>\n" +
-	"\x06aspect\x18\v \x01(\v2$.build.stack.starlark.v1beta1.AspectH\x00R\x06aspectB\a\n" +
-	"\x05value\"c\n" +
-	"\x0eStarlarkModule\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12=\n" +
-	"\x06global\x18\x02 \x03(\v2%.build.stack.starlark.v1beta1.BindingR\x06global\"\xa4\x01\n" +
+	"2build/stack/starlark/v1beta1/starlark_server.proto\x12\x1cbuild.stack.starlark.v1beta1\x1a#stardoc_output/stardoc_output.proto\"<\n" +
+	"\bPosition\x12\x12\n" +
+	"\x04line\x18\x01 \x01(\x05R\x04line\x12\x1c\n" +
+	"\tcharacter\x18\x02 \x01(\x05R\tcharacter\"\x9c\x01\n" +
+	"\x0eSymbolLocation\x12<\n" +
+	"\x05start\x18\x01 \x01(\v2&.build.stack.starlark.v1beta1.PositionR\x05start\x128\n" +
+	"\x03end\x18\x02 \x01(\v2&.build.stack.starlark.v1beta1.PositionR\x03end\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"I\n" +
+	"\tModuleSet\x12<\n" +
+	"\x06module\x18\x01 \x03(\v2$.build.stack.starlark.v1beta1.ModuleR\x06module\"\xf3\x03\n" +
 	"\x06Module\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12<\n" +
-	"\x04info\x18\x02 \x01(\v2(.build.stack.starlark.v1beta1.ModuleInfoR\x04info\x12H\n" +
-	"\bcategory\x18\x03 \x01(\x0e2,.build.stack.starlark.v1beta1.ModuleCategoryR\bcategory\"\xe4\x02\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12H\n" +
+	"\bcategory\x18\x02 \x01(\x0e2,.build.stack.starlark.v1beta1.ModuleCategoryR\bcategory\x12.\n" +
+	"\x04info\x18\x03 \x01(\v2\x1a.stardoc_output.ModuleInfoR\x04info\x12\x1a\n" +
+	"\bfilename\x18\x04 \x01(\tR\bfilename\x12U\n" +
+	"\x0fsymbol_location\x18\x05 \x03(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\x0esymbolLocation\x12H\n" +
+	"\x06global\x18\x06 \x03(\v20.build.stack.starlark.v1beta1.Module.GlobalEntryR\x06global\x12:\n" +
+	"\x04load\x18\a \x03(\v2&.build.stack.starlark.v1beta1.LoadStmtR\x04load\x1ab\n" +
+	"\vGlobalEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12=\n" +
+	"\x05value\x18\x02 \x01(\v2'.build.stack.starlark.v1beta1.ValueInfoR\x05value:\x028\x01\"0\n" +
+	"\n" +
+	"LoadSymbol\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\"b\n" +
+	"\bLoadStmt\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12@\n" +
+	"\x06symbol\x18\x02 \x03(\v2(.build.stack.starlark.v1beta1.LoadSymbolR\x06symbol\"\xc5\x01\n" +
+	"\x04Rule\x12,\n" +
+	"\x04info\x18\x01 \x01(\v2\x18.stardoc_output.RuleInfoR\x04info\x12H\n" +
+	"\blocation\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\x12E\n" +
+	"\tattribute\x18\x03 \x03(\v2'.build.stack.starlark.v1beta1.AttributeR\tattribute\"\xc9\x01\n" +
+	"\x06Aspect\x12.\n" +
+	"\x04info\x18\x01 \x01(\v2\x1a.stardoc_output.AspectInfoR\x04info\x12H\n" +
+	"\blocation\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\x12E\n" +
+	"\tattribute\x18\x03 \x03(\v2'.build.stack.starlark.v1beta1.AttributeR\tattribute\"\x88\x01\n" +
+	"\tAttribute\x121\n" +
+	"\x04info\x18\x01 \x01(\v2\x1d.stardoc_output.AttributeInfoR\x04info\x12H\n" +
+	"\blocation\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\"\xc9\x01\n" +
+	"\bProvider\x120\n" +
+	"\x04info\x18\x01 \x01(\v2\x1c.stardoc_output.ProviderInfoR\x04info\x12H\n" +
+	"\blocation\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\x12A\n" +
+	"\x05field\x18\x03 \x03(\v2+.build.stack.starlark.v1beta1.ProviderFieldR\x05field\"\x90\x01\n" +
+	"\rProviderField\x125\n" +
+	"\x04info\x18\x01 \x01(\v2!.stardoc_output.ProviderFieldInfoR\x04info\x12H\n" +
+	"\blocation\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\"\xd1\x01\n" +
+	"\bFunction\x128\n" +
+	"\x04info\x18\x01 \x01(\v2$.stardoc_output.StarlarkFunctionInfoR\x04info\x12H\n" +
+	"\blocation\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\x12A\n" +
+	"\x05param\x18\x03 \x03(\v2+.build.stack.starlark.v1beta1.FunctionParamR\x05param\"\x90\x01\n" +
+	"\rFunctionParam\x125\n" +
+	"\x04info\x18\x01 \x01(\v2!.stardoc_output.FunctionParamInfoR\x04info\x12H\n" +
+	"\blocation\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\"\xe7\x01\n" +
+	"\tValueInfo\x12H\n" +
+	"\blocation\x18\x01 \x01(\v2,.build.stack.starlark.v1beta1.SymbolLocationR\blocation\x12\x18\n" +
+	"\x06string\x18\x02 \x01(\tH\x00R\x06string\x12\x12\n" +
+	"\x03int\x18\x03 \x01(\x03H\x00R\x03int\x12\x14\n" +
+	"\x04bool\x18\x04 \x01(\bH\x00R\x04bool\x12C\n" +
+	"\x05macro\x18\x05 \x01(\v2+.build.stack.starlark.v1beta1.MacroFunctionH\x00R\x05macroB\a\n" +
+	"\x05value\"8\n" +
+	"\rMacroFunction\x12'\n" +
+	"\x0fkwargs_receiver\x18\x01 \x03(\tR\x0ekwargsReceiver\"\xe4\x02\n" +
 	"\x11ModuleInfoRequest\x12*\n" +
 	"\x11target_file_label\x18\x01 \x01(\tR\x0ftargetFileLabel\x12%\n" +
 	"\x0eworkspace_name\x18\x02 \x01(\tR\rworkspaceName\x12\x10\n" +
@@ -1182,22 +1255,23 @@ const file_build_stack_starlark_v1beta1_starlark_server_proto_rawDesc = "" +
 	"\x11builtins_bzl_path\x18\x06 \x01(\tR\x0fbuiltinsBzlPath\x12%\n" +
 	"\x0emodule_content\x18\a \x01(\tR\rmoduleContent\x12#\n" +
 	"\rworkspace_cwd\x18\b \x01(\tR\fworkspaceCwd\x122\n" +
-	"\x15workspace_output_base\x18\t \x01(\tR\x13workspaceOutputBase\"\xde\x01\n" +
-	"\x12ModuleInfoResponse\x12<\n" +
-	"\x04info\x18\x01 \x01(\v2(.build.stack.starlark.v1beta1.ModuleInfoR\x04info\x12D\n" +
-	"\x06module\x18\x02 \x01(\v2,.build.stack.starlark.v1beta1.StarlarkModuleR\x06module\x12D\n" +
-	"\tlocations\x18\x03 \x03(\v2&.build.stack.starlark.v1beta1.LocationR\tlocations*\x82\x01\n" +
+	"\x15workspace_output_base\x18\t \x01(\tR\x13workspaceOutputBase\"\r\n" +
+	"\vPingRequest\"\x0e\n" +
+	"\fPingResponse*\x96\x01\n" +
 	"\x0eModuleCategory\x12\x1b\n" +
 	"\x17MODULE_CATEGORY_UNKNOWN\x10\x00\x12\x1a\n" +
 	"\x16CONFIGURATION_FRAGMENT\x10\x01\x12\f\n" +
 	"\bPROVIDER\x10\x02\x12\v\n" +
 	"\aBUILTIN\x10\x03\x12\x12\n" +
 	"\x0eTOP_LEVEL_TYPE\x10\x04\x12\b\n" +
-	"\x04NONE\x10\x052\x82\x01\n" +
-	"\rStarlarkBazel\x12q\n" +
+	"\x04NONE\x10\x05\x12\b\n" +
+	"\x04CORE\x10\x06\x12\b\n" +
+	"\x04LOAD\x10\a2\xd2\x01\n" +
+	"\bStarlark\x12e\n" +
 	"\n" +
-	"ModuleInfo\x12/.build.stack.starlark.v1beta1.ModuleInfoRequest\x1a0.build.stack.starlark.v1beta1.ModuleInfoResponse\"\x00B\x85\x01\n" +
-	"6build.stack.devtools.build.constellate.rendering.protoB\x14StarlarkServerProtosZ5github.com/stackb/centrl/build/stack/starlark/v1beta1b\x06proto3"
+	"ModuleInfo\x12/.build.stack.starlark.v1beta1.ModuleInfoRequest\x1a$.build.stack.starlark.v1beta1.Module\"\x00\x12_\n" +
+	"\x04Ping\x12).build.stack.starlark.v1beta1.PingRequest\x1a*.build.stack.starlark.v1beta1.PingResponse\"\x00B\x7f\n" +
+	"6build.stack.devtools.build.constellate.rendering.protoB\x0eStarlarkProtosZ5github.com/stackb/centrl/build/stack/starlark/v1beta1b\x06proto3"
 
 var (
 	file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescOnce sync.Once
@@ -1212,62 +1286,77 @@ func file_build_stack_starlark_v1beta1_starlark_server_proto_rawDescGZIP() []byt
 }
 
 var file_build_stack_starlark_v1beta1_starlark_server_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_build_stack_starlark_v1beta1_starlark_server_proto_goTypes = []any{
-	(ModuleCategory)(0),        // 0: build.stack.starlark.v1beta1.ModuleCategory
-	(*Location)(nil),           // 1: build.stack.starlark.v1beta1.Location
-	(*LocationRef)(nil),        // 2: build.stack.starlark.v1beta1.LocationRef
-	(*Bool)(nil),               // 3: build.stack.starlark.v1beta1.Bool
-	(*Int)(nil),                // 4: build.stack.starlark.v1beta1.Int
-	(*String)(nil),             // 5: build.stack.starlark.v1beta1.String
-	(*List)(nil),               // 6: build.stack.starlark.v1beta1.List
-	(*Dict)(nil),               // 7: build.stack.starlark.v1beta1.Dict
-	(*Struct)(nil),             // 8: build.stack.starlark.v1beta1.Struct
-	(*Function)(nil),           // 9: build.stack.starlark.v1beta1.Function
-	(*Provider)(nil),           // 10: build.stack.starlark.v1beta1.Provider
-	(*Aspect)(nil),             // 11: build.stack.starlark.v1beta1.Aspect
-	(*Rule)(nil),               // 12: build.stack.starlark.v1beta1.Rule
-	(*Binding)(nil),            // 13: build.stack.starlark.v1beta1.Binding
-	(*StarlarkModule)(nil),     // 14: build.stack.starlark.v1beta1.StarlarkModule
-	(*Module)(nil),             // 15: build.stack.starlark.v1beta1.Module
-	(*ModuleInfoRequest)(nil),  // 16: build.stack.starlark.v1beta1.ModuleInfoRequest
-	(*ModuleInfoResponse)(nil), // 17: build.stack.starlark.v1beta1.ModuleInfoResponse
-	(*ModuleInfo)(nil),         // 18: build.stack.starlark.v1beta1.ModuleInfo
+	(ModuleCategory)(0),                         // 0: build.stack.starlark.v1beta1.ModuleCategory
+	(*Position)(nil),                            // 1: build.stack.starlark.v1beta1.Position
+	(*SymbolLocation)(nil),                      // 2: build.stack.starlark.v1beta1.SymbolLocation
+	(*ModuleSet)(nil),                           // 3: build.stack.starlark.v1beta1.ModuleSet
+	(*Module)(nil),                              // 4: build.stack.starlark.v1beta1.Module
+	(*LoadSymbol)(nil),                          // 5: build.stack.starlark.v1beta1.LoadSymbol
+	(*LoadStmt)(nil),                            // 6: build.stack.starlark.v1beta1.LoadStmt
+	(*Rule)(nil),                                // 7: build.stack.starlark.v1beta1.Rule
+	(*Aspect)(nil),                              // 8: build.stack.starlark.v1beta1.Aspect
+	(*Attribute)(nil),                           // 9: build.stack.starlark.v1beta1.Attribute
+	(*Provider)(nil),                            // 10: build.stack.starlark.v1beta1.Provider
+	(*ProviderField)(nil),                       // 11: build.stack.starlark.v1beta1.ProviderField
+	(*Function)(nil),                            // 12: build.stack.starlark.v1beta1.Function
+	(*FunctionParam)(nil),                       // 13: build.stack.starlark.v1beta1.FunctionParam
+	(*ValueInfo)(nil),                           // 14: build.stack.starlark.v1beta1.ValueInfo
+	(*MacroFunction)(nil),                       // 15: build.stack.starlark.v1beta1.MacroFunction
+	(*ModuleInfoRequest)(nil),                   // 16: build.stack.starlark.v1beta1.ModuleInfoRequest
+	(*PingRequest)(nil),                         // 17: build.stack.starlark.v1beta1.PingRequest
+	(*PingResponse)(nil),                        // 18: build.stack.starlark.v1beta1.PingResponse
+	nil,                                         // 19: build.stack.starlark.v1beta1.Module.GlobalEntry
+	(*stardoc_output.ModuleInfo)(nil),           // 20: stardoc_output.ModuleInfo
+	(*stardoc_output.RuleInfo)(nil),             // 21: stardoc_output.RuleInfo
+	(*stardoc_output.AspectInfo)(nil),           // 22: stardoc_output.AspectInfo
+	(*stardoc_output.AttributeInfo)(nil),        // 23: stardoc_output.AttributeInfo
+	(*stardoc_output.ProviderInfo)(nil),         // 24: stardoc_output.ProviderInfo
+	(*stardoc_output.ProviderFieldInfo)(nil),    // 25: stardoc_output.ProviderFieldInfo
+	(*stardoc_output.StarlarkFunctionInfo)(nil), // 26: stardoc_output.StarlarkFunctionInfo
+	(*stardoc_output.FunctionParamInfo)(nil),    // 27: stardoc_output.FunctionParamInfo
 }
 var file_build_stack_starlark_v1beta1_starlark_server_proto_depIdxs = []int32{
-	2,  // 0: build.stack.starlark.v1beta1.Bool.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 1: build.stack.starlark.v1beta1.Int.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 2: build.stack.starlark.v1beta1.String.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 3: build.stack.starlark.v1beta1.List.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 4: build.stack.starlark.v1beta1.Dict.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 5: build.stack.starlark.v1beta1.Struct.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 6: build.stack.starlark.v1beta1.Function.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 7: build.stack.starlark.v1beta1.Provider.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 8: build.stack.starlark.v1beta1.Aspect.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	2,  // 9: build.stack.starlark.v1beta1.Rule.location:type_name -> build.stack.starlark.v1beta1.LocationRef
-	3,  // 10: build.stack.starlark.v1beta1.Binding.bool:type_name -> build.stack.starlark.v1beta1.Bool
-	4,  // 11: build.stack.starlark.v1beta1.Binding.int:type_name -> build.stack.starlark.v1beta1.Int
-	5,  // 12: build.stack.starlark.v1beta1.Binding.string:type_name -> build.stack.starlark.v1beta1.String
-	6,  // 13: build.stack.starlark.v1beta1.Binding.list:type_name -> build.stack.starlark.v1beta1.List
-	7,  // 14: build.stack.starlark.v1beta1.Binding.dict:type_name -> build.stack.starlark.v1beta1.Dict
-	8,  // 15: build.stack.starlark.v1beta1.Binding.struct:type_name -> build.stack.starlark.v1beta1.Struct
-	9,  // 16: build.stack.starlark.v1beta1.Binding.function:type_name -> build.stack.starlark.v1beta1.Function
-	10, // 17: build.stack.starlark.v1beta1.Binding.provider:type_name -> build.stack.starlark.v1beta1.Provider
-	12, // 18: build.stack.starlark.v1beta1.Binding.rule:type_name -> build.stack.starlark.v1beta1.Rule
-	11, // 19: build.stack.starlark.v1beta1.Binding.aspect:type_name -> build.stack.starlark.v1beta1.Aspect
-	13, // 20: build.stack.starlark.v1beta1.StarlarkModule.global:type_name -> build.stack.starlark.v1beta1.Binding
-	18, // 21: build.stack.starlark.v1beta1.Module.info:type_name -> build.stack.starlark.v1beta1.ModuleInfo
-	0,  // 22: build.stack.starlark.v1beta1.Module.category:type_name -> build.stack.starlark.v1beta1.ModuleCategory
-	18, // 23: build.stack.starlark.v1beta1.ModuleInfoResponse.info:type_name -> build.stack.starlark.v1beta1.ModuleInfo
-	14, // 24: build.stack.starlark.v1beta1.ModuleInfoResponse.module:type_name -> build.stack.starlark.v1beta1.StarlarkModule
-	1,  // 25: build.stack.starlark.v1beta1.ModuleInfoResponse.locations:type_name -> build.stack.starlark.v1beta1.Location
-	16, // 26: build.stack.starlark.v1beta1.StarlarkBazel.ModuleInfo:input_type -> build.stack.starlark.v1beta1.ModuleInfoRequest
-	17, // 27: build.stack.starlark.v1beta1.StarlarkBazel.ModuleInfo:output_type -> build.stack.starlark.v1beta1.ModuleInfoResponse
-	27, // [27:28] is the sub-list for method output_type
-	26, // [26:27] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	1,  // 0: build.stack.starlark.v1beta1.SymbolLocation.start:type_name -> build.stack.starlark.v1beta1.Position
+	1,  // 1: build.stack.starlark.v1beta1.SymbolLocation.end:type_name -> build.stack.starlark.v1beta1.Position
+	4,  // 2: build.stack.starlark.v1beta1.ModuleSet.module:type_name -> build.stack.starlark.v1beta1.Module
+	0,  // 3: build.stack.starlark.v1beta1.Module.category:type_name -> build.stack.starlark.v1beta1.ModuleCategory
+	20, // 4: build.stack.starlark.v1beta1.Module.info:type_name -> stardoc_output.ModuleInfo
+	2,  // 5: build.stack.starlark.v1beta1.Module.symbol_location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	19, // 6: build.stack.starlark.v1beta1.Module.global:type_name -> build.stack.starlark.v1beta1.Module.GlobalEntry
+	6,  // 7: build.stack.starlark.v1beta1.Module.load:type_name -> build.stack.starlark.v1beta1.LoadStmt
+	5,  // 8: build.stack.starlark.v1beta1.LoadStmt.symbol:type_name -> build.stack.starlark.v1beta1.LoadSymbol
+	21, // 9: build.stack.starlark.v1beta1.Rule.info:type_name -> stardoc_output.RuleInfo
+	2,  // 10: build.stack.starlark.v1beta1.Rule.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	9,  // 11: build.stack.starlark.v1beta1.Rule.attribute:type_name -> build.stack.starlark.v1beta1.Attribute
+	22, // 12: build.stack.starlark.v1beta1.Aspect.info:type_name -> stardoc_output.AspectInfo
+	2,  // 13: build.stack.starlark.v1beta1.Aspect.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	9,  // 14: build.stack.starlark.v1beta1.Aspect.attribute:type_name -> build.stack.starlark.v1beta1.Attribute
+	23, // 15: build.stack.starlark.v1beta1.Attribute.info:type_name -> stardoc_output.AttributeInfo
+	2,  // 16: build.stack.starlark.v1beta1.Attribute.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	24, // 17: build.stack.starlark.v1beta1.Provider.info:type_name -> stardoc_output.ProviderInfo
+	2,  // 18: build.stack.starlark.v1beta1.Provider.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	11, // 19: build.stack.starlark.v1beta1.Provider.field:type_name -> build.stack.starlark.v1beta1.ProviderField
+	25, // 20: build.stack.starlark.v1beta1.ProviderField.info:type_name -> stardoc_output.ProviderFieldInfo
+	2,  // 21: build.stack.starlark.v1beta1.ProviderField.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	26, // 22: build.stack.starlark.v1beta1.Function.info:type_name -> stardoc_output.StarlarkFunctionInfo
+	2,  // 23: build.stack.starlark.v1beta1.Function.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	13, // 24: build.stack.starlark.v1beta1.Function.param:type_name -> build.stack.starlark.v1beta1.FunctionParam
+	27, // 25: build.stack.starlark.v1beta1.FunctionParam.info:type_name -> stardoc_output.FunctionParamInfo
+	2,  // 26: build.stack.starlark.v1beta1.FunctionParam.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	2,  // 27: build.stack.starlark.v1beta1.ValueInfo.location:type_name -> build.stack.starlark.v1beta1.SymbolLocation
+	15, // 28: build.stack.starlark.v1beta1.ValueInfo.macro:type_name -> build.stack.starlark.v1beta1.MacroFunction
+	14, // 29: build.stack.starlark.v1beta1.Module.GlobalEntry.value:type_name -> build.stack.starlark.v1beta1.ValueInfo
+	16, // 30: build.stack.starlark.v1beta1.Starlark.ModuleInfo:input_type -> build.stack.starlark.v1beta1.ModuleInfoRequest
+	17, // 31: build.stack.starlark.v1beta1.Starlark.Ping:input_type -> build.stack.starlark.v1beta1.PingRequest
+	4,  // 32: build.stack.starlark.v1beta1.Starlark.ModuleInfo:output_type -> build.stack.starlark.v1beta1.Module
+	18, // 33: build.stack.starlark.v1beta1.Starlark.Ping:output_type -> build.stack.starlark.v1beta1.PingResponse
+	32, // [32:34] is the sub-list for method output_type
+	30, // [30:32] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_build_stack_starlark_v1beta1_starlark_server_proto_init() }
@@ -1275,18 +1364,11 @@ func file_build_stack_starlark_v1beta1_starlark_server_proto_init() {
 	if File_build_stack_starlark_v1beta1_starlark_server_proto != nil {
 		return
 	}
-	file_build_stack_starlark_v1beta1_starlark_language_proto_init()
-	file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[12].OneofWrappers = []any{
-		(*Binding_Bool)(nil),
-		(*Binding_Int)(nil),
-		(*Binding_String_)(nil),
-		(*Binding_List)(nil),
-		(*Binding_Dict)(nil),
-		(*Binding_Struct)(nil),
-		(*Binding_Function)(nil),
-		(*Binding_Provider)(nil),
-		(*Binding_Rule)(nil),
-		(*Binding_Aspect)(nil),
+	file_build_stack_starlark_v1beta1_starlark_server_proto_msgTypes[13].OneofWrappers = []any{
+		(*ValueInfo_String_)(nil),
+		(*ValueInfo_Int)(nil),
+		(*ValueInfo_Bool)(nil),
+		(*ValueInfo_Macro)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1294,7 +1376,7 @@ func file_build_stack_starlark_v1beta1_starlark_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_build_stack_starlark_v1beta1_starlark_server_proto_rawDesc), len(file_build_stack_starlark_v1beta1_starlark_server_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
