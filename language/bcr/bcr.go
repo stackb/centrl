@@ -314,52 +314,10 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		// the MODULE.bazel file, these should exist as patches or overlays.
 		// However, at least one exists which references @rules_cc, and as a
 		// consequence we cannot build.  If this file exists, remove all
-		// pre-existing rules that are not one of ours.
+		// pre-existing rules if a BUILD file exists.
 		if args.File != nil {
-			kinds := ext.Kinds()
-			removed := make(map[string]bool)
-			for _, r := range args.File.Rules {
-				if _, ok := kinds[r.Kind()]; !ok {
-					removed[r.Kind()] = true
-					r.Delete()
-				}
-			}
-			// Remove loads that only contain removed kinds
-			var keep []*rule.Load
-			for _, load := range args.File.Loads {
-				hasRemovedKind := false
-				hasKeptKind := false
-				for _, sym := range load.Symbols() {
-					if removed[sym] {
-						hasRemovedKind = true
-					} else {
-						hasKeptKind = true
-					}
-				}
-				// Keep the load if it has any symbols that weren't removed
-				if hasKeptKind {
-					// If it also has removed kinds, we need to filter those out
-					if hasRemovedKind {
-						var newSymbols []string
-						for _, sym := range load.Symbols() {
-							if !removed[sym] {
-								newSymbols = append(newSymbols, sym)
-							}
-						}
-						if len(newSymbols) > 0 {
-							newLoad := rule.NewLoad(load.Name())
-							for _, sym := range newSymbols {
-								newLoad.Add(sym)
-							}
-							keep = append(keep, newLoad)
-						}
-					} else {
-						keep = append(keep, load)
-					}
-				}
-				// If hasRemovedKind && !hasKeptKind, we drop the entire load
-			}
-			args.File.Loads = keep
+			args.File.Content = nil
+			args.File.Sync()
 		}
 
 		moduleBazelFilename := filepath.Join(args.Config.WorkDir, args.Rel, "MODULE.bazel")
