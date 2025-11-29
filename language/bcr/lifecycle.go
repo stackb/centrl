@@ -47,7 +47,7 @@ func (ext *bcrExtension) AfterResolvingDeps(ctx context.Context) {
 	// Nothing to clean up after resolution
 	log.Println("===[AfterResolvingDeps]======================================")
 
-	// update the MODULE.bazel with
-	// additional http_archives.
-	ext.mergeModuleBazelFile(ext.repoRoot)
+	if err := ext.makeDocsRepositories(ext.repoRoot); err != nil {
+		log.Fatalf("preparing external repositories: %v", err)
+	}
 }

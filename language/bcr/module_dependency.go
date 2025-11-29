@@ -48,6 +48,9 @@ func makeModuleDependencyRules(deps []*bzpb.ModuleDependency) ([]*rule.Rule, []*
 		if dep.Version != "" {
 			r.SetAttr("version", dep.Version)
 		}
+		if dep.RepoName != "" {
+			r.SetAttr("repo_name", dep.RepoName)
+		}
 		if dep.Dev {
 			r.SetAttr("dev", dep.Dev)
 		}
@@ -88,7 +91,7 @@ func makeOverrideRule(moduleName string, override *bzpb.ModuleDependencyOverride
 }
 
 // resolveModuleDependencyRule resolves the module and cycle attributes for a module_dependency rule
-func resolveModuleDependencyRule(cfg *Config, modulesRoot string, r *rule.Rule, ix *resolve.RuleIndex, from label.Label, moduleToCycle map[string]string) {
+func resolveModuleDependencyRule(modulesRoot string, r *rule.Rule, ix *resolve.RuleIndex, from label.Label, moduleToCycle map[string]string) {
 	// Get the dependency name and version to construct the import spec
 	depName := r.AttrString("dep_name")
 	version := r.AttrString("version")

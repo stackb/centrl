@@ -201,6 +201,7 @@ def _module_registry_impl(ctx):
             registry_pb = [registry_pb],
             static_html = static_html,
             codesearch_index = [codesearch_index],
+            docs = depset(transitive = [d.docs for d in deps]),
         ),
         ModuleRegistryInfo(
             deps = depset(deps),

@@ -165,6 +165,7 @@ closure_js_binary(
         "sitemap_xml",
         "robots_txt",
         "registry_pb",
+        "docs",
     ]
 ]
 
@@ -188,6 +189,7 @@ release_archive(
     srcs = [
         "favicon.png",
         "registry_pb",
+        # ":docs",
         ":robots_txt",
         ":sitemap_xml",
     ] + select({

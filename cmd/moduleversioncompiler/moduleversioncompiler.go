@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -31,6 +30,10 @@ type Config struct {
 	CommitDate            string
 	CommitMessage         string
 	UnresolvedDeps        string
+	UrlStatusCode         int
+	UrlStatusMessage      string
+	DocsUrlStatusCode     int
+	DocsUrlStatusMessage  string
 }
 
 func main() {
@@ -75,7 +78,20 @@ func run(args []string) error {
 			return fmt.Errorf("failed to read source.json: %v", err)
 		}
 		module.Source = source
-
+		if module.Source.Url != "" {
+			module.Source.UrlStatus = &bzpb.ResourceStatus{
+				Url:     module.Source.Url,
+				Code:    int32(cfg.UrlStatusCode),
+				Message: cfg.UrlStatusMessage,
+			}
+		}
+		if module.Source.DocsUrl != "" {
+			module.Source.UrlStatus = &bzpb.ResourceStatus{
+				Url:     module.Source.DocsUrl,
+				Code:    int32(cfg.DocsUrlStatusCode),
+				Message: cfg.DocsUrlStatusMessage,
+			}
+		}
 		if cfg.DocumentationInfoFile != "" {
 			var docs bzpb.DocumentationInfo
 			if err := protoutil.ReadFile(cfg.DocumentationInfoFile, &docs); err != nil {
@@ -144,6 +160,10 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs.StringVar(&cfg.CommitMessage, "commit_message", "", "the git commit message (optional)")
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
 	fs.StringVar(&cfg.UnresolvedDeps, "unresolved_deps", "", "comma-separated list of dep names that failed to resolve to a known version")
+	fs.IntVar(&cfg.UrlStatusCode, "url_status_code", 0, "HTTP status code for the source URL (optional)")
+	fs.StringVar(&cfg.UrlStatusMessage, "url_status_message", "", "HTTP status message for the source URL (optional)")
+	fs.IntVar(&cfg.DocsUrlStatusCode, "docs_url_status_code", 0, "HTTP status code for the docs URL (optional)")
+	fs.StringVar(&cfg.DocsUrlStatusMessage, "docs_url_status_message", "", "HTTP status message for the docs URL (optional)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "usage: %s @PARAMS_FILE", toolName)
@@ -155,19 +175,6 @@ func parseFlags(args []string) (cfg Config, err error) {
 	}
 
 	return
-}
-
-// listFiles is a convenience debugging function to log the files under a given dir.
-func listFiles(dir string) error {
-	log.Println("Listing files under " + dir)
-	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.Printf("%v\n", err)
-			return err
-		}
-		log.Println(path)
-		return nil
-	})
 }
 
 func mustFindDependencyByName(module *bzpb.ModuleVersion, name string) *bzpb.ModuleDependency {

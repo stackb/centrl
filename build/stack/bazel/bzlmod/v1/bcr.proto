@@ -86,6 +86,19 @@ message RepositoryMetadata {
     string canonical_name = 8;
 }
 
+message ResourceStatus {
+    // url is the resource locator
+    string url = 1;
+    // status represents HTTP status message
+    int32 code = 2;
+    // status represents HTTP status message
+    string message = 3; 
+}
+
+message ResourceStatusSet {
+    repeated ResourceStatus status = 1;
+}
+
 // Source represents a source.json file for a module version
 message ModuleSource {
     // URL to the source archive
@@ -112,6 +125,10 @@ message ModuleSource {
     string commit = 12;
     // optional stardoc derived data
     DocumentationInfo documentation = 13;
+    // the http response for the docs_url
+    ResourceStatus docs_url_status = 14;
+    // the http response for the source_url
+    ResourceStatus url_status = 15;
 }
 
 // Attestations represents an attestations.json file for a module version
@@ -386,9 +403,19 @@ message FileInfo {
     repeated SymbolInfo symbol = 2;
     // a truncated description from the ModuleInfo.module_docstring
     string description = 3;
+    // an error message, if the symbols from the file could not be
+    // extracted.ArchiveOverride
+    string error = 5;
+}
+
+enum DocumentationSource {
+    DOCUMENTATION_SOURCE_UNKNOWN = 0;
+    PUBLISHED = 1;
+    BEST_EFFORT = 2;
 }
 
 // Set of files.
 message DocumentationInfo {
     repeated FileInfo file = 1;
+    DocumentationSource source = 2;
 }

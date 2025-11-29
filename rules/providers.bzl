@@ -24,6 +24,7 @@ ModuleMetadataInfo = provider(
         "metadata_json": "The metadata.json file",
         "proto": "The compiled Module proto file",
         "build_bazel": "The BUILD.bazel file",
+        "docs": "Depset[File]: The compiled documentation for all module versions",
     },
 )
 
@@ -32,9 +33,11 @@ ModuleDependencyInfo = provider(
     fields = {
         "name": "Dependency module name",
         "version": "Dependency module version",
+        "repo_name": "Dependency module effective repository name",
         "dev": "Whether this is a dev dependency",
         "unresolved": "Whether this is an unresolved dependency",
         "module": "Module version target providing ModuleVersionInfo",
+        "transitive_modules": "all deps providing ModuleVersionInfo",
         "cycle": "Cycle target providing ModuleDependencyCycleInfo if this dependency is part of a cycle",
         "override": "Override target providing ModuleOverrideInfo",
     },
@@ -44,6 +47,8 @@ ModuleSourceInfo = provider(
     doc = "Info about a Module Source",
     fields = {
         "url": "Source archive URL",
+        "url_status_code": "HTTP status code of the source URL",
+        "url_status_message": "HTTP status message of the source URL",
         "integrity": "Source integrity hash",
         "strip_prefix": "Directory prefix to strip from archive",
         "patch_strip": "Number of path components to strip from patches",
@@ -51,7 +56,9 @@ ModuleSourceInfo = provider(
         "source_json": "The source.json file",
         "docs": "List[File]: The set of downloaded docs",
         "docs_url": "str: docs URL",
-        "documentation_info": "Optional[File]: the compiled DocumentationInfo proto file",
+        "docs_url_status_code": "HTTP status code of the docs URL",
+        "docs_url_status_message": "HTTP status message of the docs URL",
+        "starlarklibrary": "StarlarkLibraryFileInfo: the starlark provider for the source docs",
     },
 )
 
@@ -81,6 +88,7 @@ ModuleVersionInfo = provider(
         "module_bazel": "The MODULE.bazel file",
         "build_bazel": "The BUILD.bazel file",
         "proto": "The compiled ModuleVersion proto file",
+        "docs": "Depset[File]: The compiled documentation.  Depset may be empty",
     },
 )
 

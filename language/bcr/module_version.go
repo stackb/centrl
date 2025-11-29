@@ -2,6 +2,7 @@ package bcr
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -103,4 +104,20 @@ func moduleVersionImports(r *rule.Rule) []resolve.ImportSpec {
 	}
 
 	return []resolve.ImportSpec{importSpec}
+}
+
+func resolveModuleVersionRule(r *rule.Rule, modules map[string]*rule.Rule) {
+	moduleName := r.AttrString("module_name")
+	moduleVersion := r.AttrString("version")
+	if moduleRule, ok := modules[moduleName]; !ok {
+		// https://github.com/bazelbuild/bazel-central-registry/tree/8c5761038905a45f1cf2d1098ba9917a456d20bb/modules/postgres/14.18
+		log.Printf("WARN: while resolving latest versions, discovered unknown module: %v", moduleName)
+	} else {
+		versions := moduleRule.AttrStrings("versions")
+
+		// latest version is expected to be the last element in the list
+		if len(versions) > 0 && versions[len(versions)-1] == moduleVersion {
+			r.SetAttr("is_latest_version", true)
+		}
+	}
 }

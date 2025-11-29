@@ -56,6 +56,7 @@ def _module_metadata_impl(ctx):
             metadata_json = ctx.file.metadata_json,
             build_bazel = ctx.file.build_bazel if ctx.file.build_bazel else None,
             proto = proto_out,
+            docs = depset(transitive = [d.docs for d in deps]),
         ),
     ]
 

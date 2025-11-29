@@ -28,36 +28,63 @@ import (
 	"github.com/stackb/centrl/pkg/protoutil"
 )
 
+// stringBoolMap is a custom flag type for repeatable string flags that populates a map
+type stringBoolMap map[string]bool
+
+func (m *stringBoolMap) String() string {
+	if *m == nil {
+		return ""
+	}
+	urls := make([]string, 0, len(*m))
+	for url := range *m {
+		urls = append(urls, url)
+	}
+	return strings.Join(urls, ",")
+}
+
+func (m *stringBoolMap) Set(value string) error {
+	if *m == nil {
+		*m = make(map[string]bool)
+	}
+	(*m)[value] = true
+	return nil
+}
+
 // NewLanguage is called by Gazelle to install this language extension in a
 // binary.
 func NewLanguage() language.Language {
 	return &bcrExtension{
-		depGraph:             initDepGraph(),
-		moduleToCycle:        make(map[string]string),
-		repositories:         make(map[string]*bzpb.RepositoryMetadata),
-		httpArchives:         make(map[label.Label]*rule.Rule),
-		starlarkRepositories: make(map[label.Label]*rule.Rule),
+		depGraph:      initDepGraph(),
+		moduleToCycle: make(map[string]string),
+		repositories:  make(map[string]*bzpb.RepositoryMetadata),
+		docUrls:       make(map[string][]*rule.Rule),
+		sourceUrls:    make(map[string][]*rule.Rule),
+		modules:       make(map[string]*rule.Rule),
 	}
 }
 
 // bcrExtension implements language.Language.
 type bcrExtension struct {
-	name                 string
-	depGraph             graph.Graph[string, string]
-	registryRoot         string
-	registryURL          string
-	repoRoot             string // copy of config.RepoRoot
-	modulesRoot          string
-	baseRegistryFile     string
-	githubToken          string
-	gitlabToken          string
-	moduleToCycle        map[string]string                   // maps "module@version" to cycle rule name
-	repositories         map[string]*bzpb.RepositoryMetadata // tracks unique repository strings (e.g., "github:org/repo")
-	httpArchives         map[label.Label]*rule.Rule          // tracks docs http_archives to fetch (e.g.  https://github.com/bazel-contrib/yq.bzl/releases/download/v0.3.2/yq.bzl-v0.3.2.docs.tar.gz -> http_archive rule)
-	starlarkRepositories map[label.Label]*rule.Rule          // tracks docs starlark_repository
-	baseRegistry         *bzpb.Registry
-	moduleCommits        map[string]*bzpb.ModuleCommit // cache of all module commits (preloaded)
-	githubClient         *github.Client
+	name                  string
+	depGraph              graph.Graph[string, string]
+	registryRoot          string
+	registryURL           string
+	repoRoot              string // copy of config.RepoRoot
+	modulesRoot           string
+	baseRegistryFile      string
+	resourceStatusSetFile string
+	githubToken           string
+	gitlabToken           string
+	moduleToCycle         map[string]string                   // maps "module@version" to cycle rule name
+	repositories          map[string]*bzpb.RepositoryMetadata // tracks unique repository strings (e.g., "github:org/repo")
+	modules               map[string]*rule.Rule               // tracks module metadata rules
+	docUrls               map[string][]*rule.Rule             // tracks docs http_archives to fetch (e.g.  https://github.com/bazel-contrib/yq.bzl/releases/download/v0.3.2/yq.bzl-v0.3.2.docs.tar.gz -> http_archive rule)
+	sourceUrls            map[string][]*rule.Rule             // tracks docs starlark_repository
+	resourceStatus        map[string]*bzpb.ResourceStatus     // results of reading resourceStatusSetFile, keyed by URL
+	blacklistedUrls       stringBoolMap                       // tracks urls that are known to have wrong integrity
+	baseRegistry          *bzpb.Registry
+	moduleCommits         map[string]*bzpb.ModuleCommit // cache of all module commits (preloaded)
+	githubClient          *github.Client
 }
 
 // Name returns the name of the language. This should be a prefix of the kinds
@@ -73,9 +100,11 @@ func (ext *bcrExtension) Name() string {
 func (ext *bcrExtension) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	fs.StringVar(&ext.registryRoot, "registry-root", "", "root dir for the bcr registry")
 	fs.StringVar(&ext.registryURL, "registry-url", "", "base URL for the deployed registry")
+	fs.StringVar(&ext.resourceStatusSetFile, "resource-status-set-file", "", "path to resource-status.pb file containing cached http statuses for the registry URLs (helpful for development)")
 	fs.StringVar(&ext.baseRegistryFile, "registry-file", "", "path to repository.pb file containing registry data to use as a base data set (repository metadata)")
 	fs.StringVar(&ext.githubToken, "github-token", os.Getenv("GITHUB_TOKEN"), "GitHub API token (defaults to GITHUB_TOKEN env var)")
 	fs.StringVar(&ext.gitlabToken, "gitlab-token", os.Getenv("GITLAB_TOKEN"), "GitLab API token (defaults to GITLAB_TOKEN env var)")
+	fs.Var(&ext.blacklistedUrls, "blacklisted_url", "URL to blacklist (repeatable)")
 }
 
 func (ext *bcrExtension) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -102,6 +131,16 @@ func (ext *bcrExtension) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 			return err
 		}
 	}
+	ext.resourceStatus = make(map[string]*bzpb.ResourceStatus)
+	if ext.resourceStatusSetFile != "" {
+		var resourceStatusSet bzpb.ResourceStatusSet
+		if err := protoutil.ReadFile(os.ExpandEnv(ext.resourceStatusSetFile), &resourceStatusSet); err != nil {
+			log.Printf("warning: could not read resource statuses: %v", err)
+		}
+		for _, status := range resourceStatusSet.Status {
+			ext.resourceStatus[status.Url] = status
+		}
+	}
 
 	// Preload all module commits in one git call for performance
 	ctx := context.Background()
@@ -117,10 +156,6 @@ func (ext *bcrExtension) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	}
 
 	return nil
-}
-
-func (*bcrExtension) KnownDirectives() []string {
-	return []string{}
 }
 
 // Configure implements config.Configurer
@@ -180,6 +215,10 @@ func (ext *bcrExtension) Loads() []rule.LoadInfo {
 	}
 }
 
+func (*bcrExtension) KnownDirectives() (directives []string) {
+	return
+}
+
 // Fix repairs deprecated usage of language-specific rules in f. This is called
 // before the file is indexed. Unless c.ShouldFix is true, fixes that delete or
 // rename rules should not be performed.
@@ -234,11 +273,10 @@ func (ext *bcrExtension) Resolve(
 	importsRaw any,
 	from label.Label,
 ) {
-	cfg := mustGetConfig(c)
 	// Switch on rule kind to delegate to specific resolver functions
 	switch r.Kind() {
 	case "module_dependency":
-		resolveModuleDependencyRule(cfg, ext.modulesRoot, r, ix, from, ext.moduleToCycle)
+		resolveModuleDependencyRule(ext.modulesRoot, r, ix, from, ext.moduleToCycle)
 	case "module_dependency_cycle":
 		resolveModuleDependencyCycleRule(r, ix)
 	case "module_metadata":
@@ -249,6 +287,8 @@ func (ext *bcrExtension) Resolve(
 		resolveModuleSourceRule(r, c, from)
 	case "repository_metadata":
 		resolveRepositoryMetadataRule(r, ix, ext.repositories)
+	case "module_version":
+		resolveModuleVersionRule(r, ext.modules)
 	}
 }
 
@@ -276,7 +316,6 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 
 	// Generate repository metadata in the registry root package
 	if args.Rel == ext.registryRoot {
-		// Generate repository_metadata rules from tracked repositories
 		repoRules := makeRepositoryMetadataRules(ext.repositories)
 		rules = append(rules, repoRules...)
 	}
@@ -289,7 +328,6 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			cycleRules = makeModuleDependencyCycleRules(cycles)
 			rules = append(rules, cycleRules...)
 		}
-		// generate registry in the modules root package
 		rules = append(rules, makeModuleRegistryRule(path.Base(args.Rel), args.Subdirs, ext.registryURL, cycleRules, args.Config))
 	}
 
@@ -305,7 +343,10 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		// Add maintainer rules to the list
 		rules = append(rules, maintainerRules...)
 		// Add metadata rule with references to maintainers (passing ext to track repositories)
-		rules = append(rules, makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules, "metadata.json", ext))
+		r := makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules, "metadata.json", ext)
+		// track it so moduleVersion can determine if it is latest version
+		ext.modules[r.Name()] = r
+		rules = append(rules, r)
 	}
 
 	// are we in a module version directory?

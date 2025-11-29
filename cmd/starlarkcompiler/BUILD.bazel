@@ -11,9 +11,11 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//blaze/worker",
+        "//build/stack/bazel/bzlmod/v1:bzlmod",
         "//build/stack/starlark/v1beta1",
         "//pkg/paramsfile",
         "//pkg/protoutil",
+        "//pkg/stardoc",
         "@bazel_gazelle//label:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//credentials/insecure:go_default_library",

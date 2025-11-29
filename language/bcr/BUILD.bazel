@@ -36,6 +36,7 @@ go_library(
         "//pkg/gl",
         "//pkg/metadatajson",
         "//pkg/modulebazel",
+        "//pkg/netutil",
         "//pkg/presubmityml",
         "//pkg/protoutil",
         "//pkg/sourcejson",

@@ -8,8 +8,8 @@ go_library(
     deps = [
         "//build/stack/bazel/bzlmod/v1:bzlmod",
         "//pkg/protoutil",
+        "//pkg/stardoc",
         "//stardoc_output",
-        "@bazel_gazelle//label:go_default_library",
     ],
 )
 
