@@ -54,19 +54,25 @@ func (m *stringBoolMap) Set(value string) error {
 // binary.
 func NewLanguage() language.Language {
 	return &bcrExtension{
-		depGraph:      initDepGraph(),
-		moduleToCycle: make(map[string]string),
-		repositories:  make(map[string]*bzpb.RepositoryMetadata),
-		docUrls:       make(map[string][]*rule.Rule),
-		sourceUrls:    make(map[string][]*rule.Rule),
-		modules:       make(map[string]*rule.Rule),
+		depGraph:          initDepGraph(),
+		regularDepGraph:   initDepGraph(),
+		devDepGraph:       initDepGraph(),
+		moduleToCycle:     make(map[string]string),
+		unresolvedModules: make(map[string]bool),
+		repositories:      make(map[string]*bzpb.RepositoryMetadata),
+		docUrls:           make(map[string][]*rule.Rule),
+		sourceUrls:        make(map[string][]*rule.Rule),
+		modules:           make(map[string]*rule.Rule),
+		moduleVersions:    make(map[string]*rule.Rule),
 	}
 }
 
 // bcrExtension implements language.Language.
 type bcrExtension struct {
 	name                  string
-	depGraph              graph.Graph[string, string]
+	depGraph              graph.Graph[string, string] // graph of all dependencies (regular + dev) - for cycle detection
+	regularDepGraph       graph.Graph[string, string] // graph of only non-dev dependencies
+	devDepGraph           graph.Graph[string, string] // graph of only dev dependencies
 	registryRoot          string
 	registryURL           string
 	repoRoot              string // copy of config.RepoRoot
@@ -76,8 +82,10 @@ type bcrExtension struct {
 	githubToken           string
 	gitlabToken           string
 	moduleToCycle         map[string]string                   // maps "module@version" to cycle rule name
+	unresolvedModules     map[string]bool                     // tracks "module@version" keys that failed to resolve
 	repositories          map[string]*bzpb.RepositoryMetadata // tracks unique repository strings (e.g., "github:org/repo")
 	modules               map[string]*rule.Rule               // tracks module metadata rules
+	moduleVersions        map[string]*rule.Rule               // tracks module_version rules by "module@version" key
 	docUrls               map[string][]*rule.Rule             // tracks docs http_archives to fetch (e.g.  https://github.com/bazel-contrib/yq.bzl/releases/download/v0.3.2/yq.bzl-v0.3.2.docs.tar.gz -> http_archive rule)
 	sourceUrls            map[string][]*rule.Rule             // tracks docs starlark_repository
 	resourceStatus        map[string]*bzpb.ResourceStatus     // results of reading resourceStatusSetFile, keyed by URL
@@ -85,6 +93,7 @@ type bcrExtension struct {
 	baseRegistry          *bzpb.Registry
 	moduleCommits         map[string]*bzpb.ModuleCommit // cache of all module commits (preloaded)
 	githubClient          *github.Client
+	mvsResult             *mvsResult // Minimum Version Selection results
 }
 
 // Name returns the name of the language. This should be a prefix of the kinds
@@ -276,7 +285,7 @@ func (ext *bcrExtension) Resolve(
 	// Switch on rule kind to delegate to specific resolver functions
 	switch r.Kind() {
 	case "module_dependency":
-		resolveModuleDependencyRule(ext.modulesRoot, r, ix, from, ext.moduleToCycle)
+		resolveModuleDependencyRule(ext.modulesRoot, r, ix, from, ext.moduleToCycle, ext.unresolvedModules)
 	case "module_dependency_cycle":
 		resolveModuleDependencyCycleRule(r, ix)
 	case "module_metadata":
@@ -421,11 +430,31 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			rules = append(rules, presubmitRule)
 		}
 
-		// Add module to dependency graph
+		// Add module to all dependency graphs
+		moduleKey := fmt.Sprintf("%s@%s", module.Name, version)
 		ext.addModuleToGraph(module.Name, version)
-		// Add dependency edges to graph
+		_ = ext.regularDepGraph.AddVertex(moduleKey)
+		_ = ext.devDepGraph.AddVertex(moduleKey)
+
+		// Add dependency edges to graphs
 		for _, dep := range module.Deps {
+			// Add to main graph (all deps - for cycle detection)
 			ext.addDependencyEdge(module.Name, version, dep.Name, dep.Version)
+
+			fromKey := fmt.Sprintf("%s@%s", module.Name, version)
+			toKey := fmt.Sprintf("%s@%s", dep.Name, dep.Version)
+
+			if dep.Dev {
+				// Add to dev graph only
+				_ = ext.devDepGraph.AddVertex(fromKey)
+				_ = ext.devDepGraph.AddVertex(toKey)
+				_ = ext.devDepGraph.AddEdge(fromKey, toKey)
+			} else {
+				// Add to regular graph only
+				_ = ext.regularDepGraph.AddVertex(fromKey)
+				_ = ext.regularDepGraph.AddVertex(toKey)
+				_ = ext.regularDepGraph.AddEdge(fromKey, toKey)
+			}
 		}
 
 		// Generate dependency and override rules
@@ -437,7 +466,11 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		rules = append(rules, depRules...)
 		// Add module version rule with references to dependencies, source,
 		// attestations, presubmit, and commit
-		rules = append(rules, makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule, presubmitRule, commitRule, "MODULE.bazel"))
+		moduleVersionRule := makeModuleVersionRule(module, version, depRules, sourceRule, attestationsRule, presubmitRule, commitRule, "MODULE.bazel")
+		rules = append(rules, moduleVersionRule)
+
+		// Track the module_version rule for later MVS annotation
+		ext.moduleVersions[moduleKey] = moduleVersionRule
 	}
 
 	imports := make([]interface{}, len(rules))

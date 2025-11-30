@@ -5,16 +5,16 @@ import (
 	"log"
 )
 
-// Before is called before any other lifecycle methods.
-// This can be used to initialize resources needed during the build.
+// Before is called before any other lifecycle methods. This can be used to
+// initialize resources needed during the build.
 func (ext *bcrExtension) Before(ctx context.Context) {
 	// Nothing to initialize before processing
 	log.Println("===[Before]======================================")
 }
 
-// DoneGeneratingRules is called after all rules have been generated.
-// This is the ideal place to detect circular dependencies since the
-// complete dependency graph has been built.
+// DoneGeneratingRules is called after all rules have been generated. This is
+// the ideal place to detect circular dependencies since the complete dependency
+// graph has been built.
 func (ext *bcrExtension) DoneGeneratingRules() {
 	log.Println("===[DoneGeneratingRules]======================================")
 
@@ -32,7 +32,7 @@ func (ext *bcrExtension) DoneGeneratingRules() {
 	ext.fetchGithubRepositoryMetadata(filterGithubRepositories(ext.repositories))
 	// ext.fetchGitlabRepositoryMetadata(filterGitlabRepositories(ext.repositories))
 
-	// in case we had issues fetching metadata, propagate formward from previous
+	// in case we had issues fetching metadata, propagate forward from previous
 	// (base) repository state.
 	if ext.baseRegistry != nil {
 		propagateBaseRepositoryMetadata(ext.repositories, makeRepositoryMetadataMap(ext.baseRegistry))
@@ -41,11 +41,14 @@ func (ext *bcrExtension) DoneGeneratingRules() {
 	log.Println("===[BeforeResolvingDeps]======================================")
 }
 
-// AfterResolvingDeps is called after all dependencies have been resolved.
-// This can be used to clean up resources or perform final validation.
+// AfterResolvingDeps is called after all dependencies have been resolved. This
+// can be used to clean up resources or perform final validation.
 func (ext *bcrExtension) AfterResolvingDeps(ctx context.Context) {
-	// Nothing to clean up after resolution
 	log.Println("===[AfterResolvingDeps]======================================")
+
+	// Calculate MVS now that ext.modules has been populated during resolve
+	// phase
+	ext.calculateMvs()
 
 	if err := ext.makeDocsRepositories(ext.repoRoot); err != nil {
 		log.Fatalf("preparing external repositories: %v", err)

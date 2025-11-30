@@ -281,6 +281,8 @@ module_version = rule(
         "bazel_compatibility": attr.string_list(),
         "repo_name": attr.string(),
         "deps": attr.label_list(providers = [ModuleDependencyInfo]),
+        "mvs": attr.string_dict(),
+        "dev_mvs": attr.string_dict(),
         "source": attr.label(providers = [ModuleSourceInfo]),
         "attestations": attr.label(providers = [ModuleAttestationsInfo]),
         "presubmit": attr.label(providers = [ModulePresubmitInfo]),

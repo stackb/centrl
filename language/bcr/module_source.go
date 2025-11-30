@@ -55,10 +55,6 @@ func makeModuleSourceRule(module *bzpb.ModuleVersion, source *bzpb.ModuleSource,
 		r.SetAttr("source_json", sourceJsonFile)
 	}
 
-	// always set bzl_srcs.  It will be overrwritten if source_url exists and
-	// resolves
-	r.SetAttr("bzl_srcs", "//data/starlark:empty")
-
 	ext.trackDocsUrl(source.DocsUrl, r)
 	ext.trackSourceUrl(source.Url, r)
 

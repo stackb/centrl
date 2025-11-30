@@ -91,7 +91,7 @@ func makeOverrideRule(moduleName string, override *bzpb.ModuleDependencyOverride
 }
 
 // resolveModuleDependencyRule resolves the module and cycle attributes for a module_dependency rule
-func resolveModuleDependencyRule(modulesRoot string, r *rule.Rule, ix *resolve.RuleIndex, from label.Label, moduleToCycle map[string]string) {
+func resolveModuleDependencyRule(modulesRoot string, r *rule.Rule, ix *resolve.RuleIndex, from label.Label, moduleToCycle map[string]string, unresolvedModules map[string]bool) {
 	// Get the dependency name and version to construct the import spec
 	depName := r.AttrString("dep_name")
 	version := r.AttrString("version")
@@ -118,6 +118,10 @@ func resolveModuleDependencyRule(modulesRoot string, r *rule.Rule, ix *resolve.R
 		if override == "" {
 			log.Printf("%s: No module_version (or override) found for %s", from, moduleVersion)
 			r.SetAttr("unresolved", true)
+			// Track this as unresolved so MVS can skip it
+			if unresolvedModules != nil {
+				unresolvedModules[moduleVersion] = true
+			}
 		}
 		return
 	}

@@ -33,7 +33,10 @@ module_source = rule(
         "patch_strip": attr.int(default = 0),
         "patches": attr.string_dict(),
         "docs": attr.label_list(allow_files = True),
-        "bzl_srcs": attr.label(providers = [StarlarkLibraryFileInfo]),
+        "bzl_srcs": attr.label(
+            providers = [StarlarkLibraryFileInfo],
+            default = "//data/starlark:empty",
+        ),
         "docs_url": attr.string(),
         "docs_url_status_code": attr.int(doc = "HTTP status code of the docs_url, if present"),
         "docs_url_status_message": attr.string(doc = "HTTP status message of the docs_url, if present"),

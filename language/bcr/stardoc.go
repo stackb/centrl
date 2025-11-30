@@ -20,7 +20,10 @@ import (
 	"github.com/stackb/centrl/pkg/protoutil"
 )
 
-const docsRepoSuffix = "_docs"
+const (
+	docsRepoSuffix                   = "_docs"
+	starlarkRepositoryRootTargetName = "bzl_srcs"
+)
 
 type checkItem struct {
 	url   string
@@ -117,16 +120,23 @@ func (ext *bcrExtension) makeDocsUrlRepositories() map[label.Label]*rule.Rule {
 
 	repos := make(map[label.Label]*rule.Rule)
 
-	// Separate URLs into cached, blacklisted, and uncached
+	// Separate URLs into cached, blacklisted, MVS-filtered, and uncached
 	var uncachedItems []checkItem
 	var cachedCount int
 	var blacklistedCount int
+	var mvsFilteredCount int
 
 	for url, rules := range ext.docUrls {
 		if ext.blacklistedUrls[url] {
 			// Skip blacklisted URLs
 			blacklistedCount++
 			log.Printf("Skipping blacklisted docs URL: %s", url)
+			continue
+		}
+
+		// Filter by MVS - only process URLs for selected versions
+		if !ext.isUrlForSelectedVersion(rules) {
+			mvsFilteredCount++
 			continue
 		}
 		if cachedStatus, found := ext.resourceStatus[url]; found {
@@ -148,6 +158,9 @@ func (ext *bcrExtension) makeDocsUrlRepositories() map[label.Label]*rule.Rule {
 	}
 	if blacklistedCount > 0 {
 		log.Printf("Skipped %d blacklisted docs URLs", blacklistedCount)
+	}
+	if mvsFilteredCount > 0 {
+		log.Printf("Skipped %d docs URLs (not selected by MVS)", mvsFilteredCount)
 	}
 
 	// Check uncached URLs in parallel and update rules with status
@@ -201,16 +214,23 @@ func (ext *bcrExtension) makeDocsSourceUrlRepositories() map[label.Label]*rule.R
 
 	repos := make(map[label.Label]*rule.Rule)
 
-	// Separate URLs into cached, blacklisted, and uncached
+	// Separate URLs into cached, blacklisted, MVS-filtered, and uncached
 	var uncachedItems []checkItem
 	var cachedCount int
 	var blacklistedCount int
+	var mvsFilteredCount int
 
 	for url, rules := range ext.sourceUrls {
 		if ext.blacklistedUrls[url] {
 			// Skip blacklisted URLs
 			blacklistedCount++
 			log.Printf("Skipping blacklisted source URL: %s", url)
+			continue
+		}
+
+		// Filter by MVS - only process URLs for selected versions
+		if !ext.isUrlForSelectedVersion(rules) {
+			mvsFilteredCount++
 			continue
 		}
 		if cachedStatus, found := ext.resourceStatus[url]; found {
@@ -232,6 +252,9 @@ func (ext *bcrExtension) makeDocsSourceUrlRepositories() map[label.Label]*rule.R
 	}
 	if blacklistedCount > 0 {
 		log.Printf("Skipped %d blacklisted source URLs", blacklistedCount)
+	}
+	if mvsFilteredCount > 0 {
+		log.Printf("Skipped %d source URLs (not selected by MVS)", mvsFilteredCount)
 	}
 
 	// Check uncached URLs in parallel and update rules with status
@@ -333,7 +356,7 @@ func makeDocsHttpArchiveLabel(docUrl string) label.Label {
 // starlark_repository rule.
 func makeDocsStarlarkRepositoryBzlSrcsLabel(moduleName, moduleVersion string) label.Label {
 	repo := makeDocsStarlarkRepositoryRepoName(moduleName, moduleVersion)
-	return label.New(repo, "", "bzl_srcs")
+	return label.New(repo, "", starlarkRepositoryRootTargetName)
 }
 
 // makeDocsHttpArchiveRepoName creates a named for the external workspace
