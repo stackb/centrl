@@ -381,9 +381,8 @@ func makeDocsStarlarkRepository(repoRoot string, module *bzpb.ModuleVersion, fro
 	r.SetAttr("languages", []string{"starlarklibrary"})
 
 	directives := []string{
-		fmt.Sprintf("gazelle:starlarklibrary_log_file %s/starlark_repository-gazelle.%s-%s.log", repoRoot, module.Name, module.Version),
+		// fmt.Sprintf("gazelle:starlarklibrary_log_file %s/starlark_repository-gazelle.%s-%s.log", repoRoot, module.Name, module.Version),
 		"gazelle:starlarklibrary_root",
-		fmt.Sprintf("gazelle:starlarklibrary_repo_name %s", from.Repo),
 	}
 
 	r.SetAttr("build_directives", directives)
