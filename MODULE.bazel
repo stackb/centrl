@@ -24,17 +24,17 @@ bazel_dep(name = "stackb_ui_js", version = "1.0.0", dev_dependency = True)
 # Overrides
 # -------------------------------------------------------------------
 
-# Commit: 350fa87e73e0d6ec499f90f85c89f0f5fcb4fc45
-# Date: 2025-11-30 00:56:51 +0000 UTC
-# URL: https://github.com/stackb/rules_proto/commit/350fa87e73e0d6ec499f90f85c89f0f5fcb4fc45
+# Commit: 171ef6d30b86a2c2c0fa41d27a15cb4e7f94aff3
+# Date: 2025-11-30 05:55:03 +0000 UTC
+# URL: https://github.com/stackb/rules_proto/commit/171ef6d30b86a2c2c0fa41d27a15cb4e7f94aff3
 #
-# checkpoint: refactored for reduced scope
-# Size: 4100472 (4.1 MB)
+# Cleanup starlark_library.bzl
+# Size: 4100390 (4.1 MB)
 archive_override(
     module_name = "build_stack_rules_proto",
-    sha256 = "7c1d861a516de5b41fa46d3f2346e685fb2e1817aabbb467027756803fbe26cd",
-    strip_prefix = "rules_proto-350fa87e73e0d6ec499f90f85c89f0f5fcb4fc45",
-    urls = ["https://github.com/stackb/rules_proto/archive/350fa87e73e0d6ec499f90f85c89f0f5fcb4fc45.tar.gz"],
+    sha256 = "05cdca3c95f8d35c334762981b4f0376582e857a48d980bd0b7b6a46db6d0a3a",
+    strip_prefix = "rules_proto-171ef6d30b86a2c2c0fa41d27a15cb4e7f94aff3",
+    urls = ["https://github.com/stackb/rules_proto/archive/171ef6d30b86a2c2c0fa41d27a15cb4e7f94aff3.tar.gz"],
 )
 # local_path_override(
 #     module_name = "build_stack_rules_proto",
