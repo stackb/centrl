@@ -105,7 +105,7 @@ func resolveModuleDependencyRule(modulesRoot string, r *rule.Rule, ix *resolve.R
 	}
 
 	// Construct the import spec: "module_name@version"
-	moduleVersion := fmt.Sprintf("%s@%s", depName, version)
+	moduleVersion := makeModuleVersionKey(depName, version)
 	importSpec := resolve.ImportSpec{
 		Lang: bcrLangName,
 		Imp:  moduleVersion,
@@ -130,12 +130,14 @@ func resolveModuleDependencyRule(modulesRoot string, r *rule.Rule, ix *resolve.R
 	result := results[0]
 
 	// Check if this module is part of a cycle
-	if cycleName, inCycle := moduleToCycle[moduleVersion]; inCycle {
-		// Set the cycle attr to point to the cycle rule
-		cycleLabel := fmt.Sprintf("//%s:%s", modulesRoot, cycleName)
-		r.SetAttr("cycle", cycleLabel)
-	} else {
-		// Set the module attr to point to the found module_version rule
-		r.SetAttr("module", result.Label.String())
+	if generateModuleDependencyCycleRules {
+		if cycleName, inCycle := moduleToCycle[moduleVersion]; inCycle {
+			// Set the cycle attr to point to the cycle rule
+			cycleLabel := fmt.Sprintf("//%s:%s", modulesRoot, cycleName)
+			r.SetAttr("cycle", cycleLabel)
+		} else {
+			// Set the module attr to point to the found module_version rule
+			r.SetAttr("module", result.Label.String())
+		}
 	}
 }

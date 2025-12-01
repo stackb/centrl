@@ -1,13 +1,15 @@
 package bcr
 
 import (
-	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/label"
+	"net/http"
+
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 	"github.com/stackb/centrl/pkg/netutil"
 	"github.com/stackb/centrl/pkg/sourcejson"
 )
+
+const moduleSourcePrivateAttr = "_module_source"
 
 func moduleSourceLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
@@ -28,10 +30,10 @@ func readModuleSourceJson(filename string) (*bzpb.ModuleSource, error) {
 	return sourcejson.ReadFile(filename)
 }
 
-func makeModuleSourceRule(module *bzpb.ModuleVersion, source *bzpb.ModuleSource, sourceJsonFile string, ext *bcrExtension) *rule.Rule {
+func makeModuleSourceRule(module *bzpb.ModuleVersion, source *bzpb.ModuleSource, sourceJsonFile string) *rule.Rule {
 	r := rule.NewRule("module_source", "source")
-	r.SetPrivateAttr("_module_version", module)
-	r.SetPrivateAttr("_module_source", source)
+	r.SetPrivateAttr(moduleVersionPrivateAttr, module)
+	r.SetPrivateAttr(moduleSourcePrivateAttr, source)
 
 	if source.Url != "" {
 		r.SetAttr("url", source.Url)
@@ -55,35 +57,23 @@ func makeModuleSourceRule(module *bzpb.ModuleVersion, source *bzpb.ModuleSource,
 		r.SetAttr("source_json", sourceJsonFile)
 	}
 
-	ext.trackDocsUrl(source.DocsUrl, r)
-	ext.trackSourceUrl(source.Url, r)
-
 	return r
 }
 
-func resolveModuleSourceRule(r *rule.Rule, c *config.Config, from label.Label) {
-}
-
-func updateModuleSourceRuleDocsUrlStatus(r *rule.Rule, repoLabel label.Label, status netutil.URLStatus) {
-	if repoLabel != label.NoLabel {
-		r.SetAttr("docs", []string{repoLabel.String()})
-	}
+func updateModuleSourceRuleDocsUrlStatus(r *rule.Rule, status netutil.URLStatus) {
 	if status.Code != 0 {
 		r.SetAttr("docs_url_status_code", status.Code)
 	}
-	if status.Message != "" {
+	if status.Code != http.StatusOK && status.Message != "" {
 		r.SetAttr("docs_url_status_message", status.Message)
 	}
 }
 
-func updateModuleSourceRuleUrlStatus(r *rule.Rule, repoLabel label.Label, status netutil.URLStatus) {
-	if repoLabel != label.NoLabel {
-		r.SetAttr("bzl_srcs", repoLabel.String())
-	}
+func updateModuleSourceRuleUrlStatus(r *rule.Rule, status netutil.URLStatus) {
 	if status.Code != 0 {
 		r.SetAttr("url_status_code", status.Code)
 	}
-	if status.Message != "" {
+	if status.Code != http.StatusOK && status.Message != "" {
 		r.SetAttr("url_status_message", status.Message)
 	}
 }

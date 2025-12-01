@@ -1,6 +1,16 @@
 "provides the module_registry rule"
 
-load("//rules:providers.bzl", "ModuleDependencyCycleInfo", "ModuleMetadataInfo", "ModuleRegistryInfo")
+load("@build_stack_rules_proto//rules:starlark_library.bzl", "StarlarkLibraryFileInfo")
+load(
+    "//rules:providers.bzl",
+    "ModuleDependencyCycleInfo",
+    "ModuleMetadataInfo",
+    "ModuleRegistryInfo",
+)
+
+# buildifier: disable=name-conventions // for case sensitive search of other var
+# name in .go file(s)
+starlarkRepositoryPartitionKey = "--bzl_srcs--"
 
 def _write_repos_json_action(ctx, deps):
     output = ctx.actions.declare_file(ctx.label.name + ".repos.json")
@@ -35,7 +45,7 @@ def _compile_codesearch_index_action(ctx, deps):
 
     for module in deps:
         files.append(module.build_bazel)
-        for mv in module.deps.to_list():
+        for mv in module.deps:
             files.append(mv.module_bazel)
             files.append(mv.build_bazel)
             # files.append(mv.source.source_json)
@@ -55,32 +65,115 @@ def _compile_codesearch_index_action(ctx, deps):
 
     return output
 
-def _compile_static_html_action(ctx, deps):
+def _get_module_version_by_bzl_srcs_label(all_module_versions, lib_label):
+    repo_name, _, module_version = lib_label.repo_name.partition(starlarkRepositoryPartitionKey)
+    key = repo_name + "@" + module_version
+    return all_module_versions.get(key)
+
+def _compile_docs_action_for_module_version(ctx, mv, all_module_versions):
+    """Generate documentation extraction action for a single module version.
+
+    Args:
+        ctx: The rule context
+        mv: ModuleVersionInfo provider for the module version
+        all_module_versions: dict k->v where k is string like "rules_cc@0.0.9" and v is the ModuleVersionInfo provider
+    Returns:
+        Output file for the documentation, or None if cannot generate
+    """
+
+    # Declare output file for this module version
+    output = ctx.actions.declare_file("modules/%s/%s/documentationinfo.pb" % (mv.name, mv.version))
+
+    # JavaRuntimeInfo
+    java_runtime = ctx.attr._java_runtime[java_common.JavaRuntimeInfo]
+    java_executable = java_runtime.java_executable_exec_path
+
+    # StarlarkLibraryFileInfo
+    bazel_tools_lib = ctx.attr._bazel_tools[StarlarkLibraryFileInfo]
+
+    # Build list of source depsets: bazel_tools + bzl_srcs (root) + bzl_deps
+    src_depsets = [bazel_tools_lib.srcs, mv.bzl_srcs.srcs] + [d.srcs for d in mv.bzl_deps]
+
+    # All file inputs - keep as transitive depset to avoid O(N²) memory explosion
+    inputs = depset([ctx.file._starlarkserverjar], transitive = src_depsets)
+
+    # Build arguments
+    args = ctx.actions.args()
+    args.use_param_file("@%s", use_always = True)
+    args.set_param_file_format("multiline")
+
+    args.add("--output_file", output)
+    args.add("--port", 3524)
+    args.add("--java_interpreter_file", java_executable)
+    args.add("--server_jar_file", ctx.file._starlarkserverjar)
+    args.add("--workspace_cwd", ctx.bin_dir.path)
+    args.add("--workspace_output_base", "/private/var/tmp/_bazel_pcj/4d50590a9155e202dda3b0ac2e024c3f")
+
+    # Add bzl_files and module_deps without flattening depsets
+    # 1. Root module (bzl_srcs)
+    for file in mv.bzl_srcs.srcs:
+        args.add("--bzl_file=%s:%s" % (mv.name, file.path))
+    for dep in mv.deps:
+        args.add("--module_dep=%s:%s=%s" % (mv.name, dep.name, dep.repo_name))
+
+    # 2. Dependencies (bzl_deps)
+    for dep_lib in mv.bzl_deps:
+        dep_mv = _get_module_version_by_bzl_srcs_label(all_module_versions, dep_lib.label)
+        for file in dep_lib.srcs:
+            args.add("--bzl_file=%s:%s" % (dep_mv.name, file.path))
+        for dep in dep_mv.deps:
+            args.add("--module_dep=%s:%s=%s" % (dep_mv.name, dep.name, dep.repo_name))
+
+    # 3. Bazel tools
+    for file in bazel_tools_lib.srcs:
+        args.add("--bzl_file=%s:%s" % ("bazel_tools", file.path))
+
+    # Add root module source files as positional arguments
+    args.add_all(mv.bzl_srcs.srcs)
+
+    # Run the action
+    ctx.actions.run(
+        mnemonic = "CompileModuleInfo",
+        progress_message = "Extracting docs for %s@%s (%d files)" % (mv.name, mv.version, len(mv.source.starlarklibrary.srcs)),
+        execution_requirements = {
+            "supports-workers": "1",
+            "requires-worker-protocol": "proto",
+        },
+        executable = ctx.executable._starlarkcompiler,
+        arguments = [args],
+        inputs = inputs,
+        outputs = [output],
+        tools = java_runtime.files.to_list(),
+    )
+
+    return output
+
+def _compile_docs_actions_for_module(ctx, module, all_module_versions):
+    outputs = []
+    for mv in module.deps:
+        if not mv.is_latest_version:
+            # print("skip %s %s (not latest): " % (mv.name, mv.version))
+            continue
+        if not mv.bzl_srcs:
+            print("skip %s %s (no bzl_srcs): " % (mv.name, mv.version))
+            continue
+
+        # if not module.name == "bazel-lib":
+        #     continue
+        outputs.append(_compile_docs_action_for_module_version(ctx, mv, all_module_versions))
+    return outputs
+
+def _compile_docs_actions(ctx, deps):
+    all_module_versions = {}
+    for module in deps:
+        for mv in module.deps:
+            key = "%s@%s" % (mv.name, mv.version)
+            all_module_versions[key] = mv
+
     outputs = []
 
     for module in deps:
-        urls = []
-        outs = []
-
-        for mv in module.deps.to_list():
-            output = ctx.actions.declare_file("static/modules/%s/%s/index.html" % (mv.name, mv.version))
-            outs.append(output)
-            url = "http://localhost:8080/modules/%s/%s" % (mv.name, mv.version)
-            urls.append(url)
-
-        args = ctx.actions.args()
-        args.add_all(outs, before_each = "--output_file")
-        args.add_all(urls, before_each = "--url")
-
-        ctx.actions.run(
-            executable = ctx.executable._statichtmlcompiler,
-            arguments = [args],
-            outputs = outs,
-            mnemonic = "CompileStaticHtml",
-        )
-
-        outputs.extend(outs)
-
+        outputs.extend(_compile_docs_actions_for_module(ctx, module, all_module_versions))
     return outputs
 
 def _compile_colors_action(ctx, colors_json, languages_json):
@@ -187,8 +280,8 @@ def _module_registry_impl(ctx):
     colors_css = _compile_colors_action(ctx, ctx.file._colors_json, languages_json)
     sitemap_xml = _compile_sitemap_action(ctx, registry_pb)
     robots_txt = _write_robots_txt_action(ctx)
-    static_html = _compile_static_html_action(ctx, deps)
     codesearch_index = _compile_codesearch_index_action(ctx, deps)
+    docs = _compile_docs_actions(ctx, deps)
 
     return [
         DefaultInfo(files = depset([registry_pb])),
@@ -199,9 +292,8 @@ def _module_registry_impl(ctx):
             sitemap_xml = [sitemap_xml],
             robots_txt = [robots_txt],
             registry_pb = [registry_pb],
-            static_html = static_html,
             codesearch_index = [codesearch_index],
-            docs = depset(transitive = [d.docs for d in deps]),
+            docs = depset(docs),
         ),
         ModuleRegistryInfo(
             deps = depset(deps),
@@ -244,15 +336,28 @@ module_registry = rule(
             executable = True,
             cfg = "exec",
         ),
-        "_statichtmlcompiler": attr.label(
-            default = "//cmd/statichtmlcompiler",
-            executable = True,
-            cfg = "exec",
-        ),
         "_codesearchcompiler": attr.label(
             default = "//cmd/codesearchcompiler",
             executable = True,
             cfg = "exec",
+        ),
+        "_starlarkcompiler": attr.label(
+            default = "//cmd/starlarkcompiler",
+            executable = True,
+            cfg = "exec",
+        ),
+        "_java_runtime": attr.label(
+            default = "@bazel_tools//tools/jdk:current_java_runtime",
+            cfg = "exec",
+            providers = [java_common.JavaRuntimeInfo],
+        ),
+        "_starlarkserverjar": attr.label(
+            default = "//cmd/starlarkcompiler:constellate_jar_file",
+            allow_single_file = True,
+        ),
+        "_bazel_tools": attr.label(
+            default = "@bazel_tools.bzl_srcs//tools:bzl_srcs",
+            providers = [StarlarkLibraryFileInfo],
         ),
     },
     provides = [ModuleRegistryInfo],

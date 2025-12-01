@@ -1,57 +1,42 @@
 package bcr
 
 import (
-	"fmt"
 	"log"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/buildtools/build"
 	"github.com/dominikbraun/graph"
-	"github.com/schollz/progressbar/v3"
 )
 
-// mvsResult holds the result of MVS algorithm - the selected version for each module
-type mvsResult struct {
-	// selectedVersions maps module name -> selected version (global MVS result)
-	selectedVersions map[string]string
-	// allVersions maps module name -> all available versions (sorted)
-	allVersions map[string][]string
-	// perModuleVersionMvs maps "module@version" -> (module name -> selected version)
-	// This shows what MVS would select for regular deps if that specific module@version were the root
-	perModuleVersionMvs map[string]map[string]string
-	// perModuleVersionMvsDev maps "module@version" -> (module name -> selected version)
-	// This shows what MVS would select for dev deps if that specific module@version were the root
-	perModuleVersionMvsDev map[string]map[string]string
-}
+type mvs map[string]map[string]string
 
 // calculateMvs implements Minimum Version Selection algorithm
 // This calculates MVS for each individual module@version in the registry
-func (ext *bcrExtension) calculateMvs() {
+func (ext *bcrExtension) calculateMvs(starlarkRepositories moduleVersionRuleMap) {
 	log.Println("Running Minimum Version Selection (MVS) algorithm...")
 
-	// Extract all module versions from the dependency graph
+	// allVersions maps module name -> all available versions (sorted)
 	allVersions := ext.extractAllVersions()
-
-	// Calculate MVS for each individual module@version (regular deps)
+	// perModuleVersionMvs maps "module@version" -> (module name -> selected
+	// version) This shows what MVS would select for regular deps if that
+	// specific module@version were the root
 	perModuleVersionMvs := ext.calculatePerModuleVersionMvs(allVersions, ext.regularDepGraph, "regular")
-
-	// Calculate MVS for each individual module@version (dev deps only)
+	// perModuleVersionMvsDev maps "module@version" -> (module name -> selected
+	// version) This shows what MVS would select for dev deps if that specific
+	// module@version were the root
 	perModuleVersionMvsDev := ext.calculatePerModuleVersionMvs(allVersions, ext.devDepGraph, "dev")
-
-	// Store the results
-	ext.mvsResult = &mvsResult{
-		allVersions:            allVersions,
-		perModuleVersionMvs:    perModuleVersionMvs,
-		perModuleVersionMvsDev: perModuleVersionMvsDev,
-		// selectedVersions is calculated on-demand if needed via calculateGlobalMvs()
-	}
+	// perModuleVersionMvsMerged records selected versions in the merged set of
+	// regular + dev
+	// perModuleVersionMvsMerged := ext.calculatePerModuleVersionMvs(allVersions, ext.depGraph, "merged")
 
 	// Annotate module_version rules with their MVS results
-	ext.annotateModuleVersionsWithMvs()
+	updateModuleVersionRulesMvs(ext.moduleVersionRulesByModuleKey, "mvs", perModuleVersionMvs)
+	updateModuleVersionRulesMvs(ext.moduleVersionRulesByModuleKey, "mvs_dev", perModuleVersionMvsDev)
 
-	// Log the results
-	ext.logMvsResults()
+	ext.updateModuleVersionRulesBzlSrcsAndDeps(perModuleVersionMvs, starlarkRepositories)
 }
 
 // extractAllVersions extracts all module versions from the dependency graph
@@ -71,12 +56,12 @@ func (ext *bcrExtension) extractAllVersions() map[string][]string {
 	skippedUnresolved := 0
 	for moduleKey := range adjacencyMap {
 		// Skip unresolved module@version entries
-		if ext.unresolvedModules[moduleKey] {
+		if ext.unresolvedModulesByModuleName[moduleKey] {
 			skippedUnresolved++
 			continue
 		}
 
-		moduleName, _ := mustParseModuleKey(moduleKey)
+		moduleName, _ := parseModuleVersionKey(moduleKey)
 		moduleNames[moduleName] = true
 	}
 
@@ -87,7 +72,7 @@ func (ext *bcrExtension) extractAllVersions() map[string][]string {
 	// Get sorted versions from module_metadata for each module
 	skippedNoMetadata := 0
 	for moduleName := range moduleNames {
-		metadataRule, exists := ext.modules[moduleName]
+		metadataRule, exists := ext.moduleMetadataRulesByModuleName[moduleName]
 		if !exists {
 			// This can happen if a module has unresolved dependencies but we haven't
 			// seen the module itself (only references to it)
@@ -116,8 +101,8 @@ func (ext *bcrExtension) extractAllVersions() map[string][]string {
 // Returns map of "module@version" -> (module name -> selected version)
 // depGraph is the dependency graph to use (either regular deps or dev deps)
 // depType is a description for the progress bar ("regular" or "dev")
-func (ext *bcrExtension) calculatePerModuleVersionMvs(allVersions map[string][]string, depGraph graph.Graph[string, string], depType string) map[string]map[string]string {
-	perModuleVersionMvs := make(map[string]map[string]string)
+func (ext *bcrExtension) calculatePerModuleVersionMvs(allVersions map[string][]string, depGraph graph.Graph[string, string], depType string) mvs {
+	perModuleVersionMvs := make(mvs)
 
 	// Get all module@version nodes from the graph
 	adjacencyMap, err := depGraph.AdjacencyMap()
@@ -129,7 +114,7 @@ func (ext *bcrExtension) calculatePerModuleVersionMvs(allVersions map[string][]s
 	// Collect module keys to process (excluding unresolved)
 	var moduleKeys []string
 	for moduleKey := range adjacencyMap {
-		if !ext.unresolvedModules[moduleKey] {
+		if !ext.unresolvedModulesByModuleName[moduleKey] {
 			moduleKeys = append(moduleKeys, moduleKey)
 		}
 	}
@@ -138,21 +123,6 @@ func (ext *bcrExtension) calculatePerModuleVersionMvs(allVersions map[string][]s
 		log.Println("No module versions to calculate MVS for")
 		return perModuleVersionMvs
 	}
-
-	// Create progress bar
-	description := fmt.Sprintf("Calculating MVS (%s deps)", depType)
-	bar := progressbar.NewOptions(len(moduleKeys),
-		progressbar.OptionSetDescription(description),
-		progressbar.OptionShowCount(),
-		progressbar.OptionSetWidth(40),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "=",
-			SaucerHead:    ">",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}),
-	)
 
 	// Parallelize MVS calculations using worker pool
 	var wg sync.WaitGroup
@@ -174,7 +144,7 @@ func (ext *bcrExtension) calculatePerModuleVersionMvs(allVersions map[string][]s
 			defer wg.Done()
 			for moduleKey := range jobChan {
 				// Run MVS with this single module@version as the root
-				selected := ext.runMvs([]string{moduleKey}, allVersions, adjacencyMap)
+				selected := runMvs([]string{moduleKey}, allVersions, adjacencyMap)
 				resultChan <- struct {
 					moduleKey string
 					result    map[string]string
@@ -202,8 +172,6 @@ func (ext *bcrExtension) calculatePerModuleVersionMvs(allVersions map[string][]s
 		mu.Lock()
 		perModuleVersionMvs[result.moduleKey] = result.result
 		mu.Unlock()
-
-		bar.Add(1)
 	}
 
 	log.Printf("\nCalculated MVS for %d module versions", len(moduleKeys))
@@ -214,21 +182,20 @@ func (ext *bcrExtension) calculatePerModuleVersionMvs(allVersions map[string][]s
 // roots can be either:
 //   - module names (e.g., "bazel_skylib") - selects highest version
 //   - module@version keys (e.g., "bazel_skylib@1.8.2") - uses that specific version
+//
 // adjacencyMap is passed in to avoid repeated fetches
 // Returns the selected version for each module (excluding the roots themselves)
-func (ext *bcrExtension) runMvs(roots []string, allVersions map[string][]string, adjacencyMap map[string]map[string]graph.Edge[string]) map[string]string {
+func runMvs(roots []string, allVersions map[string][]string, adjacencyMap map[string]map[string]graph.Edge[string]) map[string]string {
 	selected := make(map[string]string)
 	var moduleKeys []string
-	rootModules := make(map[string]bool) // Track root module names to exclude from result
 
 	// Process roots and determine starting module@version keys
 	for _, root := range roots {
 		// Check if root is already a module@version key (contains '@')
 		if strings.Contains(root, "@") {
 			// It's a module@version key, use it directly
-			moduleName, version := mustParseModuleKey(root)
+			moduleName, version := parseModuleVersionKey(root)
 			selected[moduleName] = version
-			rootModules[moduleName] = true
 			moduleKeys = append(moduleKeys, root)
 		} else {
 			// It's a module name, select the highest version
@@ -238,8 +205,7 @@ func (ext *bcrExtension) runMvs(roots []string, allVersions map[string][]string,
 			}
 			highestVersion := versions[len(versions)-1]
 			selected[root] = highestVersion
-			rootModules[root] = true
-			moduleKeys = append(moduleKeys, fmt.Sprintf("%s@%s", root, highestVersion))
+			moduleKeys = append(moduleKeys, makeModuleVersionKey(root, highestVersion))
 		}
 	}
 
@@ -254,14 +220,14 @@ func (ext *bcrExtension) runMvs(roots []string, allVersions map[string][]string,
 		}
 		visited[moduleKey] = true
 
-		moduleName, version := mustParseModuleKey(moduleKey)
+		moduleName, version := parseModuleVersionKey(moduleKey)
 
 		// Update selected version if this is higher
 		if currentVersion, exists := selected[moduleName]; !exists || compareVersions(version, currentVersion) > 0 {
 			selected[moduleName] = version
 		}
 
-		// Visit dependencies using adjacency map (much faster than Edges())
+		// Visit dependencies using adjacency map
 		if deps, exists := adjacencyMap[moduleKey]; exists {
 			for targetKey := range deps {
 				visit(targetKey)
@@ -274,84 +240,184 @@ func (ext *bcrExtension) runMvs(roots []string, allVersions map[string][]string,
 		visit(moduleKey)
 	}
 
-	// Remove root modules from the result (we only want dependencies)
-	for rootModule := range rootModules {
-		delete(selected, rootModule)
-	}
-
 	return selected
 }
 
-// logMvsResults logs the MVS algorithm results
-func (ext *bcrExtension) logMvsResults() {
-	if ext.mvsResult == nil {
-		return
-	}
+// calculatePerModuleVersionMergedMvs computes the union of regular and dev MVS
+// results for a set of module@version(s) Returns a map of module name ->
+// selected version foreach one.
+func (ext *bcrExtension) calculatePerModuleVersionMergedMvs(allVersions map[string][]string, deps, devDeps mvs) mvs {
+	merged := make(mvs)
 
-	// Log per-module-version MVS results
-	if ext.mvsResult.perModuleVersionMvs != nil {
-		log.Printf("Per-module-version MVS results calculated for %d module versions", len(ext.mvsResult.perModuleVersionMvs))
-	}
+	// TODO: implement this
+
+	return merged
 }
 
-// annotateModuleVersionsWithMvs adds the "mvs" and "mvs_dev" attributes to each module_version rule
-// The "mvs" attribute is a dict mapping module names to their selected versions (regular deps)
-// The "mvs_dev" attribute is a dict mapping module names to their selected versions (dev deps)
-func (ext *bcrExtension) annotateModuleVersionsWithMvs() {
-	if ext.mvsResult == nil {
-		log.Println("No MVS results to annotate")
-		return
+// narrowMvsVersions reduces multiple versions of the same module to keep only
+// the highest patch version (comparing the last dotted element if present)
+// This narrows within the same major.minor version family
+// Input map can have keys in two formats:
+// 1. "moduleName" -> "version" (original format)
+// 2. "moduleName@version" -> "version" (format with embedded module name)
+func narrowMvsVersions(mvs map[string]string) map[string]string {
+	if len(mvs) == 0 {
+		return mvs
 	}
 
-	annotatedCount := 0
-	annotatedDevCount := 0
+	// First, normalize the input to extract module names and versions
+	type moduleVersion struct {
+		module  string
+		version string
+	}
+	var entries []moduleVersion
 
-	// Annotate with regular deps MVS
-	if ext.mvsResult.perModuleVersionMvs != nil {
-		for moduleKey, mvs := range ext.mvsResult.perModuleVersionMvs {
-			// Find the corresponding module_version rule
-			rule, exists := ext.moduleVersions[moduleKey]
-			if !exists {
-				continue
+	for key, version := range mvs {
+		// Check if key contains @ (format: module@version -> version)
+		if strings.Contains(key, "@") {
+			// Extract module name from key
+			module := key[:strings.Index(key, "@")]
+			entries = append(entries, moduleVersion{module: module, version: version})
+		} else {
+			// Key is module name, value is version
+			entries = append(entries, moduleVersion{module: key, version: version})
+		}
+	}
+
+	// Track the best version for each module@baseVersion
+	type versionInfo struct {
+		module   string
+		patchNum int
+		version  string
+	}
+	bestVersions := make(map[string]*versionInfo) // key: module@major.minor
+
+	for _, entry := range entries {
+		moduleName := entry.module
+		version := entry.version
+
+		// Find the last dot in the version string
+		lastDotIdx := strings.LastIndex(version, ".")
+		if lastDotIdx == -1 {
+			// No dot, keep as-is (no narrowing possible)
+			key := moduleName + "@nodot@" + version
+			bestVersions[key] = &versionInfo{
+				module:   moduleName,
+				patchNum: -1,
+				version:  version,
 			}
+			continue
+		}
 
-			// Set the "mvs" attribute as a dict
-			if len(mvs) > 0 {
-				rule.SetAttr("mvs", mvs)
-				annotatedCount++
+		// Split into base and patch
+		baseVersion := version[:lastDotIdx]
+		patchStr := version[lastDotIdx+1:]
+
+		// Try to parse patch as int
+		patchNum, err := strconv.Atoi(patchStr)
+		if err != nil {
+			// Not a numeric patch, keep as-is (no narrowing possible)
+			key := moduleName + "@nonnumeric@" + version
+			bestVersions[key] = &versionInfo{
+				module:   moduleName,
+				patchNum: -1,
+				version:  version,
+			}
+			continue
+		}
+
+		// Group by module@baseVersion (e.g., "aspect_bazel_lib@1.8")
+		key := moduleName + "@" + baseVersion
+		existing, exists := bestVersions[key]
+		if !exists || patchNum > existing.patchNum {
+			bestVersions[key] = &versionInfo{
+				module:   moduleName,
+				patchNum: patchNum,
+				version:  version,
 			}
 		}
 	}
 
-	// Annotate with dev deps MVS
-	if ext.mvsResult.perModuleVersionMvsDev != nil {
-		for moduleKey, mvsDev := range ext.mvsResult.perModuleVersionMvsDev {
-			// Find the corresponding module_version rule
-			rule, exists := ext.moduleVersions[moduleKey]
-			if !exists {
-				continue
-			}
+	// Build result: module name -> best version
+	result := make(map[string]string)
 
-			// Set the "mvs_dev" attribute as a dict
-			if len(mvsDev) > 0 {
-				rule.SetAttr("mvs_dev", mvsDev)
-				annotatedDevCount++
+	for _, info := range bestVersions {
+		// Keep the highest version for each module
+		if existingVersion, exists := result[info.module]; exists {
+			if compareVersions(info.version, existingVersion) > 0 {
+				result[info.module] = info.version
 			}
+		} else {
+			result[info.module] = info.version
 		}
 	}
 
-	log.Printf("Annotated %d module_version rules with regular MVS results", annotatedCount)
-	log.Printf("Annotated %d module_version rules with dev MVS results", annotatedDevCount)
+	return result
 }
 
-// mustParseModuleKey parses "module@version" string into module name and version
-// Panics if the key is not in the correct format
-func mustParseModuleKey(key string) (string, string) {
-	parts := strings.SplitN(key, "@", 2)
-	if len(parts) != 2 {
-		log.Panicf("BUG: invalid module key format %q, expected 'module@version'", key)
+// makeBzlSrcSelectExpr creates a select expression for the bzl_srcs attribute (single label)
+//
+//	Returns: select({
+//	    "//app/bcr:is_docs_release": "label",
+//	    "//conditions:default": None,
+//	})
+func makeBzlSrcSelectExpr(label string) *build.CallExpr {
+	return &build.CallExpr{
+		X: &build.Ident{Name: "select"},
+		List: []build.Expr{
+			&build.DictExpr{
+				List: []*build.KeyValueExpr{
+					{
+						Key:   &build.StringExpr{Value: "//app/bcr:is_docs_release"},
+						Value: &build.StringExpr{Value: label},
+					},
+					{
+						Key:   &build.StringExpr{Value: "//conditions:default"},
+						Value: &build.Ident{Name: "None"},
+					},
+				},
+			},
+		},
 	}
-	return parts[0], parts[1]
+}
+
+// makeBzlDepsSelectExpr creates a select expression for the bzl_deps attribute (list of labels)
+//
+//	Returns: select({
+//	    "//app/bcr:is_docs_release": [labels...],
+//	    "//conditions:default": [],
+//	})
+func makeBzlDepsSelectExpr(labels []string) *build.CallExpr {
+	// Sort labels for consistent output
+	sortedLabels := make([]string, len(labels))
+	copy(sortedLabels, labels)
+	slices.Sort(sortedLabels)
+
+	// Create list of label string expressions
+	labelExprs := make([]build.Expr, 0, len(sortedLabels))
+	for _, lbl := range sortedLabels {
+		labelExprs = append(labelExprs, &build.StringExpr{Value: lbl})
+	}
+
+	return &build.CallExpr{
+		X: &build.Ident{Name: "select"},
+		List: []build.Expr{
+			&build.DictExpr{
+				List: []*build.KeyValueExpr{
+					{
+						Key: &build.StringExpr{Value: "//app/bcr:is_docs_release"},
+						Value: &build.ListExpr{
+							List: labelExprs,
+						},
+					},
+					{
+						Key:   &build.StringExpr{Value: "//conditions:default"},
+						Value: &build.ListExpr{List: []build.Expr{}},
+					},
+				},
+			},
+		},
+	}
 }
 
 // compareVersions compares two version strings lexicographically
@@ -366,37 +432,4 @@ func compareVersions(v1, v2 string) int {
 		return -1
 	}
 	return 1
-}
-
-// isVersionSelected returns true if the given module@version is selected by MVS
-// Since global MVS is no longer computed, this always returns true (no filtering)
-func (ext *bcrExtension) isVersionSelected(moduleName, version string) bool {
-	// Global MVS filtering disabled - include all versions
-	return true
-}
-
-// isUrlForSelectedVersion checks if any of the rules associated with a URL
-// are for an MVS-selected module version
-// Since global MVS is no longer computed, this always returns true (no filtering)
-func (ext *bcrExtension) isUrlForSelectedVersion(rules []*rule.Rule) bool {
-	// Global MVS filtering disabled - include all URLs
-	return true
-}
-
-// getMvsResultForModuleVersion returns the MVS result for a specific module@version
-// Returns the map of (module name -> selected version) when the given module@version is the root
-// Returns nil if MVS hasn't been calculated or the module@version doesn't exist
-//
-// Example usage:
-//   result := ext.getMvsResultForModuleVersion("bazel_skylib@1.8.2")
-//   if result != nil {
-//       for moduleName, version := range result {
-//           log.Printf("  %s -> %s", moduleName, version)
-//       }
-//   }
-func (ext *bcrExtension) getMvsResultForModuleVersion(moduleKey string) map[string]string {
-	if ext.mvsResult == nil || ext.mvsResult.perModuleVersionMvs == nil {
-		return nil
-	}
-	return ext.mvsResult.perModuleVersionMvs[moduleKey]
 }

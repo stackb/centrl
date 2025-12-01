@@ -71,7 +71,7 @@ gazelle(
     name = "central_registry",
     args = [
         "--resource-status-set-file=$BUILD_WORKING_DIRECTORY/resources.json",
-        "--registry-file=$(rootpath @registry_pb//file)",
+        "--repository-metadata-set-file=$BUILD_WORKING_DIRECTORY/repository-metadata.json",
         "--registry-root=data/bazel-central-registry",
         "--registry-url=https://registry.bazel.build",
         "--blacklisted_url=",

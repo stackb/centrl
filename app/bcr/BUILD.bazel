@@ -22,6 +22,23 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
+string_flag(
+    name = "docs_release",
+    build_setting_default = "skip",
+    values = [
+        "skip",
+        "production",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "is_docs_release",
+    flag_values = {
+        ":docs_release": "production",
+    },
+)
+
 config_setting(
     name = "is_debug_release",
     flag_values = {
@@ -189,11 +206,13 @@ release_archive(
     srcs = [
         "favicon.png",
         "registry_pb",
-        # ":docs",
         ":robots_txt",
         ":sitemap_xml",
     ] + select({
         ":is_debug_release": ["bcr.js.map"],
+        "//conditions:default": [],
+    }) + select({
+        "//app/bcr:is_docs_release": [":docs"],
         "//conditions:default": [],
     }),
     hashed_srcs = [

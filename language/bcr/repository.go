@@ -10,13 +10,13 @@ import (
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 )
 
-// parseRepository parses a repository string and returns a RepositoryMetadata proto
+// parseRepositoryMetadataFromRepositoryString parses a repository string and returns a RepositoryMetadata proto
 // Supports formats like:
 //   - "github:owner/repo"
 //   - "gitlab:owner/repo"
 //   - "https://github.com/owner/repo"
 //   - "https://gitlab.com/owner/repo"
-func parseRepository(repoStr string) (*bzpb.RepositoryMetadata, bool) {
+func parseRepositoryMetadataFromRepositoryString(repoStr string) (*bzpb.RepositoryMetadata, bool) {
 	md := &bzpb.RepositoryMetadata{}
 
 	// Try GitHub formats
@@ -63,19 +63,19 @@ func parseRepository(repoStr string) (*bzpb.RepositoryMetadata, bool) {
 	return md, true
 }
 
-// normalizeRepository returns a canonical form of a repository string
-// e.g., "github:org/repo"
-func normalizeRepository(repoStr string) string {
-	md, ok := parseRepository(repoStr)
+// repositoryMetadataCanonicalName returns a canonical form of a repository
+// string e.g., "github:org/repo"
+func repositoryMetadataCanonicalName(repoStr string) string {
+	md, ok := parseRepositoryMetadataFromRepositoryString(repoStr)
 	if !ok {
 		return repoStr
 	}
-	return formatRepository(md)
+	return formatRepositoryCanonicalName(md)
 }
 
-// formatRepository prints a canonical form of a repository string
+// formatRepositoryCanonicalName prints a canonical form of a repository string
 // e.g., "github:org/repo"
-func formatRepository(md *bzpb.RepositoryMetadata) string {
+func formatRepositoryCanonicalName(md *bzpb.RepositoryMetadata) string {
 	switch md.Type {
 	case bzpb.RepositoryType_GITHUB:
 		return fmt.Sprintf("github:%s/%s", md.Organization, md.Name)
@@ -86,8 +86,8 @@ func formatRepository(md *bzpb.RepositoryMetadata) string {
 	}
 }
 
-// makeRepositoryName creates a Bazel rule name from repository metadata
-func makeRepositoryName(md *bzpb.RepositoryMetadata) string {
+// makeRepositoryMetadataRuleName creates a Bazel rule name from repository metadata
+func makeRepositoryMetadataRuleName(md *bzpb.RepositoryMetadata) string {
 	switch md.Type {
 	case bzpb.RepositoryType_GITHUB:
 		return fmt.Sprintf("com_github_%s_%s", md.Organization, md.Name)
@@ -99,30 +99,27 @@ func makeRepositoryName(md *bzpb.RepositoryMetadata) string {
 }
 
 // trackRepositories adds repositories from metadata to the extension's repository set
+// If a repository is already in the set (e.g., from cache), it is not overwritten
 func (ext *bcrExtension) trackRepositories(repos []string) {
 	for _, repo := range repos {
-		if md, ok := parseRepository(repo); ok {
-			normalized := formatRepository(md)
-			ext.repositories[normalized] = md
+		if md, ok := parseRepositoryMetadataFromRepositoryString(repo); ok {
+			canonicalName := formatRepositoryCanonicalName(md)
+			// Only add if not already present (preserve cached metadata with
+			// Languages, etc.)
+			if _, exists := ext.repositoriesMetadataByCanonicalName[canonicalName]; !exists {
+				ext.repositoriesMetadataByCanonicalName[canonicalName] = md
+			}
 		}
 	}
 }
 
 // makeRepositoryMetadataRules creates repository_metadata rules from the
 // tracked repositories
-func makeRepositoryMetadataRules(repositories map[string]*bzpb.RepositoryMetadata) []*rule.Rule {
-	var rules []*rule.Rule
-
+func makeRepositoryMetadataRules(repositories map[string]*bzpb.RepositoryMetadata) (rules []*rule.Rule) {
 	keys := slices.Sorted(maps.Keys(repositories))
-
 	for _, k := range keys {
 		md := repositories[k]
-		// Generate rule name
-		ruleName := makeRepositoryName(md)
-		// Create the rule
-		r := makeRepositoryMetadataRule(ruleName, md)
-		rules = append(rules, r)
+		rules = append(rules, makeRepositoryMetadataRule(md))
 	}
-
-	return rules
+	return
 }

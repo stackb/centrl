@@ -9,6 +9,9 @@ import (
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 )
 
+const moduleMetadataPrivateAttr = "_module_metadata"
+const repositoryMetadataPrivateAttr = "_repository_metadata"
+
 // moduleMetadataLoadInfo returns load info for the module_metadata rule
 func moduleMetadataLoadInfo() rule.LoadInfo {
 	return rule.LoadInfo{
@@ -66,6 +69,9 @@ func makeModuleMetadataRule(name string, md *bzpb.ModuleMetadata, maintainerRule
 	}
 	r.SetAttr("build_bazel", ":BUILD.bazel")
 	r.SetAttr("visibility", []string{"//visibility:public"})
+
+	r.SetPrivateAttr(moduleMetadataPrivateAttr, md)
+
 	return r
 }
 
@@ -92,7 +98,7 @@ func resolveModuleMetadataRule(r *rule.Rule, ix *resolve.RuleIndex) {
 			// Construct the import spec: "module_name@version"
 			importSpec := resolve.ImportSpec{
 				Lang: bcrLangName,
-				Imp:  fmt.Sprintf("%s@%s", moduleName, version),
+				Imp:  makeModuleVersionKey(moduleName, version),
 			}
 
 			// Find the module_version rule that provides this import
@@ -115,17 +121,17 @@ func resolveModuleMetadataRule(r *rule.Rule, ix *resolve.RuleIndex) {
 	}
 
 	for _, repo := range r.AttrStrings("repository") {
-		normalizedRepo := normalizeRepository(repo)
+		canonicalName := repositoryMetadataCanonicalName(repo)
 		importSpec := resolve.ImportSpec{
 			Lang: bcrLangName,
-			Imp:  normalizedRepo,
+			Imp:  canonicalName,
 		}
 
 		// Find the module_version rule that provides this import
 		results := ix.FindRulesByImport(importSpec, bcrLangName)
 
 		if len(results) == 0 {
-			log.Printf("resolveModuleMetadataRule: No repository_metadata found for %s", normalizedRepo)
+			log.Printf("resolveModuleMetadataRule: No repository_metadata found for %s", canonicalName)
 			continue
 		}
 

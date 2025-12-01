@@ -29,14 +29,8 @@ func (ext *bcrExtension) DoneGeneratingRules() {
 
 	// fetch repository metadata now that we know the full list of repos to
 	// gather info for
-	ext.fetchGithubRepositoryMetadata(filterGithubRepositories(ext.repositories))
+	ext.fetchGithubRepositoryMetadata(filterGithubRepositories(ext.repositoriesMetadataByCanonicalName))
 	// ext.fetchGitlabRepositoryMetadata(filterGitlabRepositories(ext.repositories))
-
-	// in case we had issues fetching metadata, propagate forward from previous
-	// (base) repository state.
-	if ext.baseRegistry != nil {
-		propagateBaseRepositoryMetadata(ext.repositories, makeRepositoryMetadataMap(ext.baseRegistry))
-	}
 
 	log.Println("===[BeforeResolvingDeps]======================================")
 }
@@ -46,11 +40,23 @@ func (ext *bcrExtension) DoneGeneratingRules() {
 func (ext *bcrExtension) AfterResolvingDeps(ctx context.Context) {
 	log.Println("===[AfterResolvingDeps]======================================")
 
-	// Calculate MVS now that ext.modules has been populated during resolve
-	// phase
-	ext.calculateMvs()
+	// Make docs repositories
+	binaryProtoHttpArchives := ext.prepareBinaryprotoRepositories()
+	availableStarlarkRepositories := ext.prepareStarlarkRepositories()
 
-	if err := ext.makeDocsRepositories(ext.repoRoot); err != nil {
-		log.Fatalf("preparing external repositories: %v", err)
+	// Calculate MVS sets - this updates the rankings of
+	ext.calculateMvs(availableStarlarkRepositories)
+
+	if err := mergeModuleBazelFile(ext.repoRoot, binaryProtoHttpArchives, availableStarlarkRepositories); err != nil {
+		log.Fatal(err)
+	}
+
+	// Write the updated caches back to files - best effort, ignoring errors
+	if err := ext.writeResourceStatusCacheFile(); err != nil {
+		log.Println("writing resource status cache file: ")
+	}
+
+	if err := ext.writeRepositoryMetadataCacheFile(); err != nil {
+		log.Println("writing repository metadata cache file: ")
 	}
 }

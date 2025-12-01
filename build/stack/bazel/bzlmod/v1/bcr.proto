@@ -86,6 +86,10 @@ message RepositoryMetadata {
     string canonical_name = 8;
 }
 
+message RepositoryMetadataSet {
+    repeated RepositoryMetadata repository_metadata = 1;
+}
+
 message ResourceStatus {
     // url is the resource locator
     string url = 1;

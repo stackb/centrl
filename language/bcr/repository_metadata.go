@@ -2,8 +2,10 @@ package bcr
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"maps"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 	"github.com/stackb/centrl/pkg/gh"
 	"github.com/stackb/centrl/pkg/gl"
+	"github.com/stackb/centrl/pkg/protoutil"
 )
 
 // repositoryMetadataLoadInfo returns load info for the repository_metadata rule
@@ -47,9 +50,11 @@ func repositoryMetadataImports(r *rule.Rule) []resolve.ImportSpec {
 }
 
 // makeRepositoryMetadataRule creates a repository_metadata rule from protobuf metadata
-func makeRepositoryMetadataRule(name string, md *bzpb.RepositoryMetadata) *rule.Rule {
-	r := rule.NewRule("repository_metadata", name)
-	r.SetAttr("canonical_name", formatRepository(md))
+func makeRepositoryMetadataRule(md *bzpb.RepositoryMetadata) *rule.Rule {
+	ruleName := makeRepositoryMetadataRuleName(md)
+
+	r := rule.NewRule("repository_metadata", ruleName)
+	r.SetAttr("canonical_name", formatRepositoryCanonicalName(md))
 	r.SetAttr("visibility", []string{"//visibility:public"})
 
 	updateRepositoryMetadataRule(md, r)
@@ -79,6 +84,7 @@ func updateRepositoryMetadataRule(md *bzpb.RepositoryMetadata, r *rule.Rule) {
 		primaryLanguage := computePrimaryLanguage(md.Languages)
 		r.SetAttr("primary_language", primaryLanguage)
 	}
+	r.SetPrivateAttr(repositoryMetadataPrivateAttr, md)
 }
 
 // computePrimaryLanguage returns the language with the highest line count
@@ -96,9 +102,8 @@ func computePrimaryLanguage(languages map[string]int32) string {
 	return maxLang
 }
 
-// resolveRepositoryMetadataRule resolves the deps and overrides attributes for a module_metadata rule
-// by looking up module_version rules for each version in the versions list
-// and override rules for the module
+// resolveRepositoryMetadataRule updates the rule with metadata attributes after
+// data has been fetched for it.
 func resolveRepositoryMetadataRule(r *rule.Rule, _ *resolve.RuleIndex, repositories map[string]*bzpb.RepositoryMetadata) {
 	if md, ok := repositories[r.AttrString("canonical_name")]; ok {
 		updateRepositoryMetadataRule(md, r)
@@ -114,16 +119,6 @@ func makeStringDict(in map[string]int32) map[string]string {
 		dict[k] = strconv.Itoa(int(v))
 	}
 	return dict
-}
-
-func makeRepositoryMetadataMap(registry *bzpb.Registry) map[string]*bzpb.RepositoryMetadata {
-	result := make(map[string]*bzpb.RepositoryMetadata)
-	for _, module := range registry.Modules {
-		if module.RepositoryMetadata != nil {
-			result[formatRepository(module.RepositoryMetadata)] = module.RepositoryMetadata
-		}
-	}
-	return result
 }
 
 func (ext *bcrExtension) reportGithubRateLimits() {
@@ -162,6 +157,13 @@ func filterGitlabRepositories(repositories map[string]*bzpb.RepositoryMetadata) 
 		if md == nil || md.Type != bzpb.RepositoryType_GITLAB {
 			continue
 		}
+
+		// Skip repositories that already have metadata (from cache)
+		// Check if Languages map is initialized, which indicates metadata was fetched
+		if md.Languages != nil {
+			continue
+		}
+
 		todo = append(todo, md)
 	}
 	return todo
@@ -182,28 +184,15 @@ func filterGithubRepositories(repositories map[string]*bzpb.RepositoryMetadata) 
 			continue
 		}
 
+		// Skip repositories that already have metadata (from cache)
+		// Check if Languages map is initialized, which indicates metadata was fetched
+		if md.Languages != nil {
+			continue
+		}
+
 		todo = append(todo, md)
 	}
 	return todo
-}
-
-func propagateBaseRepositoryMetadata(repositories, baseRepositories map[string]*bzpb.RepositoryMetadata) {
-	for name, md := range repositories {
-		if base, ok := baseRepositories[name]; ok {
-			if md.Description == "" && base.Description != "" {
-				md.Description = base.Description
-			}
-			if len(md.Languages) == 0 && len(base.Languages) > 0 {
-				md.Languages = base.Languages
-			}
-			if md.PrimaryLanguage == "" && base.PrimaryLanguage != "" {
-				md.PrimaryLanguage = base.PrimaryLanguage
-			}
-			if md.Stargazers == 0 && base.Stargazers > 0 {
-				md.Stargazers = base.Stargazers
-			}
-		}
-	}
 }
 
 func (ext *bcrExtension) fetchGithubRepositoryMetadata(todo []*bzpb.RepositoryMetadata) {
@@ -269,6 +258,10 @@ func (ext *bcrExtension) fetchGithubRepositoryMetadata(todo []*bzpb.RepositoryMe
 	}
 
 	log.Printf("Successfully fetched metadata for %d of %d repositories total", totalFetched, len(todo))
+
+	if totalFetched > 0 {
+		ext.fetchedRepositoryMetadata = true
+	}
 }
 
 func (ext *bcrExtension) fetchGitlabRepositoryMetadata(todo []*bzpb.RepositoryMetadata) {
@@ -334,4 +327,67 @@ func (ext *bcrExtension) fetchGitlabRepositoryMetadata(todo []*bzpb.RepositoryMe
 	}
 
 	log.Printf("Successfully fetched metadata for %d of %d GitLab repositories total", totalFetched, len(todo))
+
+	if totalFetched > 0 {
+		ext.fetchedRepositoryMetadata = true
+	}
+}
+
+// writeResourceStatusCacheFile writes the resource status map back to the file it was loaded from
+func (ext *bcrExtension) writeResourceStatusCacheFile() error {
+	if ext.resourceStatusSetFile == "" {
+		// No file was specified, so nothing to write
+		return nil
+	}
+
+	// Convert map to ResourceStatusSet
+	statusSet := &bzpb.ResourceStatusSet{
+		Status: make([]*bzpb.ResourceStatus, 0, len(ext.resourceStatusByUrl)),
+	}
+	urls := slices.Sorted(maps.Keys(ext.resourceStatusByUrl))
+	for _, url := range urls {
+		status := ext.resourceStatusByUrl[url]
+		statusSet.Status = append(statusSet.Status, status)
+	}
+
+	filename := os.ExpandEnv(ext.resourceStatusSetFile)
+	if err := protoutil.WriteFile(filename, statusSet); err != nil {
+		return fmt.Errorf("failed to write resource status file %s: %w", filename, err)
+	}
+
+	log.Printf("Wrote %d resource statuses to %s", len(ext.resourceStatusByUrl), filename)
+	return nil
+}
+
+// writeRepositoryMetadataCacheFile writes the repository metadata map back to the file it was loaded from
+// Only writes if we actually fetched new metadata during this run
+func (ext *bcrExtension) writeRepositoryMetadataCacheFile() error {
+	if ext.repositoryMetadataSetFile == "" {
+		// No file was specified, so nothing to write
+		return nil
+	}
+
+	if !ext.fetchedRepositoryMetadata {
+		// No new metadata was fetched, don't overwrite the cache
+		log.Printf("No new repository metadata fetched, skipping write to %s", ext.repositoryMetadataSetFile)
+		return nil
+	}
+
+	// Convert map to RepositoryMetadataSet
+	metadataSet := &bzpb.RepositoryMetadataSet{
+		RepositoryMetadata: make([]*bzpb.RepositoryMetadata, 0, len(ext.repositoriesMetadataByCanonicalName)),
+	}
+	keys := slices.Sorted(maps.Keys(ext.repositoriesMetadataByCanonicalName))
+	for _, key := range keys {
+		md := ext.repositoriesMetadataByCanonicalName[key]
+		metadataSet.RepositoryMetadata = append(metadataSet.RepositoryMetadata, md)
+	}
+
+	filename := os.ExpandEnv(ext.repositoryMetadataSetFile)
+	if err := protoutil.WriteFile(filename, metadataSet); err != nil {
+		return fmt.Errorf("failed to write repository metadata file %s: %w", filename, err)
+	}
+
+	log.Printf("Wrote %d repository metadata entries to %s", len(ext.repositoriesMetadataByCanonicalName), filename)
+	return nil
 }

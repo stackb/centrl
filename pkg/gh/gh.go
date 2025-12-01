@@ -314,10 +314,13 @@ func parseRepositoryMetadataResponse(data map[string]any, repos []*bzpb.Reposito
 			continue // Repo not found or error
 		}
 
-		// Parse description
+		// Initialize Languages map to indicate metadata was fetched (even if empty)
+		repo.Languages = make(map[string]int32)
+
+		// Parse description (nil is valid for repos without descriptions)
 		if desc, ok := repoData["description"].(string); ok {
 			repo.Description = desc
-		} else {
+		} else if repoData["description"] != nil {
 			log.Printf("WARN %s: graphql response description parse issue: %v", canonicalName, repoData["description"])
 		}
 
@@ -331,7 +334,6 @@ func parseRepositoryMetadataResponse(data map[string]any, repos []*bzpb.Reposito
 		// Parse languages
 		if languages, ok := repoData["languages"].(map[string]any); ok {
 			if edges, ok := languages["edges"].([]any); ok {
-				repo.Languages = make(map[string]int32)
 				for _, edge := range edges {
 					edgeMap, ok := edge.(map[string]any)
 					if !ok {

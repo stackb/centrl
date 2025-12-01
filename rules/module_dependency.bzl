@@ -1,4 +1,4 @@
-"provides the module_dependency rule"
+"""Provides the module_dependency rule."""
 
 load("//rules:providers.bzl", "ModuleDependencyCycleInfo", "ModuleDependencyInfo", "ModuleOverrideInfo", "ModuleVersionInfo")
 
@@ -6,7 +6,6 @@ def _module_dependency_impl(ctx):
     module = ctx.attr.module[ModuleVersionInfo] if ctx.attr.module and ModuleVersionInfo in ctx.attr.module else None
     cycle = ctx.attr.cycle[ModuleDependencyCycleInfo] if ctx.attr.cycle and ModuleDependencyCycleInfo in ctx.attr.cycle else None
     override = ctx.attr.override[ModuleOverrideInfo] if ctx.attr.override and ModuleOverrideInfo in ctx.attr.override else None
-    # transitive_modules = depset([module] if module else [], transitive = )
 
     return [
         ModuleDependencyInfo(
@@ -16,23 +15,45 @@ def _module_dependency_impl(ctx):
             dev = ctx.attr.dev,
             unresolved = ctx.attr.unresolved,
             module = module,
-            # transitive_modules = transitive_modules,
             cycle = cycle,
             override = override,
         ),
     ]
 
 module_dependency = rule(
+    doc = "Defines a dependency relationship between modules.",
     implementation = _module_dependency_impl,
     attrs = {
-        "dep_name": attr.string(mandatory = True),
-        "version": attr.string(),
-        "repo_name": attr.string(),
-        "dev": attr.bool(default = False),
-        "unresolved": attr.bool(default = False),
-        "module": attr.label(providers = [ModuleVersionInfo]),
-        "cycle": attr.label(providers = [ModuleDependencyCycleInfo]),
-        "override": attr.label(providers = [ModuleOverrideInfo]),
+        "dep_name": attr.string(
+            doc = "str: Dependency module name (required)",
+            mandatory = True,
+        ),
+        "version": attr.string(
+            doc = "str: Dependency module version",
+        ),
+        "repo_name": attr.string(
+            doc = "str: Effective repository name for the dependency",
+        ),
+        "dev": attr.bool(
+            doc = "bool: Whether this is a dev dependency",
+            default = False,
+        ),
+        "unresolved": attr.bool(
+            doc = "bool: Whether this dependency failed to resolve",
+            default = False,
+        ),
+        "module": attr.label(
+            doc = "Target | None: Module version target providing ModuleVersionInfo",
+            providers = [ModuleVersionInfo],
+        ),
+        "cycle": attr.label(
+            doc = "Target | None: Cycle target providing ModuleDependencyCycleInfo",
+            providers = [ModuleDependencyCycleInfo],
+        ),
+        "override": attr.label(
+            doc = "Target | None: Override target providing ModuleOverrideInfo",
+            providers = [ModuleOverrideInfo],
+        ),
     },
     provides = [ModuleDependencyInfo],
 )

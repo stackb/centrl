@@ -1,8 +1,0 @@
-load("@build_stack_rules_proto//rules:starlark_library.bzl", "starlark_library")
-
-# empty is used as a target when a module_source.url fails to resolve to a 2xx
-# status.
-starlark_library(
-    name = "empty",
-    visibility = ["//visibility:public"],
-)

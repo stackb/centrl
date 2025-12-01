@@ -24,31 +24,6 @@ type bzlFile struct {
 	Label         *bzpb.Label
 }
 
-// labelPkg extracts the package path from a full path given a repo name.
-// For example, given repoName "rules_go_0.51.0_docs" and
-// path "external/build_stack_rules_proto++starlark_repository+rules_go_0.51.0_docs/docs/doc_helpers.bzl",
-// it returns "docs".
-func labelPkg(repoName, fullPath string) string {
-	// Remove "external/" prefix if present
-	pathToSearch := strings.TrimPrefix(fullPath, "external/")
-
-	// Find the first path component that ends with the repo name
-	parts := strings.Split(pathToSearch, "/")
-
-	for i, part := range parts {
-		if strings.HasSuffix(part, repoName) {
-			// Found the repo component, return everything after it except the filename
-			if i+1 < len(parts)-1 {
-				return filepath.Join(parts[i+1 : len(parts)-1]...)
-			}
-			return ""
-		}
-	}
-
-	// If we didn't find the repo name, return the directory of the path
-	return filepath.Dir(pathToSearch)
-}
-
 // bzlFileSlice is a custom flag type for repeatable --mapping flags
 type bzlFileSlice []*bzlFile
 
@@ -63,7 +38,7 @@ func (s *bzlFileSlice) String() string {
 func (s *bzlFileSlice) Set(value string) error {
 	parts := strings.SplitN(value, ":", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("invalid mapping format %q, expected REPO_NAME=PATH", value)
+		return fmt.Errorf("invalid mapping format %q, expected REPO_NAME:PATH", value)
 	}
 
 	*s = append(*s, &bzlFile{
@@ -215,7 +190,7 @@ func extractModule(cfg *Config, file *bzlFile) (*slpb.Module, error) {
 		Rel:                 "",
 		BuiltinsBzlPath:     cfg.BuiltinsBzlPath,
 		ModuleContent:       content,
-		DepRoots:            []string{cfg.Cwd},
+		DepRoots:            []string{filepath.Join(cfg.Cwd, "bzl_srcs")},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -310,7 +285,7 @@ func rewriteFile(cfg *Config, file *bzlFile) error {
 		data = build.Format(ast)
 	}
 
-	file.EffectivePath = filepath.Join("external", file.RepoName, rest)
+	file.EffectivePath = filepath.Join("bzl_srcs", "external", file.RepoName, rest)
 	dstPath := filepath.Join(cfg.Cwd, file.EffectivePath)
 
 	return writeFile(dstPath, data, os.ModePerm)

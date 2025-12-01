@@ -18,7 +18,7 @@ func (ext *bcrExtension) addModuleToGraph(moduleName, version string) {
 	if moduleName == "" || version == "" {
 		return
 	}
-	moduleKey := fmt.Sprintf("%s@%s", moduleName, version)
+	moduleKey := makeModuleVersionKey(moduleName, version)
 	if err := ext.depGraph.AddVertex(moduleKey); err != nil {
 		// Vertex might already exist, which is fine
 		if err != graph.ErrVertexAlreadyExists {
@@ -33,8 +33,8 @@ func (ext *bcrExtension) addDependencyEdge(fromModule, fromVersion, toModule, to
 		return
 	}
 
-	fromKey := fmt.Sprintf("%s@%s", fromModule, fromVersion)
-	toKey := fmt.Sprintf("%s@%s", toModule, toVersion)
+	fromKey := makeModuleVersionKey(fromModule, fromVersion)
+	toKey := makeModuleVersionKey(toModule, toVersion)
 
 	// Ensure both vertices exist
 	_ = ext.depGraph.AddVertex(fromKey)
