@@ -73,6 +73,15 @@ def _get_module_id_from_bzl_repository_repo_name(repo_name):
     name_version = last_part[len("bzl."):]
     return name_version.replace("---", "@")
 
+def _add_args_for_module(args, module_name, srcs, deps):
+    for file in srcs:
+        args.add("--bzl_file=%s:%s" % (module_name, file.path))
+    if len(deps) == 0:
+        args.add("--module_dep=%s:NONE" % module_name)
+    else:
+        for dep in deps:
+            args.add("--module_dep=%s:%s=%s" % (module_name, dep.name, dep.repo_name))
+
 def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     """Generate documentation extraction action for a single module version.
 
@@ -85,7 +94,7 @@ def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     """
 
     # Declare output file for this module version
-    output = ctx.actions.declare_file("modules/%s/%s/documentationinfo.json" % (mv.name, mv.version))
+    output = ctx.actions.declare_file("%s/%s/documentationinfo.pb" % (mv.name, mv.version))
 
     # JavaRuntimeInfo
     java_runtime = ctx.attr._java_runtime[java_common.JavaRuntimeInfo]
@@ -94,11 +103,17 @@ def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     # StarlarkLibraryFileInfo
     bazel_tools_lib = ctx.attr._bazel_tools[StarlarkLibraryFileInfo]
 
-    # Build list of source depsets: bazel_tools + bzl_srcs (root) + bzl_deps
-    src_depsets = [bazel_tools_lib.srcs, mv.bzl_srcs.srcs] + [d.srcs for d in mv.bzl_deps]
+    # List[StarlarkLibraryFileInfo]
+    direct_libs = [bazel_tools_lib, mv.bzl_srcs] + mv.bzl_deps
 
-    # All file inputs - keep as transitive depset to avoid O(N²) memory explosion
-    inputs = depset([ctx.file._starlarkserverjar], transitive = src_depsets)
+    # DepSet[StarlarkLibraryFileInfo]
+    transitive_libs = depset(direct_libs, transitive = [lib.transitive_deps for lib in direct_libs])
+
+    # List[DepSet]
+    transitive_srcs = [depset(lib.srcs) for lib in transitive_libs.to_list()]
+
+    # DepSet[File]
+    inputs = depset([ctx.file._starlarkserverjar], transitive = transitive_srcs)
 
     # Build arguments
     args = ctx.actions.args()
@@ -106,39 +121,35 @@ def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     args.set_param_file_format("multiline")
 
     args.add("--output_file", output)
-    args.add("--port", 3524)
+
+    args.add("--port", 3679)  # e.g. java -jar ./cmd/starlarkcompiler/constellate.jar --listen_port=3679
     args.add("--java_interpreter_file", java_executable)
     args.add("--server_jar_file", ctx.file._starlarkserverjar)
     args.add("--workspace_cwd", ctx.bin_dir.path)
     args.add("--workspace_output_base", "/private/var/tmp/_bazel_pcj/4d50590a9155e202dda3b0ac2e024c3f")
 
     # Add bzl_files and module_deps without flattening depsets
-    # 1. Root module (bzl_srcs)
-    for file in mv.bzl_srcs.srcs:
-        args.add("--bzl_file=%s:%s" % (mv.name, file.path))
-    for dep in mv.deps:
-        args.add("--module_dep=%s:%s=%s" % (mv.name, dep.name, dep.repo_name))
 
-    # 2. Dependencies (bzl_deps)
+    # 1. Bazel tools
+    _add_args_for_module(args, "bazel_tools", bazel_tools_lib.srcs, [])
+
+    # 2. Root module (bzl_srcs)
+    _add_args_for_module(args, mv.name, mv.bzl_srcs.srcs, mv.deps)
+
+    # 3. Dependencies (bzl_deps)
     for bzl_dep in mv.bzl_deps:
         id = _get_module_id_from_bzl_repository_repo_name(bzl_dep.label.repo_name)
-        bzl_dep_module = versions_by_id.get(id)
-        if not bzl_dep_module:
+        dep_mv = versions_by_id.get(id)
+
+        if not dep_mv:
             # buildifier: disable=print
-            print("🔴 WARN for module %s, the module for bzl source dependency %s was not found!" % (mv.id, bzl_dep.label.repo_name))
+            print("🔴 WARN for module %s, the module for bzl source dependency %s was not found!" % (dep_mv.id, bzl_dep.label.repo_name))
             continue
 
         # buildifier: disable=print
-        print("🟢 module %s, the module for bzl source dependency is %s " % (mv.id, bzl_dep.label.repo_name))
+        # print("🟢 module %s, the module for bzl source dependency is %s " % (dep_mv.id, bzl_dep.label.repo_name))
 
-        for file in bzl_dep.srcs:
-            args.add("--bzl_file=%s:%s" % (bzl_dep_module.name, file.path))
-        for dep in bzl_dep_module.deps:
-            args.add("--module_dep=%s:%s=%s" % (bzl_dep_module.name, dep.name, dep.repo_name))
-
-    # 3. Bazel tools
-    for file in bazel_tools_lib.srcs:
-        args.add("--bzl_file=%s:%s" % ("bazel_tools", file.path))
+        _add_args_for_module(args, dep_mv.name, bzl_dep.srcs, dep_mv.deps)
 
     # Add root module source files as positional arguments
     args.add_all(mv.bzl_srcs.srcs)
@@ -146,9 +157,9 @@ def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     # Run the action
     ctx.actions.run(
         mnemonic = "CompileModuleInfo",
-        progress_message = "Extracting docs for %s@%s (%d files)" % (mv.name, mv.version, len(mv.source.starlarklibrary.srcs)),
+        progress_message = "Extracting docs for %s@%s (%d files)" % (mv.name, mv.version, len(mv.bzl_srcs.srcs)),
         execution_requirements = {
-            "supports-workers": "1",
+            "supports-workers": "0",
             "requires-worker-protocol": "proto",
         },
         executable = ctx.executable._starlarkcompiler,
@@ -167,10 +178,13 @@ def _compile_docs_actions_for_module(ctx, module, versions_by_id):
             # print("skip %s %s (not latest): " % (mv.name, mv.version))
             continue
         if not mv.bzl_srcs:
-            print("skip %s %s (no bzl_srcs): " % (mv.name, mv.version))
+            # print("skip %s %s (no bzl_srcs): " % (mv.name, mv.version))
+            continue
+        if not mv.bzl_srcs.srcs:
+            # print("skip %s %s (no bzl_srcs): " % (mv.name, mv.version))
             continue
 
-        # if not module.name == "bazel-lib":
+        # if not module.name == "rules_oci":
         #     continue
         outputs.append(_compile_docs_action_for_module_version(ctx, mv, versions_by_id))
     return outputs

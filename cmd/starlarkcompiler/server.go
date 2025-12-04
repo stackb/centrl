@@ -18,16 +18,26 @@ import (
 
 type serverResources struct {
 	cmd     *exec.Cmd
+	port    int
 	logFile *os.File
 	conn    *grpc.ClientConn
 }
 
 // initializeServer starts the Java server process, creates a gRPC client, and waits for the server to be ready
 func initializeServer(javaInterpreter, serverJar string, port int, logFilePrefix string, logger *log.Logger) (*serverResources, func(), error) {
-	// Start the server process
-	cmd, logFile, err := startServerProcess(javaInterpreter, serverJar, port, logFilePrefix, logger)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to start server process: %w", err)
+	var serverResources serverResources
+
+	// only host the server ourselves if port has been unassigned.  Otherwise,
+	// assume it is running externally (e.g., in development)
+	if port == 0 {
+		port = mustGetFreePort(logger)
+		// Start the server process
+		cmd, logFile, err := startServerProcess(javaInterpreter, serverJar, port, logFilePrefix, logger)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to start server process: %w", err)
+		}
+		serverResources.cmd = cmd
+		serverResources.logFile = logFile
 	}
 
 	// Create gRPC client
@@ -38,14 +48,14 @@ func initializeServer(javaInterpreter, serverJar string, port int, logFilePrefix
 
 	cleanup := func() {
 		// Cleanup: kill server process
-		if cmd != nil && cmd.Process != nil {
+		if serverResources.cmd != nil && serverResources.cmd.Process != nil {
 			logger.Println("Shutting down server process...")
-			if err := cmd.Process.Kill(); err != nil {
+			if err := serverResources.cmd.Process.Kill(); err != nil {
 				logger.Printf("Error killing server process: %v", err)
 			}
 		}
-		if logFile != nil {
-			logFile.Close()
+		if serverResources.logFile != nil {
+			serverResources.logFile.Close()
 		}
 		if conn != nil {
 			conn.Close()
@@ -58,6 +68,7 @@ func initializeServer(javaInterpreter, serverJar string, port int, logFilePrefix
 	}
 
 	client := slpb.NewStarlarkClient(conn)
+	serverResources.conn = conn
 
 	// Wait for server to be ready
 	if err := waitForServer(client, 30*time.Second, logger); err != nil {
@@ -65,7 +76,7 @@ func initializeServer(javaInterpreter, serverJar string, port int, logFilePrefix
 		return nil, nil, fmt.Errorf("server failed to start: %w", err)
 	}
 
-	return &serverResources{cmd: cmd, logFile: logFile, conn: conn}, cleanup, nil
+	return &serverResources, cleanup, nil
 }
 
 func startServerProcess(javaInterpreter, serverJar string, port int, logFilePrefix string, logger *log.Logger) (*exec.Cmd, *os.File, error) {
@@ -84,7 +95,7 @@ func startServerProcess(javaInterpreter, serverJar string, port int, logFilePref
 		javaInterpreter,
 		"-jar",
 		serverJar,
-		fmt.Sprintf("--log_level=FINE"),
+		"--log_level=FINE",
 		fmt.Sprintf("--listen_port=%d", port),
 	)
 
@@ -127,11 +138,7 @@ func waitForServer(client slpb.StarlarkClient, timeout time.Duration, logger *lo
 			attempts++
 			// Try to establish connection with simple dial
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			_, err := client.ModuleInfo(ctx, &slpb.ModuleInfoRequest{
-				// Minimal request just to check if server is responsive
-				WorkspaceName: "healthcheck",
-				WorkspaceCwd:  "/tmp",
-			})
+			_, err := client.Ping(ctx, &slpb.PingRequest{})
 			cancel()
 
 			// If we get any response (even an error), server is up

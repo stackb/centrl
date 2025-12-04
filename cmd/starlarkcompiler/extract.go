@@ -17,77 +17,6 @@ import (
 	"github.com/stackb/centrl/pkg/stardoc"
 )
 
-type bzlFile struct {
-	RepoName      string // the name of the repo to which the file belongs (e.g. "rules_go")
-	Path          string // the original path
-	EffectivePath string // the remapped path
-	Label         *bzpb.Label
-}
-
-// bzlFileSlice is a custom flag type for repeatable --mapping flags
-type bzlFileSlice []*bzlFile
-
-func (s *bzlFileSlice) String() string {
-	var parts []string
-	for _, sf := range *s {
-		parts = append(parts, fmt.Sprintf("%s:%s", sf.RepoName, sf.Path))
-	}
-	return strings.Join(parts, ",")
-}
-
-func (s *bzlFileSlice) Set(value string) error {
-	parts := strings.SplitN(value, ":", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid mapping format %q, expected REPO_NAME:PATH", value)
-	}
-
-	*s = append(*s, &bzlFile{
-		RepoName: parts[0],
-		Path:     parts[1],
-	})
-
-	return nil
-}
-
-// moduleDepsMap is a custom flag type for repeatable --module_dep flags
-type moduleDepsMap map[string][]*bzpb.ModuleDependency
-
-func (m *moduleDepsMap) String() string {
-	if *m == nil {
-		return ""
-	}
-	var parts []string
-	for docsRepo, deps := range *m {
-		parts = append(parts, fmt.Sprintf("%s=%+v", docsRepo, deps))
-	}
-	return strings.Join(parts, ",")
-}
-
-func (m *moduleDepsMap) Set(value string) error {
-	if *m == nil {
-		*m = make(map[string][]*bzpb.ModuleDependency)
-	}
-
-	// Parse DOCS_REPO_NAME=MODULE_NAME:MODULE_VERSION:REPO_NAME
-	parts := strings.SplitN(value, ":", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid module_dep format %q, expected DOCS_REPO_NAME=MODULE_NAME:MODULE_VERSION:REPO_NAME", value)
-	}
-
-	docsRepoName := parts[0]
-	depParts := strings.Split(parts[1], "=")
-	if len(depParts) != 2 {
-		return fmt.Errorf("invalid module_dep format %q, expected MODULE_NAME:DEP_NAME=REPO_NAME after =", value)
-	}
-
-	(*m)[docsRepoName] = append((*m)[docsRepoName], &bzpb.ModuleDependency{
-		Name:     depParts[0],
-		RepoName: depParts[1],
-	})
-
-	return nil
-}
-
 func extractDocumentation(cfg *Config) (*bzpb.DocumentationInfo, error) {
 
 	bzlFileByPath := make(map[string]*bzlFile)
@@ -179,18 +108,15 @@ globals = struct(
 
 func extractModule(cfg *Config, file *bzlFile) (*slpb.Module, error) {
 
-	var content string
-
 	// logger.Printf("extracting module for: %v", file)
 	request := &slpb.ModuleInfoRequest{
 		TargetFileLabel:     file.EffectivePath,
 		WorkspaceName:       "_main",
 		WorkspaceCwd:        cfg.WorkspaceCwd,
 		WorkspaceOutputBase: cfg.WorkspaceOutputBase,
-		Rel:                 "",
+		Rel:                 workDir,
 		BuiltinsBzlPath:     cfg.BuiltinsBzlPath,
-		ModuleContent:       content,
-		DepRoots:            []string{filepath.Join(cfg.Cwd, "bzl_srcs")},
+		DepRoots:            []string{cfg.Cwd, filepath.Join(cfg.Cwd, workDir)},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -239,7 +165,8 @@ func rewriteFile(cfg *Config, file *bzlFile) error {
 
 	srcPath := filepath.Join(cfg.Cwd, file.Path)
 	if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-		return fmt.Errorf("rewriteFile: src not found: %s", srcPath)
+		listFiles(cfg.Logger, cfg.Cwd)
+		return fmt.Errorf("rewriteFile: source file %s not found in %s", file.Path, cfg.Cwd)
 	}
 
 	ast, loads, data, err := readBzlFile(cfg, srcPath)
@@ -254,13 +181,14 @@ func rewriteFile(cfg *Config, file *bzlFile) error {
 		}
 		to := from.Abs(file.RepoName, file.Label.Pkg)
 
-		if from.Repo == "" {
+		switch from.Repo {
+		case "":
 			to.Repo = file.RepoName
-		} else if from.Repo == file.RepoName {
+		case file.RepoName:
 			to.Repo = file.RepoName
-		} else if from.Repo == "bazel_tools" {
+		case "bazel_tools":
 			to.Repo = "bazel_tools"
-		} else {
+		default:
 			var match *bzpb.ModuleDependency
 			for _, dep := range deps {
 				if dep.RepoName == from.Repo {
@@ -272,12 +200,16 @@ func rewriteFile(cfg *Config, file *bzlFile) error {
 				}
 			}
 			if match == nil {
-				cfg.Logger.Printf("WARN: unknown dependency @%s of module %s (%s)", from.Repo, file.RepoName, file.Path)
+				if debugRewrites {
+					cfg.Logger.Printf("WARN: unknown dependency @%s of module %s (%s)", from.Repo, file.RepoName, file.Path)
+				}
 			}
 		}
 		if from != to {
 			load.Module.Value = to.String()
-			cfg.Logger.Printf("rewrote load: %s --> %s (%s)", from, to, file.Path)
+			if debugRewrites {
+				cfg.Logger.Printf("rewrote load: %s --> %s", from, to)
+			}
 		}
 	}
 
@@ -285,8 +217,9 @@ func rewriteFile(cfg *Config, file *bzlFile) error {
 		data = build.Format(ast)
 	}
 
-	file.EffectivePath = filepath.Join("bzl_srcs", "external", file.RepoName, rest)
-	dstPath := filepath.Join(cfg.Cwd, file.EffectivePath)
+	workingPath := filepath.Join(workDir, "external", file.RepoName, rest)
+	dstPath := filepath.Join(cfg.Cwd, workingPath)
+	file.EffectivePath = filepath.Join("external", file.RepoName, rest)
 
 	return writeFile(dstPath, data, os.ModePerm)
 }

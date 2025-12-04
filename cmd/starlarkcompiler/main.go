@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -17,31 +16,12 @@ import (
 )
 
 const (
-	debugArgs           = true
-	debugSandbox        = false
-	failOnParseErrors   = false
-	failOnExtractErrors = true
+	debugArgs         = false
+	debugSandbox      = false
+	debugRewrites     = false
+	failOnParseErrors = false
 )
 const toolName = "starlarkcompiler"
-
-type Config struct {
-	BuiltinsBzlPath     string // TODO: load bb //src/main/starlark/builtins_bzl:builtins_bzl_zip?
-	Client              slpb.StarlarkClient
-	Cwd                 string
-	JavaInterpreterFile string
-	LogFile             string
-	Logger              *log.Logger
-	OutputFile          string
-	PersistentWorker    bool
-	Port                int
-	ServerJarFile       string
-	BzlFiles            bzlFileSlice // the transitive set of .bzl files in the sandbox
-	FilesToExtract      []string     // list of files to extract docs for
-	WorkspaceCwd        string
-	WorkspaceOutputBase string
-	BazelToolsRepoName  string
-	moduleDeps          moduleDepsMap
-}
 
 func main() {
 	log.SetPrefix(toolName + ": ")
@@ -122,10 +102,6 @@ func runPersistent(persistentCfg *Config) error {
 		} else {
 			// Start server on first request
 			if resources == nil {
-				if batchCfg.Port == 0 {
-					batchCfg.Port = mustGetFreePort(persistentCfg.Logger)
-				}
-
 				r, cleanup, err := initializeServer(batchCfg.JavaInterpreterFile, batchCfg.ServerJarFile, batchCfg.Port, batchCfg.LogFile, persistentCfg.Logger)
 				if err != nil {
 					errMsg := fmt.Sprintf("failed to initialize server: %v", err)
@@ -140,7 +116,7 @@ func runPersistent(persistentCfg *Config) error {
 				}
 				resources = r
 				defer cleanup()
-				persistentCfg.Port = batchCfg.Port
+				persistentCfg.Port = r.port
 				persistentCfg.Client = slpb.NewStarlarkClient(resources.conn)
 				persistentCfg.Logger.Println("Server ready")
 			}
@@ -192,81 +168,4 @@ func batchWork(cfg *Config) error {
 	cfg.Logger.Printf("Completed in %v", time.Since(now))
 
 	return nil
-}
-
-func parseConfig(args []string) (*Config, error) {
-	var cfg Config
-
-	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
-	fs.StringVar(&cfg.JavaInterpreterFile, "java_interpreter_file", "", "path to a java interpreter")
-	fs.StringVar(&cfg.ServerJarFile, "server_jar_file", "", "the executable jar file for the server")
-	fs.StringVar(&cfg.LogFile, "log_file", "", "path to log file (optional, defaults to stderr)")
-	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
-	fs.StringVar(&cfg.WorkspaceCwd, "workspace_cwd", "", "the workspace root dir")
-	fs.StringVar(&cfg.WorkspaceOutputBase, "workspace_output_base", "", "workspace output base")
-	fs.StringVar(&cfg.BazelToolsRepoName, "bazel_tools_repo_name", "", "the canonical repository name for bazel tools sources")
-	fs.IntVar(&cfg.Port, "port", 0, "the port number to use for the server process")
-	fs.BoolVar(&cfg.PersistentWorker, "persistent_worker", false, "present if this tool is being invokes as a bazel persistent worker")
-	fs.Var(&cfg.BzlFiles, "bzl_file", "bzl source file mapping in the format LABEL=PATH (repeatable)")
-	fs.Var(&cfg.moduleDeps, "module_dep", "module dependency map (repeatable)")
-	fs.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "usage: %s @PARAMS_FILE", toolName)
-		fs.PrintDefaults()
-	}
-
-	if err := fs.Parse(args); err != nil {
-		return nil, err
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("getting os cwd: %v", err)
-	}
-	cfg.Cwd = wd
-
-	if cfg.LogFile != "" {
-		logFile, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open log file: %v", err)
-		}
-		defer logFile.Close()
-		cfg.Logger = log.New(logFile, toolName+": ", log.LstdFlags)
-	} else {
-		cfg.Logger = log.New(os.Stderr, toolName+": ", 0)
-	}
-
-	// For persistent worker mode, we only get --persistent_worker flag initially.
-	// All other flags come in WorkRequest messages.
-	if cfg.PersistentWorker {
-		return &cfg, nil
-	}
-
-	cfg.FilesToExtract = fs.Args()
-
-	if cfg.OutputFile == "" {
-		return nil, fmt.Errorf("--output_file is required")
-	}
-	if len(cfg.BzlFiles) == 0 {
-		return nil, fmt.Errorf("--bzl_file list must not be empty")
-	}
-	if len(cfg.FilesToExtract) == 0 {
-		return nil, fmt.Errorf("extract file list must not be empty")
-	}
-	if cfg.JavaInterpreterFile == "" {
-		return nil, fmt.Errorf("--java_interpreter_file is required")
-	}
-	if cfg.ServerJarFile == "" {
-		return nil, fmt.Errorf("--server_jar_file is required")
-	}
-	if cfg.OutputFile == "" {
-		return nil, fmt.Errorf("--output_file is required")
-	}
-	if cfg.WorkspaceCwd == "" {
-		return nil, fmt.Errorf("--workspace_cwd is required")
-	}
-	if cfg.WorkspaceOutputBase == "" {
-		return nil, fmt.Errorf("--workspace_output_base is required")
-	}
-
-	return &cfg, nil
 }
