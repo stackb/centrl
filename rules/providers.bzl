@@ -74,6 +74,7 @@ ModuleAttestationsInfo = provider(
 ModuleVersionInfo = provider(
     doc = "Complete information about a specific module version.",
     fields = {
+        "id": "str: a unique key like 'bazel_skylib@1.8.2'",
         "name": "str: Module name",
         "version": "str: Module version",
         "is_latest_version": "bool: if this is the latest module version",

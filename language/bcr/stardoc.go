@@ -22,7 +22,7 @@ const (
 	binaryProtoRepositorySuffix           = ".binaryprotos"
 	binaryProtosRepositoryRootTargetName  = "files"
 	bzlRepositoryRootTargetName           = "bzl_srcs"
-	bzlRepositorySuffix                   = ".bzl_srcs"
+	bzlRepositoryPrefix                   = "bzl."
 	httpArchiveKind                       = "http_archive"
 	starlarkRepositoryArchiveKind         = "starlark_repository.archive"
 	starlarkRepositoryModuleExtensionName = "starlark_repository"
@@ -265,7 +265,7 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 				deletedRules++
 			}
 		case starlarkRepositoryArchiveKind:
-			if strings.HasSuffix(r.Name(), bzlRepositorySuffix) {
+			if strings.HasPrefix(r.Name(), bzlRepositoryPrefix) {
 				r.Delete()
 				deletedRules++
 			}
@@ -363,7 +363,7 @@ func makeBinaryProtoRepository(from label.Label, docUrl string) *rule.Rule {
 
 // makeBzlRepositoryName creates a named for the external workspace
 func makeBzlRepositoryName(moduleName, moduleVersion string) (name string) {
-	return fmt.Sprintf("%s-%s%s", moduleName, sanitizeName(moduleVersion), bzlRepositorySuffix)
+	return fmt.Sprintf("%s%s---%s", bzlRepositoryPrefix, moduleName, moduleVersion) // TODO: do we need to sanitize moduleVersion?
 }
 
 // makeBzlRepositoryLabel creates a label for a starlark_repository rule.

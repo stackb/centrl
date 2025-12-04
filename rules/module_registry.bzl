@@ -65,24 +65,27 @@ def _compile_codesearch_index_action(ctx, deps):
 
     return output
 
-def _get_module_version_by_bzl_srcs_label(all_module_versions, lib_label):
-    repo_name, _, module_version = lib_label.repo_name.partition(starlarkRepositoryPartitionKey)
-    key = repo_name + "@" + module_version
-    return all_module_versions.get(key)
+def _get_module_id_from_bzl_repository_repo_name(repo_name):
+    parts = repo_name.split("+")
+    if len(parts) == 0:
+        return repo_name
+    last_part = parts[len(parts) - 1]
+    name_version = last_part[len("bzl."):]
+    return name_version.replace("---", "@")
 
-def _compile_docs_action_for_module_version(ctx, mv, all_module_versions):
+def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     """Generate documentation extraction action for a single module version.
 
     Args:
         ctx: The rule context
         mv: ModuleVersionInfo provider for the module version
-        all_module_versions: dict k->v where k is string like "rules_cc@0.0.9" and v is the ModuleVersionInfo provider
+        versions_by_id: dict k->v where k is string like "rules_cc@0.0.9" and v is the ModuleVersionInfo provider
     Returns:
         Output file for the documentation, or None if cannot generate
     """
 
     # Declare output file for this module version
-    output = ctx.actions.declare_file("modules/%s/%s/documentationinfo.pb" % (mv.name, mv.version))
+    output = ctx.actions.declare_file("modules/%s/%s/documentationinfo.json" % (mv.name, mv.version))
 
     # JavaRuntimeInfo
     java_runtime = ctx.attr._java_runtime[java_common.JavaRuntimeInfo]
@@ -117,8 +120,25 @@ def _compile_docs_action_for_module_version(ctx, mv, all_module_versions):
         args.add("--module_dep=%s:%s=%s" % (mv.name, dep.name, dep.repo_name))
 
     # 2. Dependencies (bzl_deps)
+    for bzl_dep in mv.bzl_deps:
+        id = _get_module_id_from_bzl_repository_repo_name(bzl_dep.label.repo_name)
+        bzl_dep_module = repomap.get(id)
+        if not bzl_dep_module:
+            # buildifier: disable=print
+            print("🔴 WARN for module %s, the module for bzl source dependency %s was not found!" % (mv.id, bzl_dep.label.repo_name))
+            continue
+
+        # buildifier: disable=print
+        print("🟢 module %s, the module for bzl source dependency is %s " % (mv.id, bzl_dep.label.repo_name))
+
+        for file in bzl_dep.srcs:
+            args.add("--bzl_file=%s:%s" % (bzl_dep_module.name, file.path))
+        for dep in bzl_dep_module.deps:
+            args.add("--module_dep=%s:%s=%s" % (bzl_dep_module.name, dep.name, dep.repo_name))
+
+    # 2. Dependencies (bzl_deps)
     for dep_lib in mv.bzl_deps:
-        dep_mv = _get_module_version_by_bzl_srcs_label(all_module_versions, dep_lib.label)
+        dep_mv = _get_module_version_by_bzl_srcs_label(versions_by_id, dep_lib.label)
         for file in dep_lib.srcs:
             args.add("--bzl_file=%s:%s" % (dep_mv.name, file.path))
         for dep in dep_mv.deps:
@@ -148,7 +168,7 @@ def _compile_docs_action_for_module_version(ctx, mv, all_module_versions):
 
     return output
 
-def _compile_docs_actions_for_module(ctx, module, all_module_versions):
+def _compile_docs_actions_for_module(ctx, module, versions_by_id):
     outputs = []
     for mv in module.deps:
         if not mv.is_latest_version:
@@ -160,20 +180,18 @@ def _compile_docs_actions_for_module(ctx, module, all_module_versions):
 
         # if not module.name == "bazel-lib":
         #     continue
-        outputs.append(_compile_docs_action_for_module_version(ctx, mv, all_module_versions))
+        outputs.append(_compile_docs_action_for_module_version(ctx, mv, versions_by_id))
     return outputs
 
 def _compile_docs_actions(ctx, deps):
-    all_module_versions = {}
-    for module in deps:
-        for mv in module.deps:
-            key = "%s@%s" % (mv.name, mv.version)
-            all_module_versions[key] = mv
+    versions_by_id = {}
+    for m in deps:
+        for v in m.deps:
+            versions_by_id[v.id] = v
 
     outputs = []
-
     for module in deps:
-        outputs.extend(_compile_docs_actions_for_module(ctx, module, all_module_versions))
+        outputs.extend(_compile_docs_actions_for_module(ctx, module, versions_by_id))
     return outputs
 
 def _compile_colors_action(ctx, colors_json, languages_json):
@@ -356,7 +374,7 @@ module_registry = rule(
             allow_single_file = True,
         ),
         "_bazel_tools": attr.label(
-            default = "@bazel_tools.bzl_srcs//tools:bzl_srcs",
+            default = "@bzl.bazel_tools//tools:bzl_srcs",
             providers = [StarlarkLibraryFileInfo],
         ),
     },
