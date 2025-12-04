@@ -11,49 +11,6 @@ load(
     "ModuleVersionInfo",
 )
 
-def _status_code_exists(code):
-    return code >= 200 and code < 300
-
-def _compile_published_documentation_action(ctx, files):
-    if not files:
-        return None
-
-    output = ctx.actions.declare_file("%s/modules/%s/%s/documentationinfo.pb" % (ctx.label.name, ctx.attr.module_name, ctx.attr.version))
-
-    args = ctx.actions.args()
-    args.add("--output_file")
-    args.add(output)
-    args.add_all(files)
-
-    ctx.actions.run(
-        executable = ctx.executable._documentationcompiler,
-        arguments = [args],
-        inputs = files,
-        outputs = [output],
-        mnemonic = "CompileDocumenatationInfo",
-    )
-
-    return output
-
-# def _compile_docs_action(ctx, source, deps, unresolved_deps):
-#     # if the module_source has published / "offical" docs, use those (assuming
-#     # the doc link isn't broken).
-#     if len(source.docs) > 0 and _status_code_exists(source.docs_url_status_code):
-#         return _compile_published_documentation_action(ctx, source.docs)
-
-#     # if the module does not publish docs and this is NOT the latest version,
-#     # skip.
-#     if not ctx.attr.is_latest_version:
-#         # print("skipping docgen for %s (not latest version)" % ctx.label)
-#         return None
-
-#     # if we have unresolved dependencies, the best effort method will fail
-#     if unresolved_deps:
-#         return None
-
-#     # otherwise, attempt to extract docs automatically
-#     return _compile_best_effort_extract_documentation_action(ctx, source, deps, transitive_deps)
-
 def _compile_action(ctx, source, deps, attestations, presubmit, commit):
     # Declare output file for compiled proto
     proto_out = ctx.actions.declare_file(ctx.label.name + ".moduleversion.pb")
@@ -86,13 +43,6 @@ def _compile_action(ctx, source, deps, attestations, presubmit, commit):
         args.add("--url_status_message=" + source.url_status_message)
         args.add("--docs_url_status_code=" + str(source.docs_url_status_code))
         args.add("--docs_url_status_message=" + source.docs_url_status_message)
-
-    # optionally include docs
-    # docs_out = _compile_docs_action(ctx, source, deps, unresolved_deps)
-    # if docs_out:
-    #     args.add("--documentation_info_file")
-    #     args.add(docs_out)
-    #     inputs.append(docs_out)
 
     # Add optional presubmit.yml file
     if presubmit and presubmit.presubmit_yml:
@@ -127,7 +77,6 @@ def _compile_action(ctx, source, deps, attestations, presubmit, commit):
 
     return struct(
         module = proto_out,
-        # docs = docs_out,
     )
 
 def _module_version_impl(ctx):
@@ -211,7 +160,7 @@ module_version = rule(
             providers = [StarlarkLibraryFileInfo],
         ),
         "published_docs": attr.label_list(
-            doc = "list[File]: Published documentation files from http_archive (typically from docs_url)",
+            doc = "list[File]: Published documentation files from an http_archive (typically from docs_url .docs.tar.gz)",
             allow_files = True,
         ),
         "source": attr.label(
@@ -240,11 +189,6 @@ module_version = rule(
         ),
         "_moduleversioncompiler": attr.label(
             default = "//cmd/moduleversioncompiler",
-            executable = True,
-            cfg = "exec",
-        ),
-        "_documentationcompiler": attr.label(
-            default = "//cmd/documentationcompiler",
             executable = True,
             cfg = "exec",
         ),

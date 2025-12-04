@@ -83,7 +83,7 @@ func startServerProcess(javaInterpreter, serverJar string, port int, logFilePref
 	// Create log file for server output
 	serverLogPath := logFilePrefix + ".server.log"
 	if serverLogPath == "" || serverLogPath == ".server.log" {
-		serverLogPath = "starlarkcompiler.server.log"
+		serverLogPath = "bzlcompiler.server.log"
 	}
 	serverLogFile, err := os.OpenFile(serverLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -95,7 +95,7 @@ func startServerProcess(javaInterpreter, serverJar string, port int, logFilePref
 		javaInterpreter,
 		"-jar",
 		serverJar,
-		"--log_level=FINE",
+		// "--log_level=FINE",
 		fmt.Sprintf("--listen_port=%d", port),
 	)
 

@@ -12,13 +12,15 @@ import (
 	sdpb "github.com/stackb/centrl/stardoc_output"
 )
 
+const toolName = "stardoccompiler"
+
 type Config struct {
 	OutputFile string
 	Files      []string
 }
 
 func main() {
-	log.SetPrefix("documentationcompiler: ")
+	log.SetPrefix(toolName + ": ")
 	log.SetOutput(os.Stderr)
 	log.SetFlags(0)
 
@@ -54,7 +56,7 @@ func run(args []string) error {
 }
 
 func parseFlags(args []string) (cfg Config, err error) {
-	fs := flag.NewFlagSet("documentationcompiler", flag.ExitOnError)
+	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
 
 	if err = fs.Parse(args); err != nil {

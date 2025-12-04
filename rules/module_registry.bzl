@@ -8,10 +8,6 @@ load(
     "ModuleRegistryInfo",
 )
 
-# buildifier: disable=name-conventions // for case sensitive search of other var
-# name in .go file(s)
-starlarkRepositoryPartitionKey = "--bzl_srcs--"
-
 def _write_repos_json_action(ctx, deps):
     output = ctx.actions.declare_file(ctx.label.name + ".repos.json")
 
@@ -82,19 +78,49 @@ def _add_args_for_module(args, module_name, srcs, deps):
         for dep in deps:
             args.add("--module_dep=%s:%s=%s" % (module_name, dep.name, dep.repo_name))
 
-def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
+def _status_code_exists(code):
+    return code >= 200 and code < 300
+
+def _documentation_info_output_result(ctx, mv):
+    return struct(
+        mv = mv,
+        output = ctx.actions.declare_file("%s/%s/documentationinfo.pb" % (mv.name, mv.version)),
+    )
+
+def _compile_stardoc_for_module_version(ctx, mv, files):
+    if not files:
+        return None
+
+    result = _documentation_info_output_result(ctx, mv)
+
+    args = ctx.actions.args()
+    args.add("--output_file")
+    args.add(result.output)
+    args.add_all(files)
+
+    ctx.actions.run(
+        executable = ctx.executable._stardoccompiler,
+        arguments = [args],
+        inputs = files,
+        outputs = [result.output],
+        mnemonic = "CompileStardocInfo",
+    )
+
+    return result
+
+def _compile_bzl_for_module_version(ctx, mv, all_mv_by_id):
     """Generate documentation extraction action for a single module version.
 
     Args:
         ctx: The rule context
         mv: ModuleVersionInfo provider for the module version
-        versions_by_id: dict k->v where k is string like "rules_cc@0.0.9" and v is the ModuleVersionInfo provider
+        all_mv_by_id: dict k->v where k is string like "rules_cc@0.0.9" and v is the ModuleVersionInfo provider
     Returns:
-        Output file for the documentation, or None if cannot generate
+        struct having the moduleVersionInfo and the output file for the documentation, or None if cannot generate
     """
 
     # Declare output file for this module version
-    output = ctx.actions.declare_file("%s/%s/documentationinfo.pb" % (mv.name, mv.version))
+    result = _documentation_info_output_result(ctx, mv)
 
     # JavaRuntimeInfo
     java_runtime = ctx.attr._java_runtime[java_common.JavaRuntimeInfo]
@@ -120,9 +146,9 @@ def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     args.use_param_file("@%s", use_always = True)
     args.set_param_file_format("multiline")
 
-    args.add("--output_file", output)
+    args.add("--output_file", result.output)
 
-    args.add("--port", 3679)  # e.g. java -jar ./cmd/starlarkcompiler/constellate.jar --listen_port=3679
+    # args.add("--port", 3679)  # e.g. java -jar ./cmd/bzlcompiler/constellate.jar --listen_port=3679
     args.add("--java_interpreter_file", java_executable)
     args.add("--server_jar_file", ctx.file._starlarkserverjar)
     args.add("--workspace_cwd", ctx.bin_dir.path)
@@ -139,7 +165,7 @@ def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
     # 3. Dependencies (bzl_deps)
     for bzl_dep in mv.bzl_deps:
         id = _get_module_id_from_bzl_repository_repo_name(bzl_dep.label.repo_name)
-        dep_mv = versions_by_id.get(id)
+        dep_mv = all_mv_by_id.get(id)
 
         if not dep_mv:
             # buildifier: disable=print
@@ -159,46 +185,48 @@ def _compile_docs_action_for_module_version(ctx, mv, versions_by_id):
         mnemonic = "CompileModuleInfo",
         progress_message = "Extracting docs for %s@%s (%d files)" % (mv.name, mv.version, len(mv.bzl_srcs.srcs)),
         execution_requirements = {
-            "supports-workers": "0",
+            "supports-workers": "1",
             "requires-worker-protocol": "proto",
         },
-        executable = ctx.executable._starlarkcompiler,
+        executable = ctx.executable._bzlcompiler,
         arguments = [args],
         inputs = inputs,
-        outputs = [output],
+        outputs = [result.output],
         tools = java_runtime.files.to_list(),
     )
 
-    return output
+    return result
 
-def _compile_docs_actions_for_module(ctx, module, versions_by_id):
-    outputs = []
+def _compile_documentation_for_module_version(ctx, mv, all_mv_by_id):
+    # if the module_source has published / "offical" docs, use those
+    # (assuming the doc link isn't broken).
+    if len(mv.published_docs) > 0 and _status_code_exists(mv.source.docs_url_status_code):
+        return _compile_stardoc_for_module_version(ctx, mv, mv.published_docs)
+
+    # otherwise best effort if this is latest version and there is something to compile
+    if mv.is_latest_version and mv.bzl_srcs and len(mv.bzl_srcs.srcs) > 0:
+        return _compile_bzl_for_module_version(ctx, mv, all_mv_by_id)
+
+    return None
+
+def _compile_documentation_for_module(ctx, module, all_mv_by_id):
+    results = []
     for mv in module.deps:
-        if not mv.is_latest_version:
-            # print("skip %s %s (not latest): " % (mv.name, mv.version))
-            continue
-        if not mv.bzl_srcs:
-            # print("skip %s %s (no bzl_srcs): " % (mv.name, mv.version))
-            continue
-        if not mv.bzl_srcs.srcs:
-            # print("skip %s %s (no bzl_srcs): " % (mv.name, mv.version))
-            continue
+        result = _compile_documentation_for_module_version(ctx, mv, all_mv_by_id)
+        if result:
+            results.append(result)
+    return results
 
-        # if not module.name == "rules_oci":
-        #     continue
-        outputs.append(_compile_docs_action_for_module_version(ctx, mv, versions_by_id))
-    return outputs
-
-def _compile_docs_actions(ctx, deps):
-    versions_by_id = {}
+def _compile_documentation(ctx, deps):
+    all_mv_by_id = {}
     for m in deps:
-        for v in m.deps:
-            versions_by_id[v.id] = v
+        for mv in m.deps:
+            all_mv_by_id[mv.id] = mv
 
-    outputs = []
+    results = []
     for module in deps:
-        outputs.extend(_compile_docs_actions_for_module(ctx, module, versions_by_id))
-    return outputs
+        results.extend(_compile_documentation_for_module(ctx, module, all_mv_by_id))
+    return results
 
 def _compile_colors_action(ctx, colors_json, languages_json):
     output = ctx.actions.declare_file(ctx.label.name + ".colors.css")
@@ -305,7 +333,8 @@ def _module_registry_impl(ctx):
     sitemap_xml = _compile_sitemap_action(ctx, registry_pb)
     robots_txt = _write_robots_txt_action(ctx)
     codesearch_index = _compile_codesearch_index_action(ctx, deps)
-    docs = _compile_docs_actions(ctx, deps)
+    doc_results = _compile_documentation(ctx, deps)
+    # docregistry = _compile_documentation_registry(ctx, docs)
 
     return [
         DefaultInfo(files = depset([registry_pb])),
@@ -317,7 +346,7 @@ def _module_registry_impl(ctx):
             robots_txt = [robots_txt],
             registry_pb = [registry_pb],
             codesearch_index = [codesearch_index],
-            docs = depset(docs),
+            docs = depset([r.output for r in doc_results]),
         ),
         ModuleRegistryInfo(
             deps = depset(deps),
@@ -365,8 +394,13 @@ module_registry = rule(
             executable = True,
             cfg = "exec",
         ),
-        "_starlarkcompiler": attr.label(
-            default = "//cmd/starlarkcompiler",
+        "_stardoccompiler": attr.label(
+            default = "//cmd/stardoccompiler",
+            executable = True,
+            cfg = "exec",
+        ),
+        "_bzlcompiler": attr.label(
+            default = "//cmd/bzlcompiler",
             executable = True,
             cfg = "exec",
         ),
@@ -376,7 +410,7 @@ module_registry = rule(
             providers = [java_common.JavaRuntimeInfo],
         ),
         "_starlarkserverjar": attr.label(
-            default = "//cmd/starlarkcompiler:constellate_jar_file",
+            default = "//cmd/bzlcompiler:constellate_jar_file",
             allow_single_file = True,
         ),
         "_bazel_tools": attr.label(

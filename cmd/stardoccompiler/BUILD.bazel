@@ -1,9 +1,9 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
-    name = "documentationcompiler_lib",
+    name = "stardoccompiler_lib",
     srcs = ["main.go"],
-    importpath = "github.com/stackb/centrl/cmd/documentationcompiler",
+    importpath = "github.com/stackb/centrl/cmd/stardoccompiler",
     visibility = ["//visibility:private"],
     deps = [
         "//build/stack/bazel/bzlmod/v1:bzlmod",
@@ -14,7 +14,7 @@ go_library(
 )
 
 go_binary(
-    name = "documentationcompiler",
-    embed = [":documentationcompiler_lib"],
+    name = "stardoccompiler",
+    embed = [":stardoccompiler_lib"],
     visibility = ["//visibility:public"],
 )

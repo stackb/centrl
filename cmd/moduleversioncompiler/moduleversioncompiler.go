@@ -152,7 +152,7 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
 	fs.StringVar(&cfg.ModuleBazelFile, "module_bazel_file", "", "the MODULE.bazel file to read (required)")
 	fs.StringVar(&cfg.SourceJsonFile, "source_json_file", "", "the source.json file to read (optional)")
-	fs.StringVar(&cfg.DocumentationInfoFile, "documentation_info_file", "", "the DocumentationInfo proto file to read")
+	fs.StringVar(&cfg.DocumentationInfoFile, "documentation_info_file", "", "the (optional) DocumentationInfo proto file to read")
 	fs.StringVar(&cfg.PresubmitYmlFile, "presubmit_yml_file", "", "the presubmit.yml file to read (optional)")
 	fs.StringVar(&cfg.AttestationsJsonFile, "attestations_json_file", "", "the attestations.json file to read (optional)")
 	fs.StringVar(&cfg.CommitSha1, "commit_sha1", "", "the git commit SHA-1 hash (optional)")
