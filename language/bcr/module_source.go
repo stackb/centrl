@@ -6,7 +6,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 	"github.com/stackb/centrl/pkg/netutil"
-	"github.com/stackb/centrl/pkg/sourcejson"
 )
 
 const (
@@ -29,12 +28,10 @@ func moduleSourceKinds() map[string]rule.KindInfo {
 		},
 	}
 }
-func readModuleSourceJson(filename string) (*bzpb.ModuleSource, error) {
-	return sourcejson.ReadFile(filename)
-}
 
 func makeModuleSourceRule(module *bzpb.ModuleVersion, source *bzpb.ModuleSource, sourceJsonFile string) *rule.Rule {
 	r := rule.NewRule(moduleSourceKind, "source")
+
 	r.SetPrivateAttr(moduleVersionPrivateAttr, module)
 
 	if source.Url != "" {

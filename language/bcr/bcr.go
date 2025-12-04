@@ -20,8 +20,10 @@ import (
 	"github.com/dominikbraun/graph"
 	"github.com/google/go-github/v66/github"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
+	"github.com/stackb/centrl/pkg/attestationsjson"
 	"github.com/stackb/centrl/pkg/metadatajson"
 	"github.com/stackb/centrl/pkg/modulebazel"
+	"github.com/stackb/centrl/pkg/sourcejson"
 )
 
 const (
@@ -33,48 +35,48 @@ const (
 // binary.
 func NewLanguage() language.Language {
 	return &bcrExtension{
-		depGraph:                        initDepGraph(),
-		regularDepGraph:                 initDepGraph(),
-		devDepGraph:                     initDepGraph(),
-		moduleToCycle:                   make(map[moduleKey]string),
-		unresolvedModulesByModuleName:   make(map[moduleKey]bool),
-		repositoriesMetadataByID:        make(map[repositoryID]*bzpb.RepositoryMetadata),
-		resourceStatusByUrl:             make(map[string]*bzpb.ResourceStatus),
-		moduleKeysByDocUrl:              make(map[string][]moduleKey),
-		moduleKeysBySourceUrl:           make(map[string][]moduleKey),
-		moduleMetadataRulesByModuleName: make(map[string]*protoRule[*bzpb.ModuleMetadata]),
-		moduleVersionRulesByModuleKey:   make(map[moduleKey]*protoRule[*bzpb.ModuleVersion]),
-		moduleSourceRulesByModuleKey:    make(map[moduleKey]*protoRule[*bzpb.ModuleSource]),
+		depGraph:                 initDepGraph(),
+		regularDepGraph:          initDepGraph(),
+		devDepGraph:              initDepGraph(),
+		moduleToCycle:            make(map[moduleID]string),
+		unresolvedModules:        make(map[moduleID]bool),
+		repositoriesMetadataByID: make(map[repositoryID]*bzpb.RepositoryMetadata),
+		resourceStatusByUrl:      make(map[string]*bzpb.ResourceStatus),
+		moduleKeysByDocUrl:       make(map[string][]moduleID),
+		moduleKeysBySourceUrl:    make(map[string][]moduleID),
+		moduleMetadataRules:      make(map[moduleName]*protoRule[*bzpb.ModuleMetadata]),
+		moduleVersionRules:       make(map[moduleID]*protoRule[*bzpb.ModuleVersion]),
+		moduleSourceRules:        make(map[moduleID]*protoRule[*bzpb.ModuleSource]),
 	}
 }
 
 // bcrExtension implements language.Language.
 type bcrExtension struct {
-	name                            string
-	repoRoot                        string // copy of config.RepoRoot
-	modulesRoot                     string
-	resourceStatusSetFile           string
-	repositoryMetadataSetFile       string
-	githubToken                     string
-	gitlabToken                     string
-	registryRoot                    string
-	registryURL                     string
-	blacklistedUrls                 stringBoolMap // tracks urls that are known to have wrong integrity or would otherwise not download
-	githubClient                    *github.Client
-	depGraph                        graph.Graph[moduleKey, moduleKey]             // graph of all dependencies (regular + dev) - for cycle detection
-	regularDepGraph                 graph.Graph[moduleKey, moduleKey]             // graph of only non-dev dependencies
-	devDepGraph                     graph.Graph[moduleKey, moduleKey]             // graph of only dev dependencies
-	moduleToCycle                   map[moduleKey]string                          // maps moduleKey to cycle rule name
-	unresolvedModulesByModuleName   map[moduleKey]bool                            // tracks moduleKey keys that failed to resolve
-	repositoriesMetadataByID        map[repositoryID]*bzpb.RepositoryMetadata     // tracks unique repository strings (e.g., "github:org/repo")
-	moduleMetadataRulesByModuleName map[string]*protoRule[*bzpb.ModuleMetadata]   // tracks module metadata rules
-	moduleVersionRulesByModuleKey   map[moduleKey]*protoRule[*bzpb.ModuleVersion] // tracks module_version rules by moduleKey
-	moduleSourceRulesByModuleKey    map[moduleKey]*protoRule[*bzpb.ModuleSource]  // tracks module_source rules by moduleKey
-	moduleKeysByDocUrl              map[string][]moduleKey                        // tracks docs http_archives to fetch
-	moduleKeysBySourceUrl           map[string][]moduleKey                        // tracks URLs for starlark_repository
-	resourceStatusByUrl             map[string]*bzpb.ResourceStatus               // results of reading resourceStatusSetFile, keyed by URL
-	moduleCommitsByModuleName       map[moduleKey]*bzpb.ModuleCommit              // cache of all module commits (preloaded)
-	fetchedRepositoryMetadata       bool                                          // tracks whether we fetched any new repository metadata this run
+	name                      string
+	repoRoot                  string // copy of config.RepoRoot
+	modulesRoot               string
+	resourceStatusSetFile     string
+	repositoryMetadataSetFile string
+	githubToken               string
+	gitlabToken               string
+	registryRoot              string
+	registryURL               string
+	blacklistedUrls           stringBoolMap // tracks urls that are known to have wrong integrity or would otherwise not download
+	githubClient              *github.Client
+	depGraph                  graph.Graph[moduleID, moduleID]                 // graph of all dependencies (regular + dev) - for cycle detection
+	regularDepGraph           graph.Graph[moduleID, moduleID]                 // graph of only non-dev dependencies
+	devDepGraph               graph.Graph[moduleID, moduleID]                 // graph of only dev dependencies
+	moduleToCycle             map[moduleID]string                             // maps moduleKey to cycle rule name
+	unresolvedModules         map[moduleID]bool                               // tracks module versions that failed to resolve
+	repositoriesMetadataByID  map[repositoryID]*bzpb.RepositoryMetadata       // tracks unique repository strings (e.g., "github:org/repo")
+	moduleMetadataRules       map[moduleName]*protoRule[*bzpb.ModuleMetadata] // tracks module metadata rules
+	moduleVersionRules        map[moduleID]*protoRule[*bzpb.ModuleVersion]    // tracks module_version rules by moduleKey
+	moduleSourceRules         map[moduleID]*protoRule[*bzpb.ModuleSource]     // tracks module_source rules by moduleKey
+	moduleKeysByDocUrl        map[string][]moduleID                           // tracks docs http_archives to fetch
+	moduleKeysBySourceUrl     map[string][]moduleID                           // tracks URLs for starlark_repository
+	resourceStatusByUrl       map[string]*bzpb.ResourceStatus                 // results of reading resourceStatusSetFile, keyed by URL
+	moduleCommits             map[moduleID]*bzpb.ModuleCommit                 // cache of all module commits (preloaded)
+	fetchedRepositoryMetadata bool                                            // tracks whether we fetched any new repository metadata this run
 }
 
 // Name returns the name of the language. This should be a prefix of the kinds
@@ -240,7 +242,7 @@ func (ext *bcrExtension) Resolve(
 	// Switch on rule kind to delegate to specific resolver functions
 	switch r.Kind() {
 	case "module_dependency":
-		resolveModuleDependencyRule(ext.modulesRoot, r, ix, from, ext.moduleToCycle, ext.unresolvedModulesByModuleName)
+		resolveModuleDependencyRule(ext.modulesRoot, r, ix, from, ext.moduleToCycle, ext.unresolvedModules)
 	case "module_dependency_cycle":
 		resolveModuleDependencyCycleRule(r, ix)
 	case "module_metadata":
@@ -250,7 +252,7 @@ func (ext *bcrExtension) Resolve(
 	case "repository_metadata":
 		resolveRepositoryMetadataRule(r, ix, ext.repositoriesMetadataByID)
 	case "module_version":
-		resolveModuleVersionRule(r, ext.moduleMetadataRulesByModuleName)
+		resolveModuleVersionRule(r, ext.moduleMetadataRules)
 	}
 }
 
@@ -309,7 +311,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		// Add metadata rule with references to maintainers (passing ext to track repositories)
 		r := makeModuleMetadataRule(path.Base(args.Rel), md, maintainerRules, "metadata.json", ext)
 		// track it so moduleVersion can determine if it is latest version
-		ext.moduleMetadataRulesByModuleName[r.Name()] = newProtoRule(r, md)
+		ext.moduleMetadataRules[moduleName(r.Name())] = newProtoRule(r, md)
 		rules = append(rules, r)
 	}
 
@@ -345,7 +347,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		var commitRule *rule.Rule
 
 		// Create module_commit rule with git metadata using preloaded cache
-		commit, err := makeModuleVersionCommitRule(args.Config, ext.registryRoot, args.Rel, ext.moduleCommitsByModuleName)
+		commit, err := makeModuleVersionCommitRule(args.Config, ext.registryRoot, args.Rel, ext.moduleCommits)
 		if err != nil {
 			log.Printf("warning: failed to create commit rule for %s: %v", args.Rel, err)
 		} else {
@@ -355,7 +357,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 
 		if slices.Contains(args.RegularFiles, "source.json") {
 			sourceFilename := filepath.Join(args.Config.WorkDir, args.Rel, "source.json")
-			source, err := readModuleSourceJson(sourceFilename)
+			source, err := sourcejson.ReadFile(sourceFilename)
 			if err != nil {
 				log.Fatalf("reading %s/source.json: %v", args.Rel, err)
 			}
@@ -365,8 +367,8 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			rules = append(rules, sourceRule)
 
 			// Track the rule and URLS
-			modKey := newModuleKey(module.Name, module.Version)
-			ext.moduleSourceRulesByModuleKey[modKey] = newProtoRule(sourceRule, source)
+			modKey := newModuleID(module.Name, module.Version)
+			ext.moduleSourceRules[modKey] = newProtoRule(sourceRule, source)
 			ext.trackDocsUrl(source.DocsUrl, modKey)
 			ext.trackSourceUrl(source.Url, modKey)
 		}
@@ -374,7 +376,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		if slices.Contains(args.RegularFiles, "attestations.json") {
 			// Try to read attestations.json if it exists
 			attestationsFilename := filepath.Join(args.Config.WorkDir, args.Rel, "attestations.json")
-			attestations, err := readAttestationsJson(attestationsFilename)
+			attestations, err := attestationsjson.ReadFile(attestationsFilename)
 			if err != nil {
 				log.Fatalf("reading %s/attestations.json: %v", args.Rel, err)
 			}
@@ -396,7 +398,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		}
 
 		// Add module to all dependency graphs
-		modKey := newModuleKey(module.Name, version)
+		modKey := newModuleID(module.Name, version)
 		ext.addModuleToGraph(module.Name, version)
 		_ = ext.regularDepGraph.AddVertex(modKey)
 		_ = ext.devDepGraph.AddVertex(modKey)
@@ -406,8 +408,8 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 			// Add to main graph (all deps - for cycle detection)
 			ext.addDependencyEdge(module.Name, version, dep.Name, dep.Version)
 
-			fromKey := newModuleKey(module.Name, version)
-			toKey := newModuleKey(dep.Name, dep.Version)
+			fromKey := newModuleID(module.Name, version)
+			toKey := newModuleID(dep.Name, dep.Version)
 
 			if dep.Dev {
 				// Add to dev graph only
@@ -435,7 +437,7 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 		rules = append(rules, moduleVersionRule)
 
 		// Track the module_version rule for later MVS annotation
-		ext.moduleVersionRulesByModuleKey[modKey] = newProtoRule(moduleVersionRule, module)
+		ext.moduleVersionRules[modKey] = newProtoRule(moduleVersionRule, module)
 	}
 
 	imports := make([]interface{}, len(rules))

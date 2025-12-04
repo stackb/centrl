@@ -9,9 +9,27 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
+const moduleDependencyCycleKind = "module_dependency_cycle"
+
+func moduleDependencyCycleLoadInfo() rule.LoadInfo {
+	return rule.LoadInfo{
+		Name:    "//rules:module_dependency_cycle.bzl",
+		Symbols: []string{moduleDependencyCycleKind},
+	}
+}
+
+func moduleDependencyCycleKinds() map[string]rule.KindInfo {
+	return map[string]rule.KindInfo{
+		moduleDependencyCycleKind: {
+			MatchAny:     true,
+			ResolveAttrs: map[string]bool{"deps": true},
+		},
+	}
+}
+
 // buildModuleToCycleMap creates a mapping from moduleKey to cycle rule name
-func buildModuleToCycleMap(cycles [][]moduleKey) map[moduleKey]string {
-	moduleToCycle := make(map[moduleKey]string)
+func buildModuleToCycleMap(cycles [][]moduleID) map[moduleID]string {
+	moduleToCycle := make(map[moduleID]string)
 
 	for _, cycle := range cycles {
 		if len(cycle) == 0 {
@@ -41,37 +59,41 @@ func buildModuleToCycleMap(cycles [][]moduleKey) map[moduleKey]string {
 	return moduleToCycle
 }
 
+// makeModuleDependencyCycleRule generates a module_dependency_cycle rule for a detected cycles
+func makeModuleDependencyCycleRule(cycle []moduleID) *rule.Rule {
+	// Sort cycle members for deterministic naming
+	sorted := make([]string, len(cycle))
+	for i, modKey := range cycle {
+		sorted[i] = modKey.String()
+	}
+	sort.Strings(sorted)
+
+	// Generate rule name: replace @ with - and join with +
+	nameSegments := make([]string, len(sorted))
+	for i, moduleVersion := range sorted {
+		nameSegments[i] = strings.ReplaceAll(moduleVersion, "@", "-")
+	}
+	ruleName := strings.Join(nameSegments, "+")
+
+	r := rule.NewRule("module_dependency_cycle", ruleName)
+
+	// Set cycle_modules attr with original module@version strings
+	r.SetAttr("cycle_modules", sorted)
+
+	r.SetAttr("visibility", []string{"//visibility:public"})
+
+	return r
+}
+
 // makeModuleDependencyCycleRules generates module_dependency_cycle rules for detected cycles
-func makeModuleDependencyCycleRules(cycles [][]moduleKey) []*rule.Rule {
+func makeModuleDependencyCycleRules(cycles [][]moduleID) []*rule.Rule {
 	var rules []*rule.Rule
 
 	for _, cycle := range cycles {
 		if len(cycle) == 0 {
 			continue
 		}
-
-		// Sort cycle members for deterministic naming
-		sorted := make([]string, len(cycle))
-		for i, modKey := range cycle {
-			sorted[i] = modKey.String()
-		}
-		sort.Strings(sorted)
-
-		// Generate rule name: replace @ with - and join with +
-		nameSegments := make([]string, len(sorted))
-		for i, moduleVersion := range sorted {
-			nameSegments[i] = strings.ReplaceAll(moduleVersion, "@", "-")
-		}
-		ruleName := strings.Join(nameSegments, "+")
-
-		r := rule.NewRule("module_dependency_cycle", ruleName)
-
-		// Set cycle_modules attr with original module@version strings
-		r.SetAttr("cycle_modules", sorted)
-
-		r.SetAttr("visibility", []string{"//visibility:public"})
-
-		rules = append(rules, r)
+		rules = append(rules, makeModuleDependencyCycleRule(cycle))
 	}
 
 	return rules
@@ -110,21 +132,5 @@ func resolveModuleDependencyCycleRule(r *rule.Rule, ix *resolve.RuleIndex) {
 	// Set the deps attr
 	if len(deps) > 0 {
 		r.SetAttr("deps", deps)
-	}
-}
-
-func moduleDependencyCycleLoadInfo() rule.LoadInfo {
-	return rule.LoadInfo{
-		Name:    "//rules:module_dependency_cycle.bzl",
-		Symbols: []string{"module_dependency_cycle"},
-	}
-}
-
-func moduleDependencyCycleKinds() map[string]rule.KindInfo {
-	return map[string]rule.KindInfo{
-		"module_dependency_cycle": {
-			MatchAny:     true,
-			ResolveAttrs: map[string]bool{"deps": true},
-		},
 	}
 }

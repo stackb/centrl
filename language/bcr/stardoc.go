@@ -19,35 +19,40 @@ import (
 )
 
 const (
-	starlarkRepositorySuffix             = ".bzl_srcs"
-	starlarkRepositoryRootTargetName     = "bzl_srcs"
-	binaryProtoRepositorySuffix          = ".binaryprotos"
-	binaryProtosRepositoryRootTargetName = "files"
+	binaryProtoRepositorySuffix           = ".binaryprotos"
+	binaryProtosRepositoryRootTargetName  = "files"
+	bzlRepositoryRootTargetName           = "bzl_srcs"
+	bzlRepositorySuffix                   = ".bzl_srcs"
+	httpArchiveKind                       = "http_archive"
+	starlarkRepositoryArchiveKind         = "starlark_repository.archive"
+	starlarkRepositoryModuleExtensionName = "starlark_repository"
 )
 
-type versionedRule struct {
-	version string
-	rule    *rule.Rule
-	label   label.Label
-	rank    int
+type rankedVersion struct {
+	version            moduleVersion
+	bzlRepositoryLabel label.Label
+	bzlRepositoryRule  *rule.Rule
+	source             *protoRule[*bzpb.ModuleVersion]
+	deps               []*protoRule[*bzpb.ModuleVersion]
+	rank               int
 }
 
-type moduleVersionRuleMap map[string][]*versionedRule
+type rankedModuleVersionMap map[moduleName][]*rankedVersion
 
 type checkItem struct {
 	url        string
-	moduleKeys []moduleKey
+	moduleKeys []moduleID
 }
 
 // trackDocsUrl keeps a list of rules that reference this doc URL.
-func (ext *bcrExtension) trackDocsUrl(url string, modKey moduleKey) {
+func (ext *bcrExtension) trackDocsUrl(url string, modKey moduleID) {
 	if url == "" || strings.Contains(url, "{OWNER}") || strings.Contains(url, "{REPO}") || strings.Contains(url, "{TAG}") {
 		return
 	}
 	ext.moduleKeysByDocUrl[url] = append(ext.moduleKeysByDocUrl[url], modKey)
 }
 
-func (ext *bcrExtension) trackSourceUrl(url string, modKey moduleKey) {
+func (ext *bcrExtension) trackSourceUrl(url string, modKey moduleID) {
 	if url == "" {
 		return
 	}
@@ -55,7 +60,7 @@ func (ext *bcrExtension) trackSourceUrl(url string, modKey moduleKey) {
 }
 
 // handleDocsUrlStatus processes a docs URL status and updates the repos map and rules
-func (ext *bcrExtension) handleDocsUrlStatus(url string, moduleKeys []moduleKey, status netutil.URLStatus, repos map[label.Label]*rule.Rule, cached bool) {
+func (ext *bcrExtension) handleDocsUrlStatus(url string, moduleKeys []moduleID, status netutil.URLStatus, repos map[label.Label]*rule.Rule, cached bool) {
 	// Store status in the map for future caching
 	ext.resourceStatusByUrl[url] = &bzpb.ResourceStatus{
 		Url:     url,
@@ -68,11 +73,11 @@ func (ext *bcrExtension) handleDocsUrlStatus(url string, moduleKeys []moduleKey,
 		docsHttpArchive := makeBinaryProtoRepository(httpArchiveLabel, url)
 		repos[httpArchiveLabel] = docsHttpArchive
 		for _, modKey := range moduleKeys {
-			moduleSourceProtoRule := ext.moduleSourceRulesByModuleKey[modKey]
+			moduleSourceProtoRule := ext.moduleSourceRules[modKey]
 			// Update the module_source rule with status
 			updateModuleSourceRuleDocsUrlStatus(moduleSourceProtoRule.Rule(), status)
 			// Update the corresponding module_version rule with published_docs
-			updateModuleVersionRulePublishedDocs(moduleSourceProtoRule, httpArchiveLabel, ext.moduleVersionRulesByModuleKey)
+			updateModuleVersionRulePublishedDocs(moduleSourceProtoRule, httpArchiveLabel, ext.moduleVersionRules)
 		}
 	} else {
 		cacheMsg := ""
@@ -81,7 +86,7 @@ func (ext *bcrExtension) handleDocsUrlStatus(url string, moduleKeys []moduleKey,
 		}
 		log.Printf("warning: docs URL does not exist%s: %s (status: %d %s)", cacheMsg, url, status.Code, status.Message)
 		for _, modKey := range moduleKeys {
-			moduleSourceProtoRule := ext.moduleSourceRulesByModuleKey[modKey]
+			moduleSourceProtoRule := ext.moduleSourceRules[modKey]
 			updateModuleSourceRuleDocsUrlStatus(moduleSourceProtoRule.Rule(), status)
 			// No need to update module_version if docs don't exist
 		}
@@ -143,7 +148,7 @@ func (ext *bcrExtension) prepareBinaryprotoRepositories() []*rule.Rule {
 
 // handleSourceUrlStatus processes a source URL status and updates the repos map
 // and rules
-func (ext *bcrExtension) handleSourceUrlStatus(url string, moduleKeys []moduleKey, status netutil.URLStatus, repos moduleVersionRuleMap, cached bool) {
+func (ext *bcrExtension) handleSourceUrlStatus(url string, moduleKeys []moduleID, status netutil.URLStatus, repos rankedModuleVersionMap, cached bool) {
 	// Store status in the map for future caching
 	ext.resourceStatusByUrl[url] = &bzpb.ResourceStatus{
 		Url:     url,
@@ -153,7 +158,7 @@ func (ext *bcrExtension) handleSourceUrlStatus(url string, moduleKeys []moduleKe
 
 	var moduleSourceProtoRule *protoRule[*bzpb.ModuleSource]
 	for _, modKey := range moduleKeys {
-		moduleSourceProtoRule = ext.moduleSourceRulesByModuleKey[modKey]
+		moduleSourceProtoRule = ext.moduleSourceRules[modKey]
 		updateModuleSourceRuleUrlStatus(moduleSourceProtoRule.Rule(), status)
 	}
 
@@ -168,18 +173,21 @@ func (ext *bcrExtension) handleSourceUrlStatus(url string, moduleKeys []moduleKe
 
 	module := moduleSourceProtoRule.Rule().PrivateAttr(moduleVersionPrivateAttr).(*bzpb.ModuleVersion)
 	source := moduleSourceProtoRule.Proto()
-	lbl := makeStarlarkRepositoryLabel(module.Name, module.Version)
-	rule := makeStarlarkRepository(lbl, source)
-	repos[module.Name] = append(repos[module.Name], &versionedRule{version: module.Version, rule: rule, label: lbl})
+	lbl := makeBzlRepositoryLabel(module.Name, module.Version)
+	rule := makeBzlRepository(lbl, source)
+	name := moduleName(module.Name)
+	version := moduleVersion(module.Version)
+	repos[name] = append(repos[name], &rankedVersion{version: version, bzlRepositoryRule: rule, bzlRepositoryLabel: lbl})
+
 	log.Printf("created starlark repository: %v (%s)", lbl, moduleSourceProtoRule.Rule().AttrString("url"))
 }
 
-func (ext *bcrExtension) prepareStarlarkRepositories() moduleVersionRuleMap {
+func (ext *bcrExtension) prepareBzlRepositories() rankedModuleVersionMap {
 	if len(ext.moduleKeysBySourceUrl) == 0 {
 		return nil
 	}
 
-	repos := make(moduleVersionRuleMap)
+	repos := make(rankedModuleVersionMap)
 
 	// Separate URLs into cached, blacklisted, MVS-filtered, bzl_srcs-filtered, and uncached
 	var uncachedItems []checkItem
@@ -236,8 +244,8 @@ func (ext *bcrExtension) prepareStarlarkRepositories() moduleVersionRuleMap {
 
 // mergeModuleBazelFile updates the MODULE.bazel file with additional rules if
 // needed.
-func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule, starlarkRepositories moduleVersionRuleMap) error {
-	if len(binaryProtoHttpArchives) == 0 && len(starlarkRepositories) == 0 {
+func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule, bzlRepositories rankedModuleVersionMap) error {
+	if len(binaryProtoHttpArchives) == 0 && len(bzlRepositories) == 0 {
 		return nil
 	}
 
@@ -251,13 +259,13 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 	deletedRules := 0
 	for _, r := range f.Rules {
 		switch r.Kind() {
-		case "http_archive":
+		case httpArchiveKind:
 			if strings.HasSuffix(r.Name(), binaryProtoRepositorySuffix) {
 				r.Delete()
 				deletedRules++
 			}
-		case "starlark_repository.archive":
-			if strings.HasSuffix(r.Name(), starlarkRepositorySuffix) {
+		case starlarkRepositoryArchiveKind:
+			if strings.HasSuffix(r.Name(), bzlRepositorySuffix) {
 				r.Delete()
 				deletedRules++
 			}
@@ -266,11 +274,11 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 	f.Sync()
 	log.Printf("cleaned up %d old rules", deletedRules)
 
-	starlarkRepoNames := make([]build.Expr, 0, len(starlarkRepositories))
-	for _, versions := range starlarkRepositories {
+	bzlRepoNames := make([]build.Expr, 0, len(bzlRepositories))
+	for _, versions := range bzlRepositories {
 		for _, version := range versions {
 			if version.rank > 0 {
-				starlarkRepoNames = append(starlarkRepoNames, &build.StringExpr{Value: version.rule.Name()})
+				bzlRepoNames = append(bzlRepoNames, &build.StringExpr{Value: version.bzlRepositoryRule.Name()})
 			}
 		}
 	}
@@ -279,11 +287,11 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 	for _, stmt := range f.File.Stmt {
 		switch call := stmt.(type) {
 		case *build.CallExpr:
-			useRepo := getUseRepoCall(call, "starlark_repository")
+			useRepo := getUseRepoCall(call, starlarkRepositoryModuleExtensionName)
 			if useRepo != nil {
-				useRepo.List = append([]build.Expr{useRepo.List[0] /* the starlark_repository module extension symbol */}, starlarkRepoNames...)
+				useRepo.List = append([]build.Expr{useRepo.List[0] /* the starlark_repository module extension symbol */}, bzlRepoNames...)
 				call.ForceMultiLine = true
-				log.Printf(`updated use_repo(starlark_repository") with %d names`, len(starlarkRepoNames))
+				log.Printf(`updated use_repo(starlark_repository") with %d names`, len(bzlRepoNames))
 				break
 			}
 		}
@@ -293,17 +301,17 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 	for _, r := range binaryProtoHttpArchives {
 		r.Insert(f)
 	}
-	for _, versions := range starlarkRepositories {
+	for _, versions := range bzlRepositories {
 		for _, version := range versions {
 			if version.rank > 0 {
-				version.rule.Insert(f)
+				version.bzlRepositoryRule.Insert(f)
 			}
 		}
 	}
 	f.Sync()
 
 	log.Printf("added %d http_archive rules", len(binaryProtoHttpArchives))
-	log.Printf("added %d starlark_repository rules", len(starlarkRepositories))
+	log.Printf("added %d starlark_repository rules", len(bzlRepositories))
 
 	log.Println("Updating:", filename)
 	return f.Save(filename)
@@ -344,7 +352,7 @@ func makeBinaryProtoRepositoryLabel(docUrl string) label.Label {
 }
 
 func makeBinaryProtoRepository(from label.Label, docUrl string) *rule.Rule {
-	r := rule.NewRule("http_archive", from.Repo)
+	r := rule.NewRule(httpArchiveKind, from.Repo)
 	r.SetAttr("url", docUrl)
 	r.SetAttr("build_file_content", fmt.Sprintf(`filegroup(name = "%s",
     srcs = glob(["**/*.binaryproto"]),
@@ -353,19 +361,19 @@ func makeBinaryProtoRepository(from label.Label, docUrl string) *rule.Rule {
 	return r
 }
 
-// makeStarlarkRepositoryName creates a named for the external workspace
-func makeStarlarkRepositoryName(moduleName, moduleVersion string) (name string) {
-	return fmt.Sprintf("%s%s%s", moduleName, sanitizeName(moduleVersion), starlarkRepositorySuffix)
+// makeBzlRepositoryName creates a named for the external workspace
+func makeBzlRepositoryName(moduleName, moduleVersion string) (name string) {
+	return fmt.Sprintf("%s-%s%s", moduleName, sanitizeName(moduleVersion), bzlRepositorySuffix)
 }
 
-// makeStarlarkRepositoryLabel creates a label for a starlark_repository rule.
-func makeStarlarkRepositoryLabel(moduleName, moduleVersion string) label.Label {
-	repo := makeStarlarkRepositoryName(moduleName, moduleVersion)
-	return label.New(repo, "", starlarkRepositoryRootTargetName)
+// makeBzlRepositoryLabel creates a label for a starlark_repository rule.
+func makeBzlRepositoryLabel(moduleName, moduleVersion string) label.Label {
+	repo := makeBzlRepositoryName(moduleName, moduleVersion)
+	return label.New(repo, "", bzlRepositoryRootTargetName)
 }
 
-func makeStarlarkRepository(from label.Label, source *bzpb.ModuleSource) *rule.Rule {
-	r := rule.NewRule("starlark_repository.archive", from.Repo)
+func makeBzlRepository(from label.Label, source *bzpb.ModuleSource) *rule.Rule {
+	r := rule.NewRule(starlarkRepositoryArchiveKind, from.Repo)
 	r.SetAttr("urls", []string{source.Url})
 	r.SetAttr("type", getArchiveTypeOrDefault(source.Url, "tar.gz"))
 

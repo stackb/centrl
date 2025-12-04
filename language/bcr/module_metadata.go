@@ -37,6 +37,7 @@ func moduleMetadataKinds() map[string]rule.KindInfo {
 // If ext is provided, it will track the repositories for later generation
 func makeModuleMetadataRule(name string, md *bzpb.ModuleMetadata, maintainerRules []*rule.Rule, metadataJsonFile string, ext *bcrExtension) *rule.Rule {
 	r := rule.NewRule(moduleMetadataKind, name)
+
 	if md.Homepage != "" {
 		r.SetAttr("homepage", md.Homepage)
 	}
@@ -95,7 +96,7 @@ func resolveModuleMetadataRule(r *rule.Rule, ix *resolve.RuleIndex) {
 			// Construct the import spec: "module_name@version"
 			importSpec := resolve.ImportSpec{
 				Lang: bcrLangName,
-				Imp:  newModuleKey(moduleName, version).String(),
+				Imp:  newModuleID(moduleName, version).String(),
 			}
 
 			// Find the module_version rule that provides this import

@@ -9,11 +9,11 @@ import (
 
 // initDepGraph creates and returns a new directed graph for tracking module
 // dependencies
-func initDepGraph() graph.Graph[moduleKey, moduleKey] {
-	moduleKeyHash := func(mk moduleKey) moduleKey {
-		return mk
+func initDepGraph() graph.Graph[moduleID, moduleID] {
+	moduleIDHash := func(id moduleID) moduleID {
+		return id
 	}
-	return graph.New(moduleKeyHash, graph.Directed())
+	return graph.New(moduleIDHash, graph.Directed())
 }
 
 // addModuleToGraph adds a module version to the dependency graph
@@ -21,8 +21,8 @@ func (ext *bcrExtension) addModuleToGraph(moduleName, version string) {
 	if moduleName == "" || version == "" {
 		return
 	}
-	modKey := newModuleKey(moduleName, version)
-	if err := ext.depGraph.AddVertex(modKey); err != nil {
+	id := newModuleID(moduleName, version)
+	if err := ext.depGraph.AddVertex(id); err != nil {
 		// Vertex might already exist, which is fine
 		if err != graph.ErrVertexAlreadyExists {
 			log.Panicf("addModuleToGraph: %v", err)
@@ -36,15 +36,15 @@ func (ext *bcrExtension) addDependencyEdge(fromModule, fromVersion, toModule, to
 		return
 	}
 
-	fromKey := newModuleKey(fromModule, fromVersion)
-	toKey := newModuleKey(toModule, toVersion)
+	fromID := newModuleID(fromModule, fromVersion)
+	toID := newModuleID(toModule, toVersion)
 
 	// Ensure both vertices exist
-	_ = ext.depGraph.AddVertex(fromKey)
-	_ = ext.depGraph.AddVertex(toKey)
+	_ = ext.depGraph.AddVertex(fromID)
+	_ = ext.depGraph.AddVertex(toID)
 
 	// Add edge
-	if err := ext.depGraph.AddEdge(fromKey, toKey); err != nil {
+	if err := ext.depGraph.AddEdge(fromID, toID); err != nil {
 		// Edge might already exist, which is fine
 		if err != graph.ErrEdgeAlreadyExists {
 			log.Panicf("addDependencyEdge: %v", err)
@@ -54,14 +54,14 @@ func (ext *bcrExtension) addDependencyEdge(fromModule, fromVersion, toModule, to
 
 // detectCycles finds all strongly connected components (cycles) in the
 // dependency graph Returns only SCCs with more than one node (actual cycles)
-func (ext *bcrExtension) detectCycles() ([][]moduleKey, error) {
+func (ext *bcrExtension) detectCycles() ([][]moduleID, error) {
 	sccs, err := graph.StronglyConnectedComponents(ext.depGraph)
 	if err != nil {
 		return nil, fmt.Errorf("detecting cycles: %w", err)
 	}
 
 	// Filter out single-node SCCs (not cycles)
-	var cycles [][]moduleKey
+	var cycles [][]moduleID
 	for _, scc := range sccs {
 		if len(scc) > 1 {
 			cycles = append(cycles, scc)
@@ -73,7 +73,7 @@ func (ext *bcrExtension) detectCycles() ([][]moduleKey, error) {
 
 // getCycles returns all detected circular dependencies Returns an empty slice
 // if no cycles are found or if an error occurs
-func (ext *bcrExtension) getCycles() [][]moduleKey {
+func (ext *bcrExtension) getCycles() [][]moduleID {
 	cycles, err := ext.detectCycles()
 	if err != nil {
 		log.Printf("Error detecting cycles: %v", err)

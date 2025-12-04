@@ -15,7 +15,7 @@ go_library(
         "module_commit.go",
         "module_dependency.go",
         "module_dependency_cycle.go",
-        "module_key.go",
+        "module_id.go",
         "module_maintainer.go",
         "module_metadata.go",
         "module_presubmit.go",
