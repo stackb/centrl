@@ -7,7 +7,8 @@
 package bzpb
 
 import (
-	stardoc_output "github.com/stackb/centrl/stardoc_output"
+	v1beta1 "github.com/stackb/centrl/build/stack/starlark/v1beta1"
+	_ "github.com/stackb/centrl/stardoc_output"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -1851,7 +1852,7 @@ func (x *SymbolInfo) GetInfo() isSymbolInfo_Info {
 	return nil
 }
 
-func (x *SymbolInfo) GetRule() *stardoc_output.RuleInfo {
+func (x *SymbolInfo) GetRule() *v1beta1.Rule {
 	if x != nil {
 		if x, ok := x.Info.(*SymbolInfo_Rule); ok {
 			return x.Rule
@@ -1860,7 +1861,7 @@ func (x *SymbolInfo) GetRule() *stardoc_output.RuleInfo {
 	return nil
 }
 
-func (x *SymbolInfo) GetFunc() *stardoc_output.StarlarkFunctionInfo {
+func (x *SymbolInfo) GetFunc() *v1beta1.Function {
 	if x != nil {
 		if x, ok := x.Info.(*SymbolInfo_Func); ok {
 			return x.Func
@@ -1869,7 +1870,7 @@ func (x *SymbolInfo) GetFunc() *stardoc_output.StarlarkFunctionInfo {
 	return nil
 }
 
-func (x *SymbolInfo) GetProvider() *stardoc_output.ProviderInfo {
+func (x *SymbolInfo) GetProvider() *v1beta1.Provider {
 	if x != nil {
 		if x, ok := x.Info.(*SymbolInfo_Provider); ok {
 			return x.Provider
@@ -1878,7 +1879,7 @@ func (x *SymbolInfo) GetProvider() *stardoc_output.ProviderInfo {
 	return nil
 }
 
-func (x *SymbolInfo) GetAspect() *stardoc_output.AspectInfo {
+func (x *SymbolInfo) GetAspect() *v1beta1.Aspect {
 	if x != nil {
 		if x, ok := x.Info.(*SymbolInfo_Aspect); ok {
 			return x.Aspect
@@ -1887,7 +1888,7 @@ func (x *SymbolInfo) GetAspect() *stardoc_output.AspectInfo {
 	return nil
 }
 
-func (x *SymbolInfo) GetModuleExtension() *stardoc_output.ModuleExtensionInfo {
+func (x *SymbolInfo) GetModuleExtension() *v1beta1.ModuleExtension {
 	if x != nil {
 		if x, ok := x.Info.(*SymbolInfo_ModuleExtension); ok {
 			return x.ModuleExtension
@@ -1896,7 +1897,7 @@ func (x *SymbolInfo) GetModuleExtension() *stardoc_output.ModuleExtensionInfo {
 	return nil
 }
 
-func (x *SymbolInfo) GetRepositoryRule() *stardoc_output.RepositoryRuleInfo {
+func (x *SymbolInfo) GetRepositoryRule() *v1beta1.RepositoryRule {
 	if x != nil {
 		if x, ok := x.Info.(*SymbolInfo_RepositoryRule); ok {
 			return x.RepositoryRule
@@ -1905,7 +1906,7 @@ func (x *SymbolInfo) GetRepositoryRule() *stardoc_output.RepositoryRuleInfo {
 	return nil
 }
 
-func (x *SymbolInfo) GetMacro() *stardoc_output.MacroInfo {
+func (x *SymbolInfo) GetMacro() *v1beta1.Macro {
 	if x != nil {
 		if x, ok := x.Info.(*SymbolInfo_Macro); ok {
 			return x.Macro
@@ -1919,31 +1920,31 @@ type isSymbolInfo_Info interface {
 }
 
 type SymbolInfo_Rule struct {
-	Rule *stardoc_output.RuleInfo `protobuf:"bytes,4,opt,name=rule,proto3,oneof"`
+	Rule *v1beta1.Rule `protobuf:"bytes,4,opt,name=rule,proto3,oneof"`
 }
 
 type SymbolInfo_Func struct {
-	Func *stardoc_output.StarlarkFunctionInfo `protobuf:"bytes,5,opt,name=func,proto3,oneof"`
+	Func *v1beta1.Function `protobuf:"bytes,5,opt,name=func,proto3,oneof"`
 }
 
 type SymbolInfo_Provider struct {
-	Provider *stardoc_output.ProviderInfo `protobuf:"bytes,6,opt,name=provider,proto3,oneof"`
+	Provider *v1beta1.Provider `protobuf:"bytes,6,opt,name=provider,proto3,oneof"`
 }
 
 type SymbolInfo_Aspect struct {
-	Aspect *stardoc_output.AspectInfo `protobuf:"bytes,7,opt,name=aspect,proto3,oneof"`
+	Aspect *v1beta1.Aspect `protobuf:"bytes,7,opt,name=aspect,proto3,oneof"`
 }
 
 type SymbolInfo_ModuleExtension struct {
-	ModuleExtension *stardoc_output.ModuleExtensionInfo `protobuf:"bytes,9,opt,name=module_extension,json=moduleExtension,proto3,oneof"`
+	ModuleExtension *v1beta1.ModuleExtension `protobuf:"bytes,9,opt,name=module_extension,json=moduleExtension,proto3,oneof"`
 }
 
 type SymbolInfo_RepositoryRule struct {
-	RepositoryRule *stardoc_output.RepositoryRuleInfo `protobuf:"bytes,10,opt,name=repository_rule,json=repositoryRule,proto3,oneof"`
+	RepositoryRule *v1beta1.RepositoryRule `protobuf:"bytes,10,opt,name=repository_rule,json=repositoryRule,proto3,oneof"`
 }
 
 type SymbolInfo_Macro struct {
-	Macro *stardoc_output.MacroInfo `protobuf:"bytes,11,opt,name=macro,proto3,oneof"`
+	Macro *v1beta1.Macro `protobuf:"bytes,11,opt,name=macro,proto3,oneof"`
 }
 
 func (*SymbolInfo_Rule) isSymbolInfo_Info() {}
@@ -2400,7 +2401,7 @@ var File_build_stack_bazel_bzlmod_v1_bcr_proto protoreflect.FileDescriptor
 
 const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\n" +
-	"%build/stack/bazel/bzlmod/v1/bcr.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\x1a#stardoc_output/stardoc_output.proto\"\x92\x02\n" +
+	"%build/stack/bazel/bzlmod/v1/bcr.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\x1a#stardoc_output/stardoc_output.proto\x1a2build/stack/starlark/v1beta1/starlark_server.proto\"\x92\x02\n" +
 	"\bRegistry\x12=\n" +
 	"\amodules\x18\x01 \x03(\v2#.build.stack.bazel.bzlmod.v1.ModuleR\amodules\x12%\n" +
 	"\x0erepository_url\x18\x02 \x01(\tR\rrepositoryUrl\x12!\n" +
@@ -2590,20 +2591,20 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\x05Label\x12\x12\n" +
 	"\x04repo\x18\x01 \x01(\tR\x04repo\x12\x10\n" +
 	"\x03pkg\x18\x02 \x01(\tR\x03pkg\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xb9\x04\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xf7\x04\n" +
 	"\n" +
 	"SymbolInfo\x12;\n" +
 	"\x04type\x18\x01 \x01(\x0e2'.build.stack.bazel.bzlmod.v1.SymbolTypeR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12.\n" +
-	"\x04rule\x18\x04 \x01(\v2\x18.stardoc_output.RuleInfoH\x00R\x04rule\x12:\n" +
-	"\x04func\x18\x05 \x01(\v2$.stardoc_output.StarlarkFunctionInfoH\x00R\x04func\x12:\n" +
-	"\bprovider\x18\x06 \x01(\v2\x1c.stardoc_output.ProviderInfoH\x00R\bprovider\x124\n" +
-	"\x06aspect\x18\a \x01(\v2\x1a.stardoc_output.AspectInfoH\x00R\x06aspect\x12P\n" +
-	"\x10module_extension\x18\t \x01(\v2#.stardoc_output.ModuleExtensionInfoH\x00R\x0fmoduleExtension\x12M\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x128\n" +
+	"\x04rule\x18\x04 \x01(\v2\".build.stack.starlark.v1beta1.RuleH\x00R\x04rule\x12<\n" +
+	"\x04func\x18\x05 \x01(\v2&.build.stack.starlark.v1beta1.FunctionH\x00R\x04func\x12D\n" +
+	"\bprovider\x18\x06 \x01(\v2&.build.stack.starlark.v1beta1.ProviderH\x00R\bprovider\x12>\n" +
+	"\x06aspect\x18\a \x01(\v2$.build.stack.starlark.v1beta1.AspectH\x00R\x06aspect\x12Z\n" +
+	"\x10module_extension\x18\t \x01(\v2-.build.stack.starlark.v1beta1.ModuleExtensionH\x00R\x0fmoduleExtension\x12W\n" +
 	"\x0frepository_rule\x18\n" +
-	" \x01(\v2\".stardoc_output.RepositoryRuleInfoH\x00R\x0erepositoryRule\x121\n" +
-	"\x05macro\x18\v \x01(\v2\x19.stardoc_output.MacroInfoH\x00R\x05macroB\x06\n" +
+	" \x01(\v2,.build.stack.starlark.v1beta1.RepositoryRuleH\x00R\x0erepositoryRule\x12;\n" +
+	"\x05macro\x18\v \x01(\v2#.build.stack.starlark.v1beta1.MacroH\x00R\x05macroB\x06\n" +
 	"\x04info\"\xbd\x01\n" +
 	"\bFileInfo\x128\n" +
 	"\x05label\x18\x01 \x01(\v2\".build.stack.bazel.bzlmod.v1.LabelR\x05label\x12?\n" +
@@ -2692,13 +2693,13 @@ var file_build_stack_bazel_bzlmod_v1_bcr_proto_goTypes = []any{
 	(*Presubmit_PresubmitTask)(nil),   // 35: build.stack.bazel.bzlmod.v1.Presubmit.PresubmitTask
 	nil,                               // 36: build.stack.bazel.bzlmod.v1.Presubmit.TasksEntry
 	nil,                               // 37: build.stack.bazel.bzlmod.v1.Presubmit.BcrTestModule.TasksEntry
-	(*stardoc_output.RuleInfo)(nil),   // 38: stardoc_output.RuleInfo
-	(*stardoc_output.StarlarkFunctionInfo)(nil), // 39: stardoc_output.StarlarkFunctionInfo
-	(*stardoc_output.ProviderInfo)(nil),         // 40: stardoc_output.ProviderInfo
-	(*stardoc_output.AspectInfo)(nil),           // 41: stardoc_output.AspectInfo
-	(*stardoc_output.ModuleExtensionInfo)(nil),  // 42: stardoc_output.ModuleExtensionInfo
-	(*stardoc_output.RepositoryRuleInfo)(nil),   // 43: stardoc_output.RepositoryRuleInfo
-	(*stardoc_output.MacroInfo)(nil),            // 44: stardoc_output.MacroInfo
+	(*v1beta1.Rule)(nil),              // 38: build.stack.starlark.v1beta1.Rule
+	(*v1beta1.Function)(nil),          // 39: build.stack.starlark.v1beta1.Function
+	(*v1beta1.Provider)(nil),          // 40: build.stack.starlark.v1beta1.Provider
+	(*v1beta1.Aspect)(nil),            // 41: build.stack.starlark.v1beta1.Aspect
+	(*v1beta1.ModuleExtension)(nil),   // 42: build.stack.starlark.v1beta1.ModuleExtension
+	(*v1beta1.RepositoryRule)(nil),    // 43: build.stack.starlark.v1beta1.RepositoryRule
+	(*v1beta1.Macro)(nil),             // 44: build.stack.starlark.v1beta1.Macro
 }
 var file_build_stack_bazel_bzlmod_v1_bcr_proto_depIdxs = []int32{
 	4,  // 0: build.stack.bazel.bzlmod.v1.Registry.modules:type_name -> build.stack.bazel.bzlmod.v1.Module
@@ -2733,13 +2734,13 @@ var file_build_stack_bazel_bzlmod_v1_bcr_proto_depIdxs = []int32{
 	34, // 29: build.stack.bazel.bzlmod.v1.Presubmit.matrix:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.PresubmitMatrix
 	36, // 30: build.stack.bazel.bzlmod.v1.Presubmit.tasks:type_name -> build.stack.bazel.bzlmod.v1.Presubmit.TasksEntry
 	1,  // 31: build.stack.bazel.bzlmod.v1.SymbolInfo.type:type_name -> build.stack.bazel.bzlmod.v1.SymbolType
-	38, // 32: build.stack.bazel.bzlmod.v1.SymbolInfo.rule:type_name -> stardoc_output.RuleInfo
-	39, // 33: build.stack.bazel.bzlmod.v1.SymbolInfo.func:type_name -> stardoc_output.StarlarkFunctionInfo
-	40, // 34: build.stack.bazel.bzlmod.v1.SymbolInfo.provider:type_name -> stardoc_output.ProviderInfo
-	41, // 35: build.stack.bazel.bzlmod.v1.SymbolInfo.aspect:type_name -> stardoc_output.AspectInfo
-	42, // 36: build.stack.bazel.bzlmod.v1.SymbolInfo.module_extension:type_name -> stardoc_output.ModuleExtensionInfo
-	43, // 37: build.stack.bazel.bzlmod.v1.SymbolInfo.repository_rule:type_name -> stardoc_output.RepositoryRuleInfo
-	44, // 38: build.stack.bazel.bzlmod.v1.SymbolInfo.macro:type_name -> stardoc_output.MacroInfo
+	38, // 32: build.stack.bazel.bzlmod.v1.SymbolInfo.rule:type_name -> build.stack.starlark.v1beta1.Rule
+	39, // 33: build.stack.bazel.bzlmod.v1.SymbolInfo.func:type_name -> build.stack.starlark.v1beta1.Function
+	40, // 34: build.stack.bazel.bzlmod.v1.SymbolInfo.provider:type_name -> build.stack.starlark.v1beta1.Provider
+	41, // 35: build.stack.bazel.bzlmod.v1.SymbolInfo.aspect:type_name -> build.stack.starlark.v1beta1.Aspect
+	42, // 36: build.stack.bazel.bzlmod.v1.SymbolInfo.module_extension:type_name -> build.stack.starlark.v1beta1.ModuleExtension
+	43, // 37: build.stack.bazel.bzlmod.v1.SymbolInfo.repository_rule:type_name -> build.stack.starlark.v1beta1.RepositoryRule
+	44, // 38: build.stack.bazel.bzlmod.v1.SymbolInfo.macro:type_name -> build.stack.starlark.v1beta1.Macro
 	22, // 39: build.stack.bazel.bzlmod.v1.FileInfo.label:type_name -> build.stack.bazel.bzlmod.v1.Label
 	23, // 40: build.stack.bazel.bzlmod.v1.FileInfo.symbol:type_name -> build.stack.bazel.bzlmod.v1.SymbolInfo
 	24, // 41: build.stack.bazel.bzlmod.v1.DocumentationInfo.file:type_name -> build.stack.bazel.bzlmod.v1.FileInfo

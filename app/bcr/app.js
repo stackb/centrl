@@ -2423,7 +2423,7 @@ class RuleInfoComponent extends SymbolInfoComponent {
         lines.push(`${ruleName}(`);
 
         // Add attributes
-        const attrs = rule.getAttributeList();
+        const attrs = rule.getInfo().getAttributeList();
         const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
         const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
 
@@ -2484,8 +2484,8 @@ class FunctionInfoComponent extends SymbolInfoComponent {
         const lines = [this.generateLoadStatement(funcName), ''];
 
         // Function invocation with role-aware parameter formatting
-        const params = func.getParameterList();
-        const hasReturn = func.getReturn() != null;
+        const params = func.getInfo().getParameterList();
+        const hasReturn = func.getInfo().getReturn() != null;
         const resultPrefix = hasReturn ? 'result = ' : '';
 
         // Separate parameters by role
@@ -2579,7 +2579,7 @@ class ProviderInfoComponent extends SymbolInfoComponent {
         const lines = [this.generateLoadStatement(providerName), ''];
 
         // Provider instantiation
-        const fields = provider.getFieldInfoList();
+        const fields = provider.getInfo().getFieldInfoList();
 
         if (fields.length === 0) {
             lines.push(`info = ${providerName}()`);
@@ -2640,7 +2640,7 @@ class RepositoryRuleInfoComponent extends SymbolInfoComponent {
         lines.push(`${ruleName}(`);
 
         // Add attributes
-        const attrs = repoRule.getAttributeList();
+        const attrs = repoRule.getInfo().getAttributeList();
         const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
         const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
 
@@ -2755,7 +2755,7 @@ class MacroInfoComponent extends SymbolInfoComponent {
         lines.push(`${macroName}(`);
 
         // Add attributes
-        const attrs = macro.getAttributeList();
+        const attrs = macro.getInfo().getAttributeList();
         const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
         const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
 
@@ -2813,7 +2813,7 @@ class ModuleExtensionInfoComponent extends SymbolInfoComponent {
         }
 
         const extName = this.sym_.getName();
-        const tagClasses = ext.getTagClassList();
+        const tagClasses = ext.getInfo().getTagClassList();
 
         const lines = [this.generateLoadStatement(extName), ''];
 

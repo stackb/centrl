@@ -538,7 +538,7 @@ import {
   {@param repositoryRules: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param rules: list<[file: FileInfo, sym: SymbolInfo]>}
 <div>
-  <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider">
+  <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider" style="--Layout-template-columns: unset">
     <div class="PageLayout-wrapper">
       <div class="PageLayout-columns">
         <div class="PageLayout-content {css('content')}"></div>
@@ -661,7 +661,7 @@ import {
     </div>
     {if $file.getDescription()}
       <div class="Subhead-description mt-1 pt-2 border-top">
-        <div class="markdown-body {css('marked')}" style="font-size: 14px;">
+        <div class="markdown-body {css('marked')}" style="font-size: 14px; overflow-x: auto; overflow-wrap: break-word; word-break: break-word; max-width: 100%">
           {$file.getDescription()}
         </div>
       </div>
@@ -722,7 +722,7 @@ import {
   <a href="{symbolInfoUrl(file: $file, sym: $sym)}" class="flex-auto Link--primary">
     <span class="text-semibold">{$sym.getName()}</span>
   </a>
-  <span class="{css('marked')} markdown-body text-small text-light ml-2">{$sym.getDescription()|truncate:63}</span>
+  <span class="markdown-body text-small text-light ml-2">{$sym.getDescription()|truncate:63}</span>
 </div>
 {/template}
 
@@ -803,7 +803,7 @@ import {
     {param moduleVersion: $moduleVersion /}
     {param file: $file /}
     {param sym: $sym /}
-    {param originKey: $sym.getRule()?.getOriginKey() /}
+    {param originKey: $sym.getRule()?.getInfo()?.getOriginKey() /}
   {/call}
 
   {if $exampleCode}
@@ -811,8 +811,8 @@ import {
   {/if}
 
   {if $sym.getRule()}
-    {let $rule: $sym.getRule() /}
-    {if length($rule.getAttributeList()) > 0}
+    {let $rule: $sym.getRule()?.getInfo() /}
+    {if $rule && length($rule.getAttributeList()) > 0}
       {attributeListBox(attributes: $rule.getAttributeList(), title: 'Attributes')}
     {/if}
   {/if}
@@ -829,7 +829,7 @@ import {
     {param moduleVersion: $moduleVersion /}
     {param file: $file /}
     {param sym: $sym /}
-    {param originKey: $sym.getMacro()?.getOriginKey() /}
+    {param originKey: $sym.getMacro()?.getInfo()?.getOriginKey() /}
   {/call}
 
   {if $exampleCode}
@@ -837,8 +837,8 @@ import {
   {/if}
 
   {if $sym.getMacro()}
-    {let $macro: $sym.getMacro() /}
-    {if length($macro.getAttributeList()) > 0}
+    {let $macro: $sym.getMacro()?.getInfo() /}
+    {if $macro && length($macro.getAttributeList()) > 0}
       {attributeListBox(attributes: $macro.getAttributeList(), title: 'Attributes')}
     {/if}
   {/if}
@@ -855,7 +855,7 @@ import {
     {param moduleVersion: $moduleVersion /}
     {param file: $file /}
     {param sym: $sym /}
-    {param originKey: $sym.getFunc()?.getOriginKey() /}
+    {param originKey: $sym.getFunc()?.getInfo()?.getOriginKey() /}
   {/call}
 
   {if $exampleCode}
@@ -863,11 +863,11 @@ import {
   {/if}
 
   {if $sym.getFunc()}
-    {let $func: $sym.getFunc() /}
-    {if length($func.getParameterList()) > 0}
+    {let $func: $sym.getFunc()?.getInfo() /}
+    {if $func && length($func.getParameterList()) > 0}
       {parameterListBox(parameters: $func.getParameterList(), title: 'Parameters')}
     {/if}
-    {if $func.getReturn()}
+    {if $func && $func.getReturn()}
       {returnInfoBox(returnInfo: $func.getReturn())}
     {/if}
   {/if}
@@ -884,7 +884,7 @@ import {
     {param moduleVersion: $moduleVersion /}
     {param file: $file /}
     {param sym: $sym /}
-    {param originKey: $sym.getProvider()?.getOriginKey() /}
+    {param originKey: $sym.getProvider()?.getInfo()?.getOriginKey() /}
   {/call}
 
   {if $exampleCode}
@@ -892,8 +892,8 @@ import {
   {/if}
 
   {if $sym.getProvider()}
-    {let $provider: $sym.getProvider() /}
-    {if length($provider.getFieldInfoList()) > 0}
+    {let $provider: $sym.getProvider()?.getInfo() /}
+    {if $provider && length($provider.getFieldInfoList()) > 0}
       {fieldListBox(fields: $provider.getFieldInfoList(), title: 'Fields')}
     {/if}
   {/if}
@@ -910,7 +910,7 @@ import {
     {param moduleVersion: $moduleVersion /}
     {param file: $file /}
     {param sym: $sym /}
-    {param originKey: $sym.getRepositoryRule()?.getOriginKey() /}
+    {param originKey: $sym.getRepositoryRule()?.getInfo()?.getOriginKey() /}
   {/call}
 
   {if $exampleCode}
@@ -918,8 +918,8 @@ import {
   {/if}
 
   {if $sym.getRepositoryRule()}
-    {let $repoRule: $sym.getRepositoryRule() /}
-    {if length($repoRule.getAttributeList()) > 0}
+    {let $repoRule: $sym.getRepositoryRule()?.getInfo() /}
+    {if $repoRule && length($repoRule.getAttributeList()) > 0}
       {attributeListBox(attributes: $repoRule.getAttributeList(), title: 'Attributes')}
     {/if}
   {/if}
@@ -936,7 +936,7 @@ import {
     {param moduleVersion: $moduleVersion /}
     {param file: $file /}
     {param sym: $sym /}
-    {param originKey: $sym.getAspect()?.getOriginKey() /}
+    {param originKey: $sym.getAspect()?.getInfo()?.getOriginKey() /}
   {/call}
 
   {if $exampleCode}
@@ -944,8 +944,8 @@ import {
   {/if}
 
   {if $sym.getAspect()}
-    {let $aspect: $sym.getAspect() /}
-    {if length($aspect.getAttributeList()) > 0}
+    {let $aspect: $sym.getAspect()?.getInfo() /}
+    {if $aspect && length($aspect.getAttributeList()) > 0}
       {attributeListBox(attributes: $aspect.getAttributeList(), title: 'Attributes')}
     {/if}
   {/if}
@@ -962,7 +962,7 @@ import {
     {param moduleVersion: $moduleVersion /}
     {param file: $file /}
     {param sym: $sym /}
-    {param originKey: $sym.getModuleExtension()?.getOriginKey() /}
+    {param originKey: $sym.getModuleExtension()?.getInfo()?.getOriginKey() /}
   {/call}
 
   {if $exampleCode}
@@ -970,10 +970,12 @@ import {
   {/if}
 
   {if $sym.getModuleExtension()}
-    {let $ext: $sym.getModuleExtension() /}
-    {for $tagClass in $ext.getTagClassList()}
-      {tagClassSection(tagClass: $tagClass)}
-    {/for}
+    {let $ext: $sym.getModuleExtension()?.getInfo() /}
+    {if $ext}
+      {for $tagClass in $ext.getTagClassList()}
+        {tagClassSection(tagClass: $tagClass)}
+      {/for}
+    {/if}
   {/if}
 </div>
 {/template}

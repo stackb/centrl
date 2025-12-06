@@ -30,7 +30,7 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 			cfg.Logger.Printf("🔴 failed to extract module info for %v: %v", bzlFile.EffectivePath, err)
 			errors++
 		} else {
-			file := stardoc.ParseModuleFile(module.Info)
+			file := stardoc.ModuleToFileInfo(module)
 			file.Label = bzlFile.Label
 			result.File = append(result.File, file)
 			cfg.Logger.Println("🟢", bzlFile.EffectivePath)
