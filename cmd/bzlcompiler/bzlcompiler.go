@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	slpb "github.com/stackb/centrl/build/stack/starlark/v1beta1"
@@ -68,7 +69,7 @@ func run(args []string) error {
 
 		cfg.Client = slpb.NewStarlarkClient(resources.conn)
 
-		if err := batchWork(cfg); err != nil {
+		if err := runBatch(cfg); err != nil {
 			return fmt.Errorf("while performing batch work: %v", err)
 		}
 	}
@@ -76,7 +77,7 @@ func run(args []string) error {
 	return nil
 }
 
-func runPersistent(persistentCfg *Config) error {
+func runPersistent(persistentCfg *config) error {
 	var resources *serverResources
 
 	for {
@@ -126,7 +127,7 @@ func runPersistent(persistentCfg *Config) error {
 			batchCfg.Port = persistentCfg.Port
 			batchCfg.Client = persistentCfg.Client
 
-			if err := batchWork(batchCfg); err != nil {
+			if err := runBatch(batchCfg); err != nil {
 				// Don't kill the worker on work errors - report error and continue
 				errMsg := fmt.Sprintf("performing work: %v", err)
 				persistentCfg.Logger.Println("ERROR:", errMsg)
@@ -147,16 +148,24 @@ func runPersistent(persistentCfg *Config) error {
 	}
 }
 
-func batchWork(cfg *Config) error {
-
+func runBatch(cfg *config) error {
 	now := time.Now()
 	fail := func(err error) error {
 		return fmt.Errorf("%v (%v)", err, time.Since(now))
 	}
 
-	cfg.Logger.Printf("Processing %d source files", len(cfg.BzlFiles))
+	bzlFilesByPath, err := prepareBzlFiles(cfg, cfg.BzlFiles)
+	if err != nil {
+		return fail(err)
+	}
 
-	result, err := extractDocumentation(cfg)
+	prepareShimBzlFiles(cfg)
+
+	if debugSandbox {
+		listFiles(cfg.Logger, filepath.Join(workDir, "external"))
+	}
+
+	result, err := extractBzlFiles(cfg, bzlFilesByPath, cfg.FilesToExtract)
 	if err != nil {
 		return fail(fmt.Errorf("failed to extract module info: %v", err))
 	}

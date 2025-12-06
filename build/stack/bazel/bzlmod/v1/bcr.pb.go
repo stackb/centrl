@@ -975,6 +975,7 @@ type ModuleVersion struct {
 	Override             []*ModuleDependencyOverride `protobuf:"bytes,11,rep,name=override,proto3" json:"override,omitempty"`
 	Commit               *ModuleCommit               `protobuf:"bytes,12,opt,name=commit,proto3" json:"commit,omitempty"`
 	RepositoryMetadata   *RepositoryMetadata         `protobuf:"bytes,13,opt,name=repository_metadata,json=repositoryMetadata,proto3" json:"repository_metadata,omitempty"`
+	IsLatestVersion      bool                        `protobuf:"varint,14,opt,name=is_latest_version,json=isLatestVersion,proto3" json:"is_latest_version,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1098,6 +1099,13 @@ func (x *ModuleVersion) GetRepositoryMetadata() *RepositoryMetadata {
 		return x.RepositoryMetadata
 	}
 	return nil
+}
+
+func (x *ModuleVersion) GetIsLatestVersion() bool {
+	if x != nil {
+		return x.IsLatestVersion
+	}
+	return false
 }
 
 type ModuleCommit struct {
@@ -2486,7 +2494,7 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\tintegrity\x18\x02 \x01(\tR\tintegrity\x1av\n" +
 	"\x11AttestationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12K\n" +
-	"\x05value\x18\x02 \x01(\v25.build.stack.bazel.bzlmod.v1.Attestations.AttestationR\x05value:\x028\x01\"\x85\x06\n" +
+	"\x05value\x18\x02 \x01(\v25.build.stack.bazel.bzlmod.v1.Attestations.AttestationR\x05value:\x028\x01\"\xb1\x06\n" +
 	"\rModuleVersion\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12/\n" +
@@ -2501,7 +2509,8 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	" \x03(\tR\x14toolchainsToRegister\x12Q\n" +
 	"\boverride\x18\v \x03(\v25.build.stack.bazel.bzlmod.v1.ModuleDependencyOverrideR\boverride\x12A\n" +
 	"\x06commit\x18\f \x01(\v2).build.stack.bazel.bzlmod.v1.ModuleCommitR\x06commit\x12`\n" +
-	"\x13repository_metadata\x18\r \x01(\v2/.build.stack.bazel.bzlmod.v1.RepositoryMetadataR\x12repositoryMetadata\"s\n" +
+	"\x13repository_metadata\x18\r \x01(\v2/.build.stack.bazel.bzlmod.v1.RepositoryMetadataR\x12repositoryMetadata\x12*\n" +
+	"\x11is_latest_version\x18\x0e \x01(\bR\x0fisLatestVersion\"s\n" +
 	"\fModuleCommit\x12\x12\n" +
 	"\x04sha1\x18\x01 \x01(\tR\x04sha1\x12\x12\n" +
 	"\x04date\x18\x02 \x01(\tR\x04date\x12\x18\n" +

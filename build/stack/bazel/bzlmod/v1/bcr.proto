@@ -180,6 +180,8 @@ message ModuleVersion {
     // parent Module, but for the sake of the UI, can be attached to the
     // ModuleVersion for easier template rendering.
     RepositoryMetadata repository_metadata = 13;
+    // flag that marks if the current version is the latest one
+    bool is_latest_version = 14;
 }
 
 // ModuleCommit captures metadata about a git commit for the MODULE.bazel file.

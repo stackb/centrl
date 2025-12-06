@@ -18,8 +18,7 @@ const (
 	workDir = "work"
 )
 
-type Config struct {
-	BuiltinsBzlPath     string // TODO: load bb //src/main/starlark/builtins_bzl:builtins_bzl_zip?
+type config struct {
 	Client              slpb.StarlarkClient
 	Cwd                 string
 	JavaInterpreterFile string
@@ -31,23 +30,17 @@ type Config struct {
 	ServerJarFile       string
 	BzlFiles            bzlFileSlice // the transitive set of .bzl files in the sandbox
 	FilesToExtract      []string     // list of files to extract docs for
-	WorkspaceCwd        string
-	WorkspaceOutputBase string
-	BazelToolsRepoName  string
 	moduleDeps          moduleDepsMap
 }
 
-func parseConfig(args []string) (*Config, error) {
-	var cfg Config
+func parseConfig(args []string) (*config, error) {
+	var cfg config
 
 	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
 	fs.StringVar(&cfg.JavaInterpreterFile, "java_interpreter_file", "", "path to a java interpreter")
 	fs.StringVar(&cfg.ServerJarFile, "server_jar_file", "", "the executable jar file for the server")
 	fs.StringVar(&cfg.LogFile, "log_file", "", "path to log file (optional, defaults to stderr)")
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
-	fs.StringVar(&cfg.WorkspaceCwd, "workspace_cwd", "", "the workspace root dir")
-	fs.StringVar(&cfg.WorkspaceOutputBase, "workspace_output_base", "", "workspace output base")
-	fs.StringVar(&cfg.BazelToolsRepoName, "bazel_tools_repo_name", "", "the canonical repository name for bazel tools sources")
 	fs.IntVar(&cfg.Port, "port", 0, "the port number to use for the server process.  If a port is assigned, assume server is running external to this worker.  If it is unassigned, self-host the server as a child process.")
 	fs.BoolVar(&cfg.PersistentWorker, "persistent_worker", false, "present if this tool is being invoked as a bazel persistent worker")
 	fs.Var(&cfg.BzlFiles, "bzl_file", "bzl source file mapping in the format LABEL=PATH (repeatable)")
@@ -72,7 +65,9 @@ func parseConfig(args []string) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %v", err)
 		}
-		defer logFile.Close()
+		// Don't close logFile - it needs to stay open for the lifetime of the program
+		// to capture panics. Redirect stderr so panics are written to the log file.
+		os.Stderr = logFile
 		cfg.Logger = log.New(logFile, toolName+": ", log.LstdFlags)
 	} else {
 		cfg.Logger = log.New(os.Stderr, toolName+": ", 0)
@@ -103,12 +98,6 @@ func parseConfig(args []string) (*Config, error) {
 	}
 	if cfg.OutputFile == "" {
 		return nil, fmt.Errorf("--output_file is required")
-	}
-	if cfg.WorkspaceCwd == "" {
-		return nil, fmt.Errorf("--workspace_cwd is required")
-	}
-	if cfg.WorkspaceOutputBase == "" {
-		return nil, fmt.Errorf("--workspace_output_base is required")
 	}
 
 	return &cfg, nil

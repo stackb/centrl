@@ -147,10 +147,11 @@ def _compile_bzl_for_module_version(ctx, mv, all_mv_by_id):
     java_executable = java_runtime.java_executable_exec_path
 
     # StarlarkLibraryFileInfo
-    bazel_tools_lib = ctx.attr._bazel_tools[StarlarkLibraryFileInfo]
+    bazel_tools_lib = ctx.attr._bzl_bazel_tools[StarlarkLibraryFileInfo]
+    builtins_lib = ctx.attr._bzl_builtins[StarlarkLibraryFileInfo]
 
     # List[StarlarkLibraryFileInfo]
-    direct_libs = [bazel_tools_lib, mv.bzl_srcs] + mv.bzl_deps
+    direct_libs = [builtins_lib, bazel_tools_lib, mv.bzl_srcs] + mv.bzl_deps
 
     # DepSet[StarlarkLibraryFileInfo]
     transitive_libs = depset(direct_libs, transitive = [lib.transitive_deps for lib in direct_libs])
@@ -168,15 +169,17 @@ def _compile_bzl_for_module_version(ctx, mv, all_mv_by_id):
 
     args.add("--output_file", result.output)
 
-    # args.add("--port", 3679)  # e.g. java -jar ./cmd/bzlcompiler/constellate.jar --listen_port=3679
     args.add("--java_interpreter_file", java_executable)
     args.add("--server_jar_file", ctx.file._starlarkserverjar)
-    args.add("--workspace_cwd", ctx.bin_dir.path)
-    args.add("--workspace_output_base", "/private/var/tmp/_bazel_pcj/4d50590a9155e202dda3b0ac2e024c3f")
+
+    # use these for development
+    args.add("--port", 3535)  # e.g. java -jar ./cmd/bzlcompiler/constellate.jar --listen_port=3535
+    args.add("--log_file", "/tmp/bzlcompiler.log")
 
     # Add bzl_files and module_deps without flattening depsets
 
-    # 1. Bazel tools
+    # 1. Bazel tools and @_builtins
+    _add_args_for_module(args, "_builtins", builtins_lib.srcs, [])
     _add_args_for_module(args, "bazel_tools", bazel_tools_lib.srcs, [])
 
     # 2. Root module (bzl_srcs)
@@ -205,7 +208,7 @@ def _compile_bzl_for_module_version(ctx, mv, all_mv_by_id):
         mnemonic = "CompileModuleInfo",
         progress_message = "Extracting docs for %s@%s (%d files)" % (mv.name, mv.version, len(mv.bzl_srcs.srcs)),
         execution_requirements = {
-            "supports-workers": "1",
+            "supports-workers": "0",
             "requires-worker-protocol": "proto",
         },
         executable = ctx.executable._bzlcompiler,
@@ -444,8 +447,12 @@ module_registry = rule(
             default = "//cmd/bzlcompiler:constellate_jar_file",
             allow_single_file = True,
         ),
-        "_bazel_tools": attr.label(
+        "_bzl_bazel_tools": attr.label(
             default = "@bzl.bazel_tools//tools:bzl_srcs",
+            providers = [StarlarkLibraryFileInfo],
+        ),
+        "_bzl_builtins": attr.label(
+            default = "@bzl.bazel_tools//src/main/starlark/builtins_bzl:bzl_srcs",
             providers = [StarlarkLibraryFileInfo],
         ),
     },

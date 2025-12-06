@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # load("@rules_java//java:java_library.bzl", "java_library")
 load("@rules_java//java:java_binary.bzl", "java_binary")
@@ -7,9 +7,10 @@ load("@rules_java//java:java_import.bzl", "java_import")
 go_library(
     name = "bzlcompiler_lib",
     srcs = [
+        "bzlcompiler.go",
         "config.go",
         "extract.go",
-        "main.go",
+        "files.go",
         "server.go",
     ],
     importpath = "github.com/stackb/centrl/cmd/bzlcompiler",
@@ -50,4 +51,11 @@ java_binary(
     name = "starlarkserver",
     main_class = "build.stack.devtools.build.constellate.RemoteStarlarkServer",
     runtime_deps = ["constellate_jar"],
+)
+
+go_test(
+    name = "bzlcompiler_test",
+    srcs = ["extract_test.go"],
+    embed = [":bzlcompiler_lib"],
+    deps = ["//build/stack/bazel/bzlmod/v1:bzlmod"],
 )

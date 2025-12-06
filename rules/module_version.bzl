@@ -22,6 +22,9 @@ def _compile_action(ctx, source, deps, attestations, presubmit, commit):
     args.add("--output_file")
     args.add(proto_out)
 
+    if ctx.attr.is_latest_version:
+        args.add("--is_latest_version")
+
     # All of the module dependency info is in the MODULE.bazel file, but the
     # 'unresolved' property is discovered during gazelle resolution.  Pass that
     # information into the compiler.

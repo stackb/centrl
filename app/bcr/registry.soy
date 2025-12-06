@@ -26,6 +26,7 @@ import {
 
 import {
     Attestations,
+    DocumentationInfo,
     GitOverride,
     LocalPathOverride,
     Maintainer,
@@ -702,6 +703,30 @@ unknown
         {else}
         {/if}
     {/for}
+  </div>
+</div>
+{/template}
+
+
+{template docsList}
+  {@param docsMap: map<string,DocumentationInfo>}
+<div class="mt-3">
+  <div class="Box Box--condensed">
+    <ul class="">
+      {for $key in $docsMap.keys()}
+        {let $docs: $docsMap.get($key) /}
+        {if $docs}
+          <li class="Box-row">
+            <a href="{modulesUrl()}/{$docs.getModuleName()}/{$docs.getVersion()}/docs">
+              <strong>{$docs.getModuleName()}@{$docs.getVersion()}</strong>
+              <span class="text-small text-gray ml-2">
+                ({$docs.getFileList().length} file{if $docs.getFileList().length != 1}s{/if})
+              </span>
+            </a>
+          </li>
+        {/if}
+      {/for}
+    </ul>
   </div>
 </div>
 {/template}

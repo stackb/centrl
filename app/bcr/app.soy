@@ -7,6 +7,8 @@ import {
     octiconChevronLeft24,
     octiconChevronUp24,
     octiconChevronRight16,
+    octiconSkip16,
+    octiconSkip24,
     octiconCode16,
     octiconDotFill16,
     octiconFile16,
@@ -33,6 +35,7 @@ import {
 } from 'stardoc_output/stardoc_output.proto';
 import {
   DocumentationInfo,
+  DocumentationSource,
   FileInfo,
   Label,
   SymbolInfo,
@@ -48,6 +51,7 @@ import {
   compatibilityTable,
   copyToClipboardButton,
   counterLabel,
+  docsList,
   maintainerBreadcrumb,
   maintainerModuleVersionTable,
   maintainerProfile,
@@ -290,6 +294,16 @@ import {
 {/template}
 
 
+{template docsMapComponent}
+  {@param docsMap: map<string,DocumentationInfo>}
+<div>
+    {call docsList}
+        {param docsMap: $docsMap /}
+    {/call}
+</div>
+{/template}
+
+
 {template moduleSelect}
   {@param name: string}
   {@param module: Module}
@@ -514,6 +528,7 @@ import {
 {/template}
 
 {template documentationInfoSelect}
+  {@param info: DocumentationInfo}
   {@param aspects: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param funcs: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param macros: list<[file: FileInfo, sym: SymbolInfo]>}
@@ -522,12 +537,16 @@ import {
   {@param repositoryRules: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param rules: list<[file: FileInfo, sym: SymbolInfo]>}
 <div>
-  <div class="PageLayout">
+  <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider">
     <div class="PageLayout-wrapper">
       <div class="PageLayout-columns">
         <div class="PageLayout-content {css('content')}"></div>
-        <div class="PageLayout-pane border-left pl-2">
+        <div class="PageLayout-pane pl-2">
           <nav class="SideNav" style="background-color: transparent; border: none">
+
+            {call documentationAboutSection}
+              {param info: $info /}
+            {/call}
 
             {if length($funcs) + length($rules) + length($aspects) + length($providers) + length($moduleExtensions) + length($repositoryRules) + length($macros) > 0}
               <div class="pb-2 d-inline-block">
@@ -540,14 +559,13 @@ import {
                 {if length($repositoryRules) > 0}{symbolCount(type: $repositoryRules[0].sym.getType(), n: length($repositoryRules))}{/if}
               </div>
             {/if}
-
-            {symbolSection(title: 'Functions', items: $funcs)}
-            {symbolSection(title: 'Macros', items: $macros)}
             {symbolSection(title: 'Rules', items: $rules)}
+            {symbolSection(title: 'Macros', items: $macros)}
+            {symbolSection(title: 'Functions', items: $funcs)}
             {symbolSection(title: 'Providers', items: $providers)}
             {symbolSection(title: 'Aspects', items: $aspects)}
-            {symbolSection(title: 'Module Extensions', items: $moduleExtensions)}
             {symbolSection(title: 'Repository Rules', items: $repositoryRules)}
+            {symbolSection(title: 'Module Extensions', items: $moduleExtensions)}
           </nav>
 
         </div>
@@ -604,13 +622,18 @@ import {
     {for $file in $docs.getFileList()}
       {let $pkg: $file.getLabel()?.getPkg() /}
       {let $name: $file.getLabel()?.getName() /}
+      {let $hasError: $file.getError() ? true : false /}
       <div class="Box-row d-flex flex-items-center">
         <div class="flex-shrink-0 mr-2">
-          {octiconFile16()}
+          {if $hasError}
+            {octiconSkip16(class: 'color-fg-attention')}
+          {else}
+            {octiconFile16()}
+          {/if}
         </div>
-        <a href="{fileInfoUrl(label: $file.getLabel())}" class="flex-auto Link--primary">
-          <span class="text-semibold">{$pkg ? $pkg + '/' : ''}{$name}</span>
-        </a>
+          <a href="{fileInfoUrl(label: $file.getLabel())}" class="flex-auto {if $hasError}Link--muted{else}Link--primary{/if}">
+            <span class="text-semibold">{$pkg ? $pkg + '/' : ''}{$name}</span>
+          </a>
         <span class="text-small text-light ml-2">{$file.getDescription()|truncate:63}</span>
       </div>
     {/for}
@@ -628,7 +651,7 @@ import {
   {@param moduleExtensions: list<SymbolInfo>}
   {@param repositoryRules: list<SymbolInfo>}
 <div style="min-width: 0">
-  <div class="Subhead mb-2">
+  <div class="Subhead mb-2" style="border-bottom: none;">
     <div class="Subhead-heading d-flex flex-items-center">
       <h3>
         <span class="text-light f3-light">{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' : ''}</span>
@@ -636,8 +659,8 @@ import {
       <a class="Link--muted btn btn-sm btn-octicon" href="{moduleVersionUrl(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}/docs">{octiconChevronUp24()}</a>
     </div>
     {if $file.getDescription()}
-      <div class="Subhead-description">
-        <div class="markdown-body {css('marked')} mb-1 text-normal" style="font-size: 14px; overflow-x: auto; max-height: 100px; overflow-y: hidden">
+      <div class="Subhead-description mt-1 pt-2 border-top">
+        <div class="markdown-body {css('marked')}" style="font-size: 14px;">
           {$file.getDescription()}
         </div>
       </div>
@@ -646,26 +669,30 @@ import {
     </div>
   </div>
 
-  <div class="mt-2">
-    {if length($rules) > 0}
-      {symbolListBox(file: $file, symbols: $rules, title: 'Rules')}
-    {/if}
-    {if length($funcs) > 0}
-      {symbolListBox(file: $file, symbols: $funcs, title: 'Functions')}
-    {/if}
-    {if length($providers) > 0}
-      {symbolListBox(file: $file, symbols: $providers, title: 'Providers')}
-    {/if}
-    {if length($aspects) > 0}
-      {symbolListBox(file: $file, symbols: $aspects, title: 'Aspects')}
-    {/if}
-    {if length($moduleExtensions) > 0}
-      {symbolListBox(file: $file, symbols: $moduleExtensions, title: 'Module Extensions')}
-    {/if}
-    {if length($repositoryRules) > 0}
-      {symbolListBox(file: $file, symbols: $repositoryRules, title: 'Repository Rules')}
-    {/if}
-  </div>
+  {if $file.getError()}
+    {fileErrorBlankslate(file: $file)}
+  {else}
+    <div class="mt-2">
+      {if length($rules) > 0}
+        {symbolListBox(file: $file, symbols: $rules, title: 'Rules')}
+      {/if}
+      {if length($funcs) > 0}
+        {symbolListBox(file: $file, symbols: $funcs, title: 'Functions')}
+      {/if}
+      {if length($providers) > 0}
+        {symbolListBox(file: $file, symbols: $providers, title: 'Providers')}
+      {/if}
+      {if length($aspects) > 0}
+        {symbolListBox(file: $file, symbols: $aspects, title: 'Aspects')}
+      {/if}
+      {if length($moduleExtensions) > 0}
+        {symbolListBox(file: $file, symbols: $moduleExtensions, title: 'Module Extensions')}
+      {/if}
+      {if length($repositoryRules) > 0}
+        {symbolListBox(file: $file, symbols: $repositoryRules, title: 'Repository Rules')}
+      {/if}
+    </div>
+  {/if}
 </div>
 {/template}
 
@@ -721,10 +748,10 @@ import {
   {@param moduleVersion: ModuleVersion}
   {@param file: FileInfo}
   {@param sym: SymbolInfo}
-<div class="Subhead mb-2">
+<div class="Subhead mb-2" style="border-bottom: none;">
   <div class="Subhead-heading d-flex flex-items-center flex-justify-between">
     <h3 class="d-flex flex-items-center">
-      <span class="text-light f3-light">{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' + $file.getLabel()?.getName() : $file.getLabel()?.getName()}</span>
+      <a class="Link--muted text-light f3-light" href="{fileInfoUrl(label: $file.getLabel())}">{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' + $file.getLabel()?.getName() : $file.getLabel()?.getName()}</a>
       <span class="mx-2 d-flex flex-items-center">
         {let $color: symbolColor(type: $sym.getType()) /}
         {octiconDotFill16(fill: 'var(' + $color + ')')}
@@ -738,8 +765,8 @@ import {
     </div>
   </div>
   {if $sym.getDescription()}
-    <div class="Subhead-description">
-      <div class="markdown-body {css('marked')} mb-1 text-normal" style="font-size: 14px; overflow-x: auto; max-height: 100px; overflow-y: hidden">
+    <div class="Subhead-description mt-1 pt-2 border-top">
+      <div class="markdown-body {css('marked')}" style="font-size: 14px">
         {$sym.getDescription()}
       </div>
     </div>
@@ -901,13 +928,13 @@ import {
 
 {template tagClassSection}
   {@param tagClass: ModuleExtensionTagClassInfo}
-<div class="border-top pt-2 mt-5">
+<div class="pt-2 my-3">
   <div class="d-flex flex-items-center mb-2">
-    <span class="Label Label--secondary mr-2">Tag Class</span>
-    <h4 class="text-semibold">{$tagClass.getTagName()}</h4>
+    <h4 class="flex-auto text-semibold">{$tagClass.getTagName()}</h4>
+    <span class="Label Label--secondary flex-shrink-0">Tag Class</span>
   </div>
   {if $tagClass.getDocString()}
-    <div class="markdown-body {css('marked')} mb-2" style="overflow-x: auto">
+    <div class="markdown-body text-light {css('marked')} mb-2" style="font-size: 14px; overflow-x: auto">
       {$tagClass.getDocString()}
     </div>
   {/if}
@@ -955,7 +982,7 @@ import {
       <span class="text-semibold text-mono">{$field.getName()}</span>
     </div>
     {if $field.getDocString()}
-      <div class="markdown-body {css('marked')} text-small mt-1" style="overflow-x: auto">
+      <div class="markdown-body text-light {css('marked')} mt-3" style="font-size: 14px; overflow-x: auto">
         {$field.getDocString()}
       </div>
     {/if}
@@ -1005,7 +1032,7 @@ import {
       {/if}
     </div>
     {if $param.getDocString()}
-      <div class="markdown-body {css('marked')} text-small mt-1" style="overflow-x: auto">
+      <div class="markdown-body text-light {css('marked')} mt-3" style="font-size: 14px; overflow-x: auto">
         {$param.getDocString()}
       </div>
     {/if}
@@ -1030,7 +1057,7 @@ import {
 <div class="Box-row">
   <div class="d-flex flex-column">
     {if $returnInfo.getDocString()}
-      <div class="markdown-body {css('marked')} text-small" style="overflow-x: auto">
+      <div class="markdown-body text-light {css('marked')}" style="font-size: 14px; overflow-x: auto">
         {$returnInfo.getDocString()}
       </div>
     {/if}
@@ -1058,7 +1085,7 @@ import {
 <div class="Box-row d-flex flex-items-start">
   <div class="flex-auto">
     <div class="d-flex flex-items-center">
-      <span class="text-semibold text-mono">{$attr.getName()}</span>
+      <span class="text-bold">{$attr.getName()}</span>
       {if $attr.getMandatory()}
         <span class="Label Label--danger ml-2">required</span>
       {/if}
@@ -1067,7 +1094,7 @@ import {
       {/if}
     </div>
     {if $attr.getDocString()}
-      <div class="markdown-body {css('marked')} text-small mt-1" style="overflow-x: auto">
+      <div class="markdown-body text-light {css('marked')} mt-3" style="font-size: 14px; overflow-x: auto">
         {$attr.getDocString()}
       </div>
     {/if}
@@ -1194,7 +1221,7 @@ import {
 {template symbolCount}
   {@param type: int}
   {@param n: int}
-  {counter(n: $n, fg: '--color-fg-on-emphasis', bg: symbolColor(type: $type), anchor: 'doc-' + $type)}
+  {counter(n: $n, fg: '--color-fg-on-emphasis', bg: symbolColor(type: $type), anchor: 'doc-' + $type, title: symbolTypeName(type: $type))}
 {/template}
 
 {template symbolSection}
@@ -1307,9 +1334,30 @@ import {
 {/template}
 
 
+{template fileErrorBlankslate}
+  {@param file: FileInfo}
+<div class="blankslate">
+  <div class="blankslate-icon">
+    {octiconSkip24(class: 'color-fg-attention')}
+  </div>
+  <div class="blankslate-heading">
+    Documentation Extraction Error
+  </div>
+  <p>The documentation for <code>{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' : ''}{$file.getLabel()?.getName()}</code> could not be extracted.</p>
+  <div class="mt-3">
+    <details class="details-reset">
+      <summary class="btn btn-sm">Show error details</summary>
+      <div class="mt-2">
+        <pre class="flash flash-error p-3 overflow-auto"><code>{$file.getError()}</code></pre>
+      </div>
+    </details>
+  </div>
+</div>
+{/template}
+
+
 {template docsSelect}
 <div>
-  DOCS_HEADER
   <div class="{css('content')}"></div>
 </div>
 {/template}
@@ -1326,6 +1374,18 @@ import {
   <nav class="UnderlineNav">
     <div class="UnderlineNav-body {css('nav')}">
       <div class="f4">Maintainers:</div>
+    </div>
+  </nav>
+  <div class="{css('content')}"></div>
+</div>
+{/template}
+
+
+{template docsMapSelectNav}
+<div>
+  <nav class="UnderlineNav">
+    <div class="UnderlineNav-body {css('nav')}">
+      <div class="f4">Docs:</div>
     </div>
   </nav>
   <div class="{css('content')}"></div>
@@ -1392,5 +1452,32 @@ import {
 <div class="Toast Toast--success Toast--animateIn" style="position: fixed; top: 10px; left: 10px; max-width: 100%">
   <span class="Toast-icon">{octiconCheck16()}</span>
   <span class="Toast-content">{$message|truncate:256}</span>
+</div>
+{/template}
+
+
+{template documentationAboutSection}
+  {@param info: DocumentationInfo}
+<div>
+  {sectionHeader(title: 'About')}
+
+  <div class="text-small color-fg-muted mb-3 px-2">
+    {if $info.getSource() == DocumentationSource.PUBLISHED}
+      <div class="d-flex flex-items-start">
+        <div class="mr-2 mt-1">{octiconSparkleFill16(fill: 'var(--color-success-fg)')}</div>
+        <div>Official published documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.</div>
+      </div>
+    {elseif $info.getSource() == DocumentationSource.BEST_EFFORT}
+      <div class="d-flex flex-items-start">
+        <div class="mr-2 mt-1">{octiconCode16(fill: 'var(--color-attention-fg)')}</div>
+        <div>Auto-generated documentation using best-effort extraction method.</div>
+      </div>
+    {else}
+      <div class="d-flex flex-items-start">
+        <div class="mr-2 mt-1">{octiconCode16()}</div>
+        <div>Documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.</div>
+      </div>
+    {/if}
+  </div>
 </div>
 {/template}

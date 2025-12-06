@@ -34,6 +34,7 @@ type Config struct {
 	UrlStatusMessage      string
 	DocsUrlStatusCode     int
 	DocsUrlStatusMessage  string
+	IsLatestVersion       bool
 }
 
 func main() {
@@ -70,6 +71,8 @@ func run(args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read MODULE.bazel: %v", err)
 	}
+
+	module.IsLatestVersion = cfg.IsLatestVersion
 
 	// Read source.json file (optional)
 	if cfg.SourceJsonFile != "" {
@@ -164,6 +167,7 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs.StringVar(&cfg.UrlStatusMessage, "url_status_message", "", "HTTP status message for the source URL (optional)")
 	fs.IntVar(&cfg.DocsUrlStatusCode, "docs_url_status_code", 0, "HTTP status code for the docs URL (optional)")
 	fs.StringVar(&cfg.DocsUrlStatusMessage, "docs_url_status_message", "", "HTTP status message for the docs URL (optional)")
+	fs.BoolVar(&cfg.IsLatestVersion, "is_latest_version", false, "if true, marks this module version as the latest one")
 
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "usage: %s @PARAMS_FILE", toolName)
