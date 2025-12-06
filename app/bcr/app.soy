@@ -35,6 +35,9 @@ import {
   StarlarkFunctionInfo
 } from 'stardoc_output/stardoc_output.proto';
 import {
+  SymbolLocation
+} from 'build/stack/starlark/v1beta1/starlark_server.proto';
+import {
   DocumentationInfo,
   DocumentationSource,
   FileInfo,
@@ -610,6 +613,21 @@ import {
 /#/{$baseUrl}/{$file}/{$name}
 {/template}
 
+{template githubSourceUrl kind="uri"}
+  {@inject commitSha: string}
+  {@param moduleVersion: ModuleVersion}
+  {@param label: Label}
+  {@param location: SymbolLocation}
+{if $moduleVersion.getRepositoryMetadata()?.getType() == 1 /* GITHUB */}
+{let $org: $moduleVersion.getRepositoryMetadata().getOrganization() /}
+{let $repo: $moduleVersion.getRepositoryMetadata().getName() /}
+{let $pkg: $label.getPkg() /}
+{let $name: $label.getName() /}
+{let $path: $pkg ? $pkg + '/' + $name : $name /}
+https://github.com/{$org}/{$repo}/blob/{$commitSha}/{$path}{if $location.getStart()}#L{$location.getStart().getLine()}{if $location.getEnd() && $location.getEnd().getLine() != $location.getStart().getLine()}-L{$location.getEnd().getLine()}{/if}{/if}
+{/if}
+{/template}
+
 
 {template documentationInfoListComponent}
   {@inject baseUrl: string}
@@ -750,6 +768,7 @@ import {
   {@param file: FileInfo}
   {@param sym: SymbolInfo}
   {@param? originKey: OriginKey}
+  {@param? location: SymbolLocation}
 <div class="Subhead mb-2" style="border-bottom: none;">
   <div class="Subhead-heading d-flex flex-items-center flex-justify-between">
     <h3 class="d-flex flex-items-center">
@@ -788,6 +807,37 @@ import {
       </div>
     </div>
   {/if}
+  {if $location}
+    <div class="Subhead-description mt-1 pt-2 border-top">
+      <div class="text-small color-fg-muted">
+        <strong>Location:</strong>
+        {sp}
+        {let $fileLabel: $file.getLabel() /}
+        {if $location.getStart() && $fileLabel}
+          {let $githubUrl: githubSourceUrl(moduleVersion: $moduleVersion, label: $fileLabel, location: $location) /}
+          {if $githubUrl}
+            <a href="{$githubUrl}" target="_blank" rel="noopener noreferrer" class="Link--primary">
+              Line {$location.getStart().getLine()}
+              {if $location.getStart().getCharacter() > 0}
+                , Column {$location.getStart().getCharacter()}
+              {/if}
+              {if $location.getEnd() && $location.getEnd().getLine() != $location.getStart().getLine()}
+                {sp}- Line {$location.getEnd().getLine()}
+              {/if}
+            </a>
+          {else}
+            Line {$location.getStart().getLine()}
+            {if $location.getStart().getCharacter() > 0}
+              , Column {$location.getStart().getCharacter()}
+            {/if}
+            {if $location.getEnd() && $location.getEnd().getLine() != $location.getStart().getLine()}
+              {sp}- Line {$location.getEnd().getLine()}
+            {/if}
+          {/if}
+        {/if}
+      </div>
+    </div>
+  {/if}
   <div class="Subhead-actions">
   </div>
 </div>
@@ -804,6 +854,7 @@ import {
     {param file: $file /}
     {param sym: $sym /}
     {param originKey: $sym.getRule()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getRule()?.getLocation() /}
   {/call}
 
   {if $exampleCode}
@@ -830,6 +881,7 @@ import {
     {param file: $file /}
     {param sym: $sym /}
     {param originKey: $sym.getMacro()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getMacro()?.getLocation() /}
   {/call}
 
   {if $exampleCode}
@@ -856,6 +908,7 @@ import {
     {param file: $file /}
     {param sym: $sym /}
     {param originKey: $sym.getFunc()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getFunc()?.getLocation() /}
   {/call}
 
   {if $exampleCode}
@@ -885,6 +938,7 @@ import {
     {param file: $file /}
     {param sym: $sym /}
     {param originKey: $sym.getProvider()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getProvider()?.getLocation() /}
   {/call}
 
   {if $exampleCode}
@@ -911,6 +965,7 @@ import {
     {param file: $file /}
     {param sym: $sym /}
     {param originKey: $sym.getRepositoryRule()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getRepositoryRule()?.getLocation() /}
   {/call}
 
   {if $exampleCode}
@@ -937,6 +992,7 @@ import {
     {param file: $file /}
     {param sym: $sym /}
     {param originKey: $sym.getAspect()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getAspect()?.getLocation() /}
   {/call}
 
   {if $exampleCode}
@@ -963,6 +1019,7 @@ import {
     {param file: $file /}
     {param sym: $sym /}
     {param originKey: $sym.getModuleExtension()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getModuleExtension()?.getLocation() /}
   {/call}
 
   {if $exampleCode}

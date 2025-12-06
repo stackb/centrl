@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/label"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 	slpb "github.com/stackb/centrl/build/stack/starlark/v1beta1"
 )
@@ -104,11 +106,9 @@ func parseConfig(args []string) (*config, error) {
 }
 
 type bzlFile struct {
-	RepoName      string // the name of the repo to which the file belongs (e.g. "rules_go")
-	Path          string // the original path
-	RelativePath  string // non-external path
-	EffectivePath string // the remapped path
-	Label         *bzpb.Label
+	RepoName string // the name of the repo to which the file belongs (e.g. "rules_go")
+	Path     string // the original path
+	Label    *bzpb.Label
 }
 
 // bzlFileSlice is a custom flag type for repeatable --mapping flags
@@ -116,21 +116,29 @@ type bzlFileSlice []*bzlFile
 
 func (s *bzlFileSlice) String() string {
 	var parts []string
-	for _, sf := range *s {
-		parts = append(parts, fmt.Sprintf("%s:%s", sf.RepoName, sf.Path))
+	for _, file := range *s {
+		parts = append(parts, fmt.Sprintf("%s|%s|%s", file.RepoName, file.Label, file.Path))
 	}
 	return strings.Join(parts, ",")
 }
 
 func (s *bzlFileSlice) Set(value string) error {
-	parts := strings.SplitN(value, ":", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid mapping format %q, expected REPO_NAME:PATH", value)
+	parts := strings.SplitN(value, "|", 3)
+	if len(parts) != 3 {
+		return fmt.Errorf("invalid mapping format %q, expected REPO_NAME|LABEL|PATH", value)
 	}
 
+	repoName := parts[0]
+	lbl, err := label.Parse(parts[1])
+	if err != nil {
+		return fmt.Errorf("invalid mapping format %q, malformed label %s: %v", value, parts[2], err)
+	}
+	path := parts[2]
+
 	*s = append(*s, &bzlFile{
-		RepoName: parts[0],
-		Path:     parts[1],
+		RepoName: repoName,
+		Path:     path,
+		Label:    &bzpb.Label{Repo: repoName, Pkg: lbl.Pkg, Name: filepath.Base(path)},
 	})
 
 	return nil

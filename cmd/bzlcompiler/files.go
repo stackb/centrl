@@ -35,26 +35,6 @@ func prepareShimBzlFiles(cfg *config) {
 }
 
 func rewriteBzlFile(cfg *config, file *bzlFile) error {
-	parts := strings.Split(file.Path, "/")
-	if parts[0] != "external" {
-		return fmt.Errorf("--bzl_file expected to be in an external workspace: %s", file.Path)
-	}
-	rest := filepath.Join(parts[2:]...)
-
-	debug := strings.Contains(rest, "tools/build_defs/repo/http.bzl")
-
-	pkg := filepath.Dir(rest)
-	// filepath.Dir returns "." for files in the root, but we want empty string
-	if pkg == "." {
-		pkg = ""
-	}
-
-	file.Label = &bzpb.Label{
-		Repo: sanitizeRepoName(file.RepoName),
-		Pkg:  pkg,
-		Name: filepath.Base(rest),
-	}
-
 	deps, found := cfg.moduleDeps[file.RepoName]
 	if !found {
 		cfg.Logger.Printf("WARN: dependencies for %s not found", file.RepoName)
@@ -99,14 +79,14 @@ func rewriteBzlFile(cfg *config, file *bzlFile) error {
 				}
 			}
 			if match == nil {
-				if debug {
+				if debugSandbox {
 					cfg.Logger.Printf("WARN: unknown dependency @%s of module %s (%s)", from.Repo, file.RepoName, file.Path)
 				}
 			}
 		}
 		if from != to {
 			load.Module.Value = to.String()
-			if debug {
+			if debugSandbox {
 				cfg.Logger.Printf("rewrote load: %s --> %s", from, to)
 			}
 		}
@@ -116,10 +96,8 @@ func rewriteBzlFile(cfg *config, file *bzlFile) error {
 		data = build.Format(ast)
 	}
 
-	workingPath := filepath.Join(workDir, "external", file.RepoName, rest)
+	workingPath := filepath.Join(workDir, "external", file.Label.Repo, file.Label.Pkg, file.Label.Name)
 	dstPath := filepath.Join(cfg.Cwd, workingPath)
-	file.RelativePath = rest
-	file.EffectivePath = filepath.Join("external", file.RepoName, rest)
 
 	return writeFile(dstPath, data, os.ModePerm)
 }

@@ -23,18 +23,19 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 			return nil, fmt.Errorf("no file %q was found in the list of --bzl_file", filePath)
 		}
 
+		file := &bzpb.FileInfo{Label: bzlFile.Label}
+
 		module, err := extractModule(cfg, bzlFile)
 		if err != nil {
-			file := &bzpb.FileInfo{Label: bzlFile.Label, Error: err.Error()}
-			result.File = append(result.File, file)
-			cfg.Logger.Printf("🔴 failed to extract module info for %v: %v", bzlFile.EffectivePath, err)
+			file.Error = err.Error()
+			cfg.Logger.Printf("🔴 failed to extract %+v: %v", bzlFile, err)
 			errors++
 		} else {
-			file := stardoc.ModuleToFileInfo(module)
-			file.Label = bzlFile.Label
-			result.File = append(result.File, file)
-			cfg.Logger.Println("🟢", bzlFile.EffectivePath)
+			stardoc.ModuleToFileInfo(file, module)
+			cfg.Logger.Printf("🟢 successfully extracted %s", bzlFile.Label)
 		}
+
+		result.File = append(result.File, file)
 	}
 
 	// Report success rate
@@ -51,7 +52,7 @@ func extractModule(cfg *config, file *bzlFile) (*slpb.Module, error) {
 	defer cancel()
 
 	response, err := cfg.Client.ModuleInfo(ctx, &slpb.ModuleInfoRequest{
-		TargetFileLabel: file.EffectivePath,
+		TargetFileLabel: stardoc.FromLabel(file.Label).String(),
 		BuiltinsBzlPath: filepath.Join(cfg.Cwd, workDir, "external/_builtins/src/main/starlark/builtins_bzl"),
 		DepRoots: []string{
 			filepath.Join(cfg.Cwd, workDir),

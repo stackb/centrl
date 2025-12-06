@@ -1,6 +1,6 @@
 "provides the module_registry rule"
 
-load("@build_stack_rules_proto//rules:starlark_library.bzl", "StarlarkLibraryFileInfo")
+load("@build_stack_rules_proto//rules:starlark_module_library.bzl", "StarlarkModuleLibraryInfo")
 load(
     "//rules:providers.bzl",
     "ModuleDependencyCycleInfo",
@@ -81,7 +81,7 @@ def _compile_documentation_registry(ctx, doc_results):
 
     return output
 
-def _get_module_id_from_bzl_repository_repo_name(repo_name):
+def _get_module_version_id_from_bzl_repository_repo_name(repo_name):
     parts = repo_name.split("+")
     if len(parts) == 0:
         return repo_name
@@ -89,9 +89,10 @@ def _get_module_id_from_bzl_repository_repo_name(repo_name):
     name_version = last_part[len("bzl."):]
     return name_version.replace("---", "@")
 
-def _add_args_for_module(args, module_name, srcs, deps):
-    for file in srcs:
-        args.add("--bzl_file=%s:%s" % (module_name, file.path))
+def _add_args_for_starlark_modules(args, module_name, starlark_modules, deps):
+    for starlark_module in starlark_modules:
+        arg = "--bzl_file=%s|%s|%s" % (module_name, starlark_module.label, starlark_module.src.path)
+        args.add(arg)
     if len(deps) == 0:
         args.add("--module_dep=%s:NONE" % module_name)
     else:
@@ -104,7 +105,7 @@ def _status_code_exists(code):
 def _documentation_info_output_result(ctx, mv):
     return struct(
         mv = mv,
-        output = ctx.actions.declare_file("%s/%s/documentationinfo.pb" % (mv.name, mv.version)),
+        output = ctx.actions.declare_file("%s/%s/documentationinfo.json" % (mv.name, mv.version)),
     )
 
 def _compile_stardoc_for_module_version(ctx, mv, files):
@@ -146,18 +147,15 @@ def _compile_bzl_for_module_version(ctx, mv, all_mv_by_id):
     java_runtime = ctx.attr._java_runtime[java_common.JavaRuntimeInfo]
     java_executable = java_runtime.java_executable_exec_path
 
-    # StarlarkLibraryFileInfo
-    bazel_tools_lib = ctx.attr._bzl_bazel_tools[StarlarkLibraryFileInfo]
-    builtins_lib = ctx.attr._bzl_builtins[StarlarkLibraryFileInfo]
+    # StarlarkModuleLibraryInfo
+    bzl_builtins = ctx.attr._bzl_builtins[StarlarkModuleLibraryInfo]
+    bzl_bazel_tools = ctx.attr._bzl_bazel_tools[StarlarkModuleLibraryInfo]
 
-    # List[StarlarkLibraryFileInfo]
-    direct_libs = [builtins_lib, bazel_tools_lib, mv.bzl_srcs] + mv.bzl_deps
-
-    # DepSet[StarlarkLibraryFileInfo]
-    transitive_libs = depset(direct_libs, transitive = [lib.transitive_deps for lib in direct_libs])
+    # List[StarlarkModuleLibraryInfo]
+    bzl_modules = [bzl_builtins, bzl_bazel_tools, mv.bzl_src] + mv.bzl_deps
 
     # List[DepSet]
-    transitive_srcs = [depset(lib.srcs) for lib in transitive_libs.to_list()]
+    transitive_srcs = [depset([m.src for m in bzl_module.modules]) for bzl_module in bzl_modules]
 
     # DepSet[File]
     inputs = depset([ctx.file._starlarkserverjar], transitive = transitive_srcs)
@@ -179,34 +177,34 @@ def _compile_bzl_for_module_version(ctx, mv, all_mv_by_id):
     # Add bzl_files and module_deps without flattening depsets
 
     # 1. Bazel tools and @_builtins
-    _add_args_for_module(args, "_builtins", builtins_lib.srcs, [])
-    _add_args_for_module(args, "bazel_tools", bazel_tools_lib.srcs, [])
+    _add_args_for_starlark_modules(args, "_builtins", bzl_builtins.modules, [])
+    _add_args_for_starlark_modules(args, "bazel_tools", bzl_bazel_tools.modules, [])
 
-    # 2. Root module (bzl_srcs)
-    _add_args_for_module(args, mv.name, mv.bzl_srcs.srcs, mv.deps)
+    # 2. Root module (bzl_src)
+    _add_args_for_starlark_modules(args, mv.name, mv.bzl_src.modules, mv.deps)
 
     # 3. Dependencies (bzl_deps)
-    for bzl_dep in mv.bzl_deps:
-        id = _get_module_id_from_bzl_repository_repo_name(bzl_dep.label.repo_name)
-        dep_mv = all_mv_by_id.get(id)
+    for starlark_module in mv.bzl_deps:
+        id = _get_module_version_id_from_bzl_repository_repo_name(starlark_module.label.repo_name)
+        module_version = all_mv_by_id.get(id)
 
-        if not dep_mv:
+        if not module_version:
             # buildifier: disable=print
-            print("🔴 WARN for module %s, the module for bzl source dependency %s was not found!" % (dep_mv.id, bzl_dep.label.repo_name))
+            print("🔴 WARN for module %s, the module for bzl source dependency %s was not found!" % (module_version.id, starlark_module.label.repo_name))
             continue
 
         # buildifier: disable=print
         # print("🟢 module %s, the module for bzl source dependency is %s " % (dep_mv.id, bzl_dep.label.repo_name))
 
-        _add_args_for_module(args, dep_mv.name, bzl_dep.srcs, dep_mv.deps)
+        _add_args_for_starlark_modules(args, module_version.name, starlark_module.modules, module_version.deps)
 
     # Add root module source files as positional arguments
-    args.add_all(mv.bzl_srcs.srcs)
+    args.add_all(mv.bzl_src.srcs)
 
     # Run the action
     ctx.actions.run(
         mnemonic = "CompileModuleInfo",
-        progress_message = "Extracting docs for %s@%s (%d files)" % (mv.name, mv.version, len(mv.bzl_srcs.srcs)),
+        progress_message = "Extracting docs for %s@%s (%d files)" % (mv.name, mv.version, len(mv.bzl_src.srcs)),
         execution_requirements = {
             "supports-workers": "0",
             "requires-worker-protocol": "proto",
@@ -227,7 +225,7 @@ def _compile_documentation_for_module_version(ctx, mv, all_mv_by_id):
         return _compile_stardoc_for_module_version(ctx, mv, mv.published_docs)
 
     # otherwise best effort if this is latest version and there is something to compile
-    if mv.is_latest_version and mv.bzl_srcs and len(mv.bzl_srcs.srcs) > 0:
+    if mv.is_latest_version and mv.bzl_src and len(mv.bzl_src.srcs) > 0:
         return _compile_bzl_for_module_version(ctx, mv, all_mv_by_id)
 
     return None
@@ -364,6 +362,10 @@ def _module_registry_impl(ctx):
     registry_pb = _compile_registry_action(ctx, modules, documentation_registry_pb)
     sitemap_xml = _compile_sitemap_action(ctx, registry_pb)
 
+    doc_output_groups = {d.mv.id.replace("@", "_"): depset([d.output]) for d in doc_results}
+    # for k in doc_output_groups.keys():
+    #     print("available: --output_groups=" + k)
+
     return [
         DefaultInfo(files = depset([registry_pb])),
         OutputGroupInfo(
@@ -376,6 +378,7 @@ def _module_registry_impl(ctx):
             codesearch_index = [codesearch_index],
             docs = depset([r.output for r in doc_results]),
             documentation_registry_pb = depset([documentation_registry_pb]),
+            **doc_output_groups
         ),
         ModuleRegistryInfo(
             deps = depset(deps),
@@ -448,12 +451,12 @@ module_registry = rule(
             allow_single_file = True,
         ),
         "_bzl_bazel_tools": attr.label(
-            default = "@bzl.bazel_tools//tools:bzl_srcs",
-            providers = [StarlarkLibraryFileInfo],
+            default = "@bzl.bazel_tools//tools:modules",
+            providers = [StarlarkModuleLibraryInfo],
         ),
         "_bzl_builtins": attr.label(
-            default = "@bzl.bazel_tools//src/main/starlark/builtins_bzl:bzl_srcs",
-            providers = [StarlarkLibraryFileInfo],
+            default = "@bzl.bazel_tools//src/main/starlark/builtins_bzl:modules",
+            providers = [StarlarkModuleLibraryInfo],
         ),
     },
     provides = [ModuleRegistryInfo],

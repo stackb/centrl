@@ -22,11 +22,12 @@ import (
 const (
 	binaryProtoRepositorySuffix           = ".binaryprotos"
 	binaryProtosRepositoryRootTargetName  = "files"
-	bzlRepositoryRootTargetName           = "bzl_srcs"
+	bzlRepositoryRootTargetName           = "modules"
 	bzlRepositoryPrefix                   = "bzl."
 	httpArchiveKind                       = "http_archive"
 	starlarkRepositoryArchiveKind         = "starlark_repository.archive"
 	starlarkRepositoryModuleExtensionName = "starlark_repository"
+	starlarkRepositoryLanguageName        = "starlarkrepository"
 )
 
 type rankedVersion struct {
@@ -189,7 +190,7 @@ func (ext *bcrExtension) prepareBzlRepositories() rankedModuleVersionMap {
 
 	versions := make(rankedModuleVersionMap)
 
-	// Separate URLs into cached, blacklisted, MVS-filtered, bzl_srcs-filtered, and uncached
+	// Separate URLs into cached, blacklisted, MVS-filtered, bzl_src-filtered, and uncached
 	var uncachedItems []checkItem
 	var cachedCount int
 	var unrequestedCount int
@@ -228,7 +229,7 @@ func (ext *bcrExtension) prepareBzlRepositories() rankedModuleVersionMap {
 		log.Printf("Skipped %d unused source URLs", unrequestedCount)
 	}
 	if bzlSrcsFilteredCount > 0 {
-		log.Printf("Skipped %d source URLs (not referenced in any bzl_srcs)", bzlSrcsFilteredCount)
+		log.Printf("Skipped %d source URLs (not referenced in any bzl_src)", bzlSrcsFilteredCount)
 	}
 
 	// Check uncached URLs in parallel and update rules with status
@@ -249,7 +250,7 @@ func (ext *bcrExtension) rankBzlRepositoryVersions(perModuleVersionMvs mvs, bzlR
 }
 
 func (ext *bcrExtension) rankBzlRepositoryVersionsForModule(id moduleID, deps moduleDeps, bzlRepositories rankedModuleVersionMap) {
-	// skip setting bzl_srcs and deps on non-latest versions
+	// skip setting bzl_src and deps on non-latest versions
 	moduleVersionRule, exists := ext.moduleVersionRules[id]
 	if !exists {
 		return
@@ -273,7 +274,7 @@ func (ext *bcrExtension) rankBzlRepositoryVersionsForModule(id moduleID, deps mo
 		metadata := moduleMetadataProtoRule.Proto()
 
 		if moduleName == rootModuleName && version == rootModuleVersion {
-			// This is the root module → bzl_srcs (single label)
+			// This is the root module → bzl_src (single label)
 			selectVersion(moduleVersionRule, version, true, bzlRepositories[moduleName], metadata)
 		} else {
 			// This is a dependency → bzl_deps (list)
@@ -343,7 +344,7 @@ func (ext *bcrExtension) finalizeBzlSrcsAndDeps(bzlRepositories rankedModuleVers
 	}
 
 	for rule, bzlSrc := range bzlSrcRuleMap {
-		rule.Rule().SetAttr("bzl_srcs", makeBzlSrcSelectExpr(bzlSrc))
+		rule.Rule().SetAttr("bzl_src", makeBzlSrcSelectExpr(bzlSrc))
 	}
 	for rule, bzlDeps := range bzlDepsRuleMap {
 		sort.Strings(bzlDeps)
@@ -486,7 +487,6 @@ func makeBzlRepository(from label.Label, source *bzpb.ModuleSource) *rule.Rule {
 	r := rule.NewRule(starlarkRepositoryArchiveKind, from.Repo)
 	r.SetAttr("urls", []string{source.Url})
 	r.SetAttr("type", getArchiveTypeOrDefault(source.Url, "tar.gz"))
-
 	if source.StripPrefix != "" {
 		r.SetAttr("strip_prefix", source.StripPrefix)
 	}
@@ -496,14 +496,10 @@ func makeBzlRepository(from label.Label, source *bzpb.ModuleSource) *rule.Rule {
 		}
 	}
 	r.SetAttr("build_file_generation", "clean")
-	r.SetAttr("languages", []string{"starlarklibrary"})
-
-	directives := []string{
-		// fmt.Sprintf("gazelle:starlarklibrary_log_file %s/starlark_repository-gazelle.%s-%s.log", repoRoot, module.Name, module.Version),
-		"gazelle:starlarklibrary_root",
-	}
-
-	r.SetAttr("build_directives", directives)
+	r.SetAttr("languages", []string{starlarkRepositoryLanguageName})
+	r.SetAttr("build_directives", []string{
+		fmt.Sprintf("gazelle:%s_root", starlarkRepositoryLanguageName),
+	})
 
 	return r
 }

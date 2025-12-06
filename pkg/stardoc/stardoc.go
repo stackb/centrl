@@ -107,109 +107,173 @@ func ParseModuleSymbolsWithLocation(module *slpb.Module) []*bzpb.SymbolInfo {
 	var symbols []*bzpb.SymbolInfo
 
 	// Build a map of symbol names to locations for quick lookup
-	locationMap := make(map[string]*slpb.SymbolLocation)
+	locations := make(map[string]*slpb.SymbolLocation)
 	for _, loc := range module.SymbolLocation {
-		locationMap[loc.Name] = loc
+		locations[loc.Name] = loc
 	}
 
 	// If module has Info, process legacy types (rules, functions, providers, aspects)
 	if module.Info != nil {
 		// Process rules
 		for _, rule := range module.Info.RuleInfo {
+			loc := cloneLocationWithoutName(locations[rule.RuleName])
 			symbols = append(symbols, &bzpb.SymbolInfo{
 				Type:        bzpb.SymbolType_SYMBOL_TYPE_RULE,
 				Name:        rule.RuleName,
 				Description: Truncate(rule.DocString),
 				Info: &bzpb.SymbolInfo_Rule{Rule: &slpb.Rule{
 					Info:     rule,
-					Location: locationMap[rule.RuleName],
+					Location: loc,
 				}},
 			})
 		}
 
 		// Process functions
 		for _, fn := range module.Info.FuncInfo {
+			loc := cloneLocationWithoutName(locations[fn.FunctionName])
 			symbols = append(symbols, &bzpb.SymbolInfo{
 				Type:        bzpb.SymbolType_SYMBOL_TYPE_FUNCTION,
 				Name:        fn.FunctionName,
 				Description: Truncate(fn.DocString),
 				Info: &bzpb.SymbolInfo_Func{Func: &slpb.Function{
 					Info:     fn,
-					Location: locationMap[fn.FunctionName],
+					Location: loc,
 				}},
 			})
 		}
 
 		// Process providers
 		for _, provider := range module.Info.ProviderInfo {
+			loc := cloneLocationWithoutName(locations[provider.ProviderName])
 			symbols = append(symbols, &bzpb.SymbolInfo{
 				Type:        bzpb.SymbolType_SYMBOL_TYPE_PROVIDER,
 				Name:        provider.ProviderName,
 				Description: Truncate(provider.DocString),
 				Info: &bzpb.SymbolInfo_Provider{Provider: &slpb.Provider{
 					Info:     provider,
-					Location: locationMap[provider.ProviderName],
+					Location: loc,
 				}},
 			})
 		}
 
 		// Process aspects
 		for _, aspect := range module.Info.AspectInfo {
+			loc := cloneLocationWithoutName(locations[aspect.AspectName])
 			symbols = append(symbols, &bzpb.SymbolInfo{
 				Type:        bzpb.SymbolType_SYMBOL_TYPE_ASPECT,
 				Name:        aspect.AspectName,
 				Description: Truncate(aspect.DocString),
 				Info: &bzpb.SymbolInfo_Aspect{Aspect: &slpb.Aspect{
 					Info:     aspect,
-					Location: locationMap[aspect.AspectName],
+					Location: loc,
 				}},
 			})
 		}
 	}
 
-	// Process repository rules (these already have locations in the Module)
+	// Process repository rules
 	for _, repoRule := range module.RepositoryRule {
 		name := ""
 		if repoRule.Info != nil {
 			name = repoRule.Info.RuleName
 		}
+
+		// Clone the repository rule and strip the name from its location
+		clonedRepoRule := cloneRepositoryRuleWithoutLocationName(repoRule)
+
 		symbols = append(symbols, &bzpb.SymbolInfo{
 			Type:        bzpb.SymbolType_SYMBOL_TYPE_REPOSITORY_RULE,
 			Name:        name,
 			Description: Truncate(repoRule.Info.GetDocString()),
-			Info:        &bzpb.SymbolInfo_RepositoryRule{RepositoryRule: repoRule},
+			Info:        &bzpb.SymbolInfo_RepositoryRule{RepositoryRule: clonedRepoRule},
 		})
 	}
 
-	// Process module extensions (these already have locations in the Module)
+	// Process module extensions
 	for _, ext := range module.ModuleExtension {
 		name := ""
 		if ext.Info != nil {
 			name = ext.Info.ExtensionName
 		}
+
+		// Clone the module extension and strip the name from its location
+		clonedExt := cloneModuleExtensionWithoutLocationName(ext)
+
 		symbols = append(symbols, &bzpb.SymbolInfo{
 			Type:        bzpb.SymbolType_SYMBOL_TYPE_MODULE_EXTENSION,
 			Name:        name,
 			Description: Truncate(ext.Info.GetDocString()),
-			Info:        &bzpb.SymbolInfo_ModuleExtension{ModuleExtension: ext},
+			Info:        &bzpb.SymbolInfo_ModuleExtension{ModuleExtension: clonedExt},
 		})
 	}
 
-	// Process macros (these already have locations in the Module)
+	// Process macros
 	for _, macro := range module.Macro {
 		name := ""
 		if macro.Info != nil {
 			name = macro.Info.MacroName
 		}
+
+		// Clone the macro and strip the name from its location
+		clonedMacro := cloneMacroWithoutLocationName(macro)
+
 		symbols = append(symbols, &bzpb.SymbolInfo{
 			Type:        bzpb.SymbolType_SYMBOL_TYPE_MACRO,
 			Name:        name,
 			Description: Truncate(macro.Info.GetDocString()),
-			Info:        &bzpb.SymbolInfo_Macro{Macro: macro},
+			Info:        &bzpb.SymbolInfo_Macro{Macro: clonedMacro},
 		})
 	}
 
 	return symbols
+}
+
+// cloneLocationWithoutName creates a copy of a SymbolLocation with the name field set to empty
+func cloneLocationWithoutName(loc *slpb.SymbolLocation) *slpb.SymbolLocation {
+	if loc == nil {
+		return nil
+	}
+	return &slpb.SymbolLocation{
+		Start: loc.Start,
+		End:   loc.End,
+		Name:  "", // Clear the name to save space
+	}
+}
+
+// cloneRepositoryRuleWithoutLocationName creates a copy of a RepositoryRule with the location name cleared
+func cloneRepositoryRuleWithoutLocationName(rr *slpb.RepositoryRule) *slpb.RepositoryRule {
+	if rr == nil {
+		return nil
+	}
+	return &slpb.RepositoryRule{
+		Info:      rr.Info,
+		Location:  cloneLocationWithoutName(rr.Location),
+		Attribute: rr.Attribute,
+	}
+}
+
+// cloneModuleExtensionWithoutLocationName creates a copy of a ModuleExtension with the location name cleared
+func cloneModuleExtensionWithoutLocationName(ext *slpb.ModuleExtension) *slpb.ModuleExtension {
+	if ext == nil {
+		return nil
+	}
+	return &slpb.ModuleExtension{
+		Info:     ext.Info,
+		Location: cloneLocationWithoutName(ext.Location),
+		TagClass: ext.TagClass,
+	}
+}
+
+// cloneMacroWithoutLocationName creates a copy of a Macro with the location name cleared
+func cloneMacroWithoutLocationName(macro *slpb.Macro) *slpb.Macro {
+	if macro == nil {
+		return nil
+	}
+	return &slpb.Macro{
+		Info:      macro.Info,
+		Location:  cloneLocationWithoutName(macro.Location),
+		Attribute: macro.Attribute,
+	}
 }
 
 // ParseLabel parses a Bazel label string into its components
@@ -230,6 +294,10 @@ func ToLabel(l label.Label) *bzpb.Label {
 	}
 }
 
+func FromLabel(l *bzpb.Label) label.Label {
+	return label.New(l.Repo, l.Pkg, l.Name)
+}
+
 // Truncate truncates a string to a reasonable length
 func Truncate(s string) string {
 	return s
@@ -241,30 +309,10 @@ func Truncate(s string) string {
 }
 
 // ModuleToFileInfo converts a slpb.Module to a bzpb.FileInfo
-func ModuleToFileInfo(module *slpb.Module) *bzpb.FileInfo {
+func ModuleToFileInfo(file *bzpb.FileInfo, module *slpb.Module) {
 	if module == nil {
-		return nil
+		return
 	}
-
-	var label *bzpb.Label
-	var description string
-
-	// Extract label from module.Info if available
-	if module.Info != nil {
-		label = ParseLabel(module.Info.File)
-		description = Truncate(module.Info.ModuleDocstring)
-	} else {
-		// Otherwise create a minimal label with just the name
-		label = &bzpb.Label{
-			Name: module.GetName(),
-		}
-	}
-
-	fileInfo := &bzpb.FileInfo{
-		Label:       label,
-		Symbol:      ParseModuleSymbolsWithLocation(module),
-		Description: description,
-	}
-
-	return fileInfo
+	file.Description = Truncate(module.Info.ModuleDocstring)
+	file.Symbol = ParseModuleSymbolsWithLocation(module)
 }

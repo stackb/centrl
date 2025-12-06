@@ -90,8 +90,8 @@ ModuleVersionInfo = provider(
         "build_bazel": "File | None: The BUILD.bazel file",
         "proto": "File: The compiled ModuleVersion protobuf file",
         "published_docs": "list[File]: Published documentation files from http_archive",
-        "bzl_srcs": "StarlarkLibraryFileInfo | None: .bzl source files for the current module version",
-        "bzl_deps": "List[depset[StarlarkLibraryFileInfo]]: Transitive .bzl source files from starlark_repository dependencies",
+        "bzl_src": "StarlarkModuleLibraryInfo | None: .bzl source files for the current module version",
+        "bzl_deps": "List[StarlarkModuleLibraryInfo]]: List of .bzl source file dependencies",
     },
 )
 

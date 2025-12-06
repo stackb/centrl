@@ -177,7 +177,7 @@ func isLatestVersion(moduleVersionRule *protoRule[*bzpb.ModuleVersion]) bool {
 	return ok && isLatest
 }
 
-// makeBzlSrcSelectExpr creates a select expression for the bzl_srcs attribute (single label)
+// makeBzlSrcSelectExpr creates a select expression for the bzl_src attribute (single label)
 //
 //	Returns: select({
 //	    "//app/bcr:is_docs_release": "label",
