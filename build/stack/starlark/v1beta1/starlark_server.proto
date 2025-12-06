@@ -34,6 +34,11 @@ message SymbolLocation {
     string name = 3;
 }
 
+// ModuleSet represents a list of modules (typically for a given repository).
+message ModuleSet {
+    repeated Module module = 1;
+}
+
 // The Module represents all documentation for a single Starlark file.
 message Module {
     // the module name

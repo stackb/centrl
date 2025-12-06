@@ -11,7 +11,7 @@ import (
 	"github.com/stackb/centrl/pkg/stardoc"
 )
 
-func extractBzlFiles(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtract []string) (*bzpb.DocumentationInfo, error) {
+func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtract []string) (*bzpb.DocumentationInfo, error) {
 	result := &bzpb.DocumentationInfo{
 		Source: bzpb.DocumentationSource_BEST_EFFORT,
 	}
@@ -23,7 +23,7 @@ func extractBzlFiles(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtr
 			return nil, fmt.Errorf("no file %q was found in the list of --bzl_file", filePath)
 		}
 
-		module, err := extractBzlFile(cfg, bzlFile)
+		module, err := extractModule(cfg, bzlFile)
 		if err != nil {
 			file := &bzpb.FileInfo{Label: bzlFile.Label, Error: err.Error()}
 			result.File = append(result.File, file)
@@ -46,7 +46,7 @@ func extractBzlFiles(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtr
 	return result, nil
 }
 
-func extractBzlFile(cfg *config, file *bzlFile) (*slpb.Module, error) {
+func extractModule(cfg *config, file *bzlFile) (*slpb.Module, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 

@@ -27,6 +27,7 @@ import {
   ModuleExtensionInfo,
   ModuleExtensionTagClassInfo,
   ModuleInfo,
+  OriginKey,
   ProviderInfo,
   ProviderFieldInfo,
   RepositoryRuleInfo,
@@ -748,6 +749,7 @@ import {
   {@param moduleVersion: ModuleVersion}
   {@param file: FileInfo}
   {@param sym: SymbolInfo}
+  {@param? originKey: OriginKey}
 <div class="Subhead mb-2" style="border-bottom: none;">
   <div class="Subhead-heading d-flex flex-items-center flex-justify-between">
     <h3 class="d-flex flex-items-center">
@@ -771,6 +773,21 @@ import {
       </div>
     </div>
   {/if}
+  {if $originKey && ($originKey.getName() || $originKey.getFile())}
+    <div class="Subhead-description mt-1 pt-2 border-top">
+      <div class="text-small color-fg-muted">
+        <strong>Origin:</strong>
+        {sp}
+        {if $originKey.getFile()}
+          <code>{$originKey.getFile()}</code>
+        {/if}
+        {if $originKey.getName()}
+          {if $originKey.getFile()}:{/if}
+          <code>{$originKey.getName()}</code>
+        {/if}
+      </div>
+    </div>
+  {/if}
   <div class="Subhead-actions">
   </div>
 </div>
@@ -782,7 +799,12 @@ import {
   {@param sym: SymbolInfo}
   {@param? exampleCode: string}
 <div style="min-width: 0">
-  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getRule()?.getOriginKey() /}
+  {/call}
 
   {if $exampleCode}
     {exampleCodeBox(exampleCode: $exampleCode)}
@@ -803,7 +825,12 @@ import {
   {@param sym: SymbolInfo}
   {@param? exampleCode: string}
 <div style="min-width: 0">
-  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getMacro()?.getOriginKey() /}
+  {/call}
 
   {if $exampleCode}
     {exampleCodeBox(exampleCode: $exampleCode)}
@@ -824,7 +851,12 @@ import {
   {@param sym: SymbolInfo}
   {@param? exampleCode: string}
 <div style="min-width: 0">
-  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getFunc()?.getOriginKey() /}
+  {/call}
 
   {if $exampleCode}
     {exampleCodeBox(exampleCode: $exampleCode)}
@@ -848,7 +880,12 @@ import {
   {@param sym: SymbolInfo}
   {@param? exampleCode: string}
 <div style="min-width: 0">
-  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getProvider()?.getOriginKey() /}
+  {/call}
 
   {if $exampleCode}
     {exampleCodeBox(exampleCode: $exampleCode)}
@@ -869,7 +906,12 @@ import {
   {@param sym: SymbolInfo}
   {@param? exampleCode: string}
 <div style="min-width: 0">
-  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getRepositoryRule()?.getOriginKey() /}
+  {/call}
 
   {if $exampleCode}
     {exampleCodeBox(exampleCode: $exampleCode)}
@@ -890,7 +932,12 @@ import {
   {@param sym: SymbolInfo}
   {@param? exampleCode: string}
 <div style="min-width: 0">
-  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getAspect()?.getOriginKey() /}
+  {/call}
 
   {if $exampleCode}
     {exampleCodeBox(exampleCode: $exampleCode)}
@@ -911,7 +958,12 @@ import {
   {@param sym: SymbolInfo}
   {@param? exampleCode: string}
 <div style="min-width: 0">
-  {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getModuleExtension()?.getOriginKey() /}
+  {/call}
 
   {if $exampleCode}
     {exampleCodeBox(exampleCode: $exampleCode)}
