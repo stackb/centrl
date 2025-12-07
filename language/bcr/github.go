@@ -140,3 +140,140 @@ func filterGithubRepositories(repositories map[repositoryID]*bzpb.RepositoryMeta
 	}
 	return todo
 }
+
+// resolveSourceCommitSHAsForRankedModules resolves commit SHAs only for modules
+// that have rank > 0 in the rankedModuleVersionMap (i.e., modules we're generating docs for)
+func (ext *bcrExtension) resolveSourceCommitSHAsForRankedModules(rankedModules rankedModuleVersionMap) {
+	if ext.githubClient == nil {
+		log.Printf("No GitHub client available, skipping source commit SHA resolution")
+		return
+	}
+
+	ctx := context.Background()
+
+	// Collect source URLs from ranked modules only (rank > 0)
+	type urlInfo struct {
+		URL  string
+		Org  string
+		Repo string
+		Type string
+		Ref  string
+	}
+
+	urlToModuleID := make(map[string][]moduleID)
+	var urlInfos []urlInfo
+	totalRankedModules := 0
+	processedModules := 0
+
+	// Iterate through ranked modules
+	for moduleName, versions := range rankedModules {
+		for _, rv := range versions {
+			totalRankedModules++
+
+			// Only process modules with rank > 0 (those selected by MVS for doc generation)
+			if rv.rank <= 0 || rv.source == nil {
+				continue
+			}
+
+			processedModules++
+
+			// Get the module version proto
+			moduleVersion := rv.source.Proto()
+			if moduleVersion == nil || moduleVersion.Source == nil {
+				continue
+			}
+
+			// Skip if already has a commit SHA
+			if moduleVersion.Source.CommitSha != "" {
+				continue
+			}
+
+			// Parse the GitHub URL
+			parsed, err := gh.ParseGitHubSourceURL(moduleVersion.Source.Url)
+			if err != nil {
+				// Not a GitHub URL or doesn't match our patterns - skip silently
+				continue
+			}
+
+			// Track which module ID uses this URL
+			id := toModuleID(moduleName, rv.version)
+			urlToModuleID[moduleVersion.Source.Url] = append(urlToModuleID[moduleVersion.Source.Url], id)
+
+			// Add to our batch (deduplicate by URL - only add first occurrence)
+			if len(urlToModuleID[moduleVersion.Source.Url]) == 1 {
+				urlInfos = append(urlInfos, urlInfo{
+					URL:  moduleVersion.Source.Url,
+					Org:  parsed.Organization,
+					Repo: parsed.Repository,
+					Type: parsed.Type.String(),
+					Ref:  parsed.Reference,
+				})
+			}
+		}
+	}
+
+	log.Printf("Processing %d ranked modules (out of %d total modules)", processedModules, totalRankedModules)
+
+	if len(urlInfos) == 0 {
+		log.Printf("No GitHub source URLs need commit SHA resolution for ranked modules")
+		return
+	}
+
+	totalURLs := len(urlInfos)
+	log.Printf("Resolving commit SHAs for %d unique GitHub source URLs from ranked modules...", totalURLs)
+
+	// Convert to the format expected by BatchResolveSourceCommits
+	batchInfos := make([]struct {
+		URL  string
+		Org  string
+		Repo string
+		Type string
+		Ref  string
+	}, len(urlInfos))
+	for i, info := range urlInfos {
+		batchInfos[i] = info
+	}
+
+	// Resolve all commit SHAs in batch
+	results, err := gh.BatchResolveSourceCommits(ctx, ext.githubClient, batchInfos)
+	if err != nil {
+		log.Printf("error: failed to resolve source commit SHAs: %v", err)
+		return
+	}
+
+	// Update the module source rules with resolved commit SHAs
+	successCount := 0
+	errorCount := 0
+	processedCount := 0
+
+	for _, result := range results {
+		processedCount++
+
+		if result.Error != nil {
+			log.Printf("warning: [%d/%d] failed to resolve commit SHA for %s: %v", processedCount, totalURLs, result.URL, result.Error)
+			errorCount++
+			continue
+		}
+
+		if result.CommitSHA == "" {
+			log.Printf("warning: [%d/%d] empty commit SHA for %s", processedCount, totalURLs, result.URL)
+			errorCount++
+			continue
+		}
+
+		// Update all module IDs that use this URL
+		moduleIDs := urlToModuleID[result.URL]
+		for _, id := range moduleIDs {
+			if source, ok := ext.moduleSourceRules[id]; ok {
+				updateModuleSourceRuleSourceCommitSha(source, result.CommitSHA)
+				successCount++
+			}
+		}
+
+		if len(moduleIDs) > 0 {
+			log.Printf("info: [%d/%d] resolved %s → %s", processedCount, totalURLs, result.URL, result.CommitSHA[:8])
+		}
+	}
+
+	log.Printf("Commit SHA resolution complete: %d successful, %d errors, %d total URLs", successCount, errorCount, totalURLs)
+}

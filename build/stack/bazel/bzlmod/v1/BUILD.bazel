@@ -8,10 +8,7 @@ proto_library(
     name = "bzpb_proto",
     srcs = ["bcr.proto"],
     visibility = ["//visibility:public"],
-    deps = [
-        "//build/stack/starlark/v1beta1:v1beta1_proto",
-        "//stardoc_output:stardoc_output_proto",
-    ],
+    deps = ["//build/stack/starlark/v1beta1:v1beta1_proto"],
 )
 
 proto_compiled_sources(
@@ -50,6 +47,5 @@ closure_jspb_library(
     visibility = ["//visibility:public"],
     deps = [
         "//build/stack/starlark/v1beta1:v1beta1_proto_js",
-        "//stardoc_output:stardoc_output_js",
     ],
 )

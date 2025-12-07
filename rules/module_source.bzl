@@ -16,6 +16,7 @@ def _module_source_impl(ctx):
             docs_url = ctx.attr.docs_url,
             docs_url_status_code = ctx.attr.docs_url_status_code,
             docs_url_status_message = ctx.attr.docs_url_status_message,
+            commit_sha = ctx.attr.commit_sha,
         ),
     ]
 
@@ -53,6 +54,9 @@ module_source = rule(
         ),
         "docs_url_status_message": attr.string(
             doc = "str: HTTP status message of the docs URL",
+        ),
+        "commit_sha": attr.string(
+            doc = "str: Git commit SHA for the source URL (resolved from tags/releases)",
         ),
         "source_json": attr.label(
             doc = "File: The source.json file (required)",

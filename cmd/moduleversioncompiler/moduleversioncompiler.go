@@ -34,6 +34,7 @@ type Config struct {
 	UrlStatusMessage      string
 	DocsUrlStatusCode     int
 	DocsUrlStatusMessage  string
+	SourceCommitSha       string
 	IsLatestVersion       bool
 }
 
@@ -81,6 +82,7 @@ func run(args []string) error {
 			return fmt.Errorf("failed to read source.json: %v", err)
 		}
 		module.Source = source
+		module.Source.CommitSha = cfg.SourceCommitSha
 		if module.Source.Url != "" {
 			module.Source.UrlStatus = &bzpb.ResourceStatus{
 				Url:     module.Source.Url,
@@ -167,6 +169,7 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs.StringVar(&cfg.UrlStatusMessage, "url_status_message", "", "HTTP status message for the source URL (optional)")
 	fs.IntVar(&cfg.DocsUrlStatusCode, "docs_url_status_code", 0, "HTTP status code for the docs URL (optional)")
 	fs.StringVar(&cfg.DocsUrlStatusMessage, "docs_url_status_message", "", "HTTP status message for the docs URL (optional)")
+	fs.StringVar(&cfg.SourceCommitSha, "source_commit_sha", "", "the git commit SHA for the source URL (resolved from tags/releases, optional)")
 	fs.BoolVar(&cfg.IsLatestVersion, "is_latest_version", false, "if true, marks this module version as the latest one")
 
 	fs.Usage = func() {

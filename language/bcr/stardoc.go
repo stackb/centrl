@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	debugBzlRepositoryResolution          = false
 	binaryProtoRepositorySuffix           = ".binaryprotos"
 	binaryProtosRepositoryRootTargetName  = "files"
 	bzlRepositoryRootTargetName           = "modules"
@@ -30,20 +31,28 @@ const (
 	starlarkRepositoryLanguageName        = "starlarkrepository"
 )
 
+// rankedVersion represents a module version that has been ranked by the MVS algorithm.
+// The rank indicates priority for documentation generation - higher ranks are selected
+// when multiple versions of the same module are available. A rank of 0 means the version
+// is not selected for documentation.
 type rankedVersion struct {
-	version            moduleVersion
-	bzlRepositoryLabel label.Label
-	bzlRepositoryRule  *rule.Rule
-	source             *protoRule[*bzpb.ModuleVersion]
-	deps               []*protoRule[*bzpb.ModuleVersion]
-	rank               int
+	version            moduleVersion                     // semver version string
+	bzlRepositoryLabel label.Label                       // label of the starlark_repository rule
+	bzlRepositoryRule  *rule.Rule                        // the starlark_repository rule itself
+	source             *protoRule[*bzpb.ModuleVersion]   // source module version proto
+	deps               []*protoRule[*bzpb.ModuleVersion] // dependency module version protos
+	rank               int                               // MVS rank (0 = not selected, >0 = selected)
 }
 
+// rankedModuleVersionMap maps module names to their ranked versions.
+// Used to track which module versions should have documentation generated based on MVS.
 type rankedModuleVersionMap map[moduleName][]*rankedVersion
 
+// checkItem groups a URL with the module IDs that reference it.
+// Used for batching URL status checks to avoid duplicate network requests.
 type checkItem struct {
-	url       string
-	moduleIDs []moduleID
+	url       string     // URL to check (docs or source)
+	moduleIDs []moduleID // modules that reference this URL
 }
 
 // trackDocsUrl keeps a list of rules that reference this doc URL.
@@ -159,8 +168,8 @@ func (ext *bcrExtension) handleSourceUrlStatus(url string, moduleIDs []moduleID,
 	}
 
 	var moduleSourceProtoRule *protoRule[*bzpb.ModuleSource]
-	for _, is := range moduleIDs {
-		moduleSourceProtoRule = ext.moduleSourceRules[is]
+	for _, id := range moduleIDs {
+		moduleSourceProtoRule = ext.moduleSourceRules[id]
 		updateModuleSourceRuleUrlStatus(moduleSourceProtoRule.Rule(), status)
 	}
 
@@ -179,7 +188,6 @@ func (ext *bcrExtension) handleSourceUrlStatus(url string, moduleIDs []moduleID,
 	rule := makeBzlRepository(lbl, source)
 	name := moduleName(module.Name)
 	version := moduleVersion(module.Version)
-	log.Printf("DEBUG: Creating rankedVersion for %s@%s with label %s", module.Name, module.Version, lbl.String())
 	versions[name] = append(versions[name], &rankedVersion{version: version, bzlRepositoryRule: rule, bzlRepositoryLabel: lbl})
 }
 
@@ -290,11 +298,13 @@ func (ext *bcrExtension) finalizeBzlSrcsAndDeps(bzlRepositories rankedModuleVers
 	bzlDepsRuleMap := make(map[*protoRule[*bzpb.ModuleVersion]][]string)
 
 	// Debug: Log all available versions and their ranks
-	log.Println("=== Available bzl repository versions with ranks ===")
-	for moduleName, versions := range bzlRepositories {
-		for _, version := range versions {
-			if version.rank > 0 {
-				log.Printf("  %s@%s: rank=%d label=%s", moduleName, version.version, version.rank, version.bzlRepositoryLabel.String())
+	if debugBzlRepositoryResolution {
+		log.Println("=== Available bzl repository versions with ranks ===")
+		for moduleName, versions := range bzlRepositories {
+			for _, version := range versions {
+				if version.rank > 0 {
+					log.Printf("  %s@%s: rank=%d label=%s", moduleName, version.version, version.rank, version.bzlRepositoryLabel.String())
+				}
 			}
 		}
 	}
@@ -337,7 +347,6 @@ func (ext *bcrExtension) finalizeBzlSrcsAndDeps(bzlRepositories rankedModuleVers
 				for _, rule := range version.deps {
 					label := version.bzlRepositoryLabel.String()
 					bzlDepsRuleMap[rule] = append(bzlDepsRuleMap[rule], label)
-					log.Printf("DEBUG: Adding bzl_dep %s to rule %s@%s", label, rule.Proto().Name, rule.Proto().Version)
 				}
 			}
 		}
@@ -348,7 +357,6 @@ func (ext *bcrExtension) finalizeBzlSrcsAndDeps(bzlRepositories rankedModuleVers
 	}
 	for rule, bzlDeps := range bzlDepsRuleMap {
 		sort.Strings(bzlDeps)
-		log.Printf("DEBUG: Setting bzl_deps on %s@%s: %v", rule.Proto().Name, rule.Proto().Version, bzlDeps)
 		rule.Rule().SetAttr("bzl_deps", makeBzlDepsSelectExpr(bzlDeps))
 	}
 }
@@ -402,7 +410,7 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 			if useRepo != nil {
 				useRepo.List = append([]build.Expr{useRepo.List[0] /* the starlark_repository module extension symbol */}, bzlRepoNames...)
 				call.ForceMultiLine = true
-				log.Printf(`updated use_repo(starlark_repository") with %d names`, len(bzlRepoNames))
+				log.Printf(`updated use_repo(starlark_repository) with %d names`, len(bzlRepoNames))
 				break
 			}
 		}
@@ -694,7 +702,9 @@ func selectVersion(rule *protoRule[*bzpb.ModuleVersion], version moduleVersion, 
 
 	// Fallback to highest available version
 	fallback := available[len(available)-1]
-	log.Printf("WARNING: %s not available, falling back to %s", newModuleID(rule.Proto().Name, string(version)), newModuleID(rule.Proto().Name, string(fallback.version)))
+	if debugBzlRepositoryResolution {
+		log.Printf("WARNING: %s not available, falling back to %s", newModuleID(rule.Proto().Name, string(version)), newModuleID(rule.Proto().Name, string(fallback.version)))
+	}
 	return choose(fallback)
 }
 

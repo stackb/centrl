@@ -20,7 +20,7 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 	for _, filePath := range filesToExtract {
 		bzlFile, found := bzlFileByPath[filePath]
 		if !found {
-			return nil, fmt.Errorf("no file %q was found in the list of --bzl_file", filePath)
+			return nil, fmt.Errorf("file not found: %q (was in also included as a --bzl_file?)", filePath)
 		}
 
 		file := &bzpb.FileInfo{Label: bzlFile.Label}

@@ -47,6 +47,10 @@ def _compile_action(ctx, source, deps, attestations, presubmit, commit):
         args.add("--docs_url_status_code=" + str(source.docs_url_status_code))
         args.add("--docs_url_status_message=" + source.docs_url_status_message)
 
+        if source.commit_sha:
+            args.add("--source_commit_sha")
+            args.add(source.commit_sha)
+
     # Add optional presubmit.yml file
     if presubmit and presubmit.presubmit_yml:
         args.add("--presubmit_yml_file")

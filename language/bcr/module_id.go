@@ -20,6 +20,10 @@ func newModuleID(name, version string) moduleID {
 	return moduleID(fmt.Sprintf("%s@%s", name, version))
 }
 
+func toModuleID(name moduleName, version moduleVersion) moduleID {
+	return newModuleID(string(name), string(version))
+}
+
 // name returns the module name from the key
 func (k moduleID) name() moduleName {
 	parts := strings.SplitN(string(k), "@", 2)

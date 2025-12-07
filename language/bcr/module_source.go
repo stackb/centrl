@@ -55,6 +55,9 @@ func makeModuleSourceRule(module *bzpb.ModuleVersion, source *bzpb.ModuleSource,
 	if sourceJsonFile != "" {
 		r.SetAttr("source_json", sourceJsonFile)
 	}
+	if source.CommitSha != "" {
+		r.SetAttr("commit_sha", source.CommitSha)
+	}
 
 	return r
 }
@@ -75,4 +78,9 @@ func updateModuleSourceRuleUrlStatus(r *rule.Rule, status netutil.URLStatus) {
 	if status.Code != http.StatusOK && status.Message != "" {
 		r.SetAttr("url_status_message", status.Message)
 	}
+}
+
+func updateModuleSourceRuleSourceCommitSha(source *protoRule[*bzpb.ModuleSource], commitSHA string) {
+	source.Rule().SetAttr("commit_sha", commitSHA)
+	source.Proto().CommitSha = commitSHA
 }

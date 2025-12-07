@@ -6,7 +6,6 @@ package build.stack.bazel.bzlmod.v1;
 
 option go_package = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpb";
 
-import "stardoc_output/stardoc_output.proto";
 import "build/stack/starlark/v1beta1/starlark_server.proto";
 
 // Aggregate type about a module registry and all it's modules
@@ -134,6 +133,8 @@ message ModuleSource {
     ResourceStatus docs_url_status = 14;
     // the http response for the source_url
     ResourceStatus url_status = 15;
+     // the git commit SHA for the source URL (resolved from tags/releases, only from github for now)
+    string commit_sha = 16;
 }
 
 // Attestations represents an attestations.json file for a module version

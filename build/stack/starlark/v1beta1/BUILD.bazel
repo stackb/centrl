@@ -1,7 +1,7 @@
+load("@build_stack_rules_proto//rules:proto_compile.bzl", "proto_compile")
 load("@build_stack_rules_proto//rules:proto_compiled_sources.bzl", "proto_compiled_sources")
 load("@rules_go//go:def.bzl", "go_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@build_stack_rules_proto//rules:proto_compile.bzl", "proto_compile")
 load("@stackb_rules_closure//closure/protobuf:defs.bzl", "closure_jspb_library")
 
 proto_library(

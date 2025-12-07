@@ -614,17 +614,19 @@ import {
 {/template}
 
 {template githubSourceUrl kind="uri"}
-  {@inject commitSha: string}
   {@param moduleVersion: ModuleVersion}
-  {@param label: Label}
-  {@param location: SymbolLocation}
-{if $moduleVersion.getRepositoryMetadata()?.getType() == 1 /* GITHUB */}
+  {@param? label: Label}
+  {@param? location: SymbolLocation}
+{if $moduleVersion.getRepositoryMetadata()?.getType() == 1 /* GITHUB */ && $label}
 {let $org: $moduleVersion.getRepositoryMetadata().getOrganization() /}
 {let $repo: $moduleVersion.getRepositoryMetadata().getName() /}
 {let $pkg: $label.getPkg() /}
 {let $name: $label.getName() /}
 {let $path: $pkg ? $pkg + '/' + $name : $name /}
-https://github.com/{$org}/{$repo}/blob/{$commitSha}/{$path}{if $location.getStart()}#L{$location.getStart().getLine()}{if $location.getEnd() && $location.getEnd().getLine() != $location.getStart().getLine()}-L{$location.getEnd().getLine()}{/if}{/if}
+{let $commitSha: $moduleVersion.getSource()?.getCommitSha() /}
+{if $commitSha}
+https://github.com/{$org}/{$repo}/blob/{$commitSha}/{$path}?plain=1{if $location && $location.getStart()}#L{$location.getStart().getLine()}{if $location.getEnd() && $location.getEnd().getLine() != $location.getStart().getLine()}-L{$location.getEnd().getLine()}{/if}{/if}
+{/if}
 {/if}
 {/template}
 

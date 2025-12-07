@@ -8,7 +8,6 @@ package bzpb
 
 import (
 	v1beta1 "github.com/stackb/centrl/build/stack/starlark/v1beta1"
-	_ "github.com/stackb/centrl/stardoc_output"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -770,6 +769,7 @@ type ModuleSource struct {
 	Documentation *DocumentationInfo     `protobuf:"bytes,13,opt,name=documentation,proto3" json:"documentation,omitempty"`
 	DocsUrlStatus *ResourceStatus        `protobuf:"bytes,14,opt,name=docs_url_status,json=docsUrlStatus,proto3" json:"docs_url_status,omitempty"`
 	UrlStatus     *ResourceStatus        `protobuf:"bytes,15,opt,name=url_status,json=urlStatus,proto3" json:"url_status,omitempty"`
+	CommitSha     string                 `protobuf:"bytes,16,opt,name=commit_sha,json=commitSha,proto3" json:"commit_sha,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -907,6 +907,13 @@ func (x *ModuleSource) GetUrlStatus() *ResourceStatus {
 		return x.UrlStatus
 	}
 	return nil
+}
+
+func (x *ModuleSource) GetCommitSha() string {
+	if x != nil {
+		return x.CommitSha
+	}
+	return ""
 }
 
 type Attestations struct {
@@ -2401,7 +2408,7 @@ var File_build_stack_bazel_bzlmod_v1_bcr_proto protoreflect.FileDescriptor
 
 const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\n" +
-	"%build/stack/bazel/bzlmod/v1/bcr.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\x1a#stardoc_output/stardoc_output.proto\x1a2build/stack/starlark/v1beta1/starlark_server.proto\"\x92\x02\n" +
+	"%build/stack/bazel/bzlmod/v1/bcr.proto\x12\x1bbuild.stack.bazel.bzlmod.v1\x1a2build/stack/starlark/v1beta1/starlark_server.proto\"\x92\x02\n" +
 	"\bRegistry\x12=\n" +
 	"\amodules\x18\x01 \x03(\v2#.build.stack.bazel.bzlmod.v1.ModuleR\amodules\x12%\n" +
 	"\x0erepository_url\x18\x02 \x01(\tR\rrepositoryUrl\x12!\n" +
@@ -2459,7 +2466,7 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\x05R\x04code\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"X\n" +
 	"\x11ResourceStatusSet\x12C\n" +
-	"\x06status\x18\x01 \x03(\v2+.build.stack.bazel.bzlmod.v1.ResourceStatusR\x06status\"\xb8\x06\n" +
+	"\x06status\x18\x01 \x03(\v2+.build.stack.bazel.bzlmod.v1.ResourceStatusR\x06status\"\xd7\x06\n" +
 	"\fModuleSource\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x1c\n" +
 	"\tintegrity\x18\x02 \x01(\tR\tintegrity\x12!\n" +
@@ -2479,7 +2486,9 @@ const file_build_stack_bazel_bzlmod_v1_bcr_proto_rawDesc = "" +
 	"\rdocumentation\x18\r \x01(\v2..build.stack.bazel.bzlmod.v1.DocumentationInfoR\rdocumentation\x12S\n" +
 	"\x0fdocs_url_status\x18\x0e \x01(\v2+.build.stack.bazel.bzlmod.v1.ResourceStatusR\rdocsUrlStatus\x12J\n" +
 	"\n" +
-	"url_status\x18\x0f \x01(\v2+.build.stack.bazel.bzlmod.v1.ResourceStatusR\turlStatus\x1a:\n" +
+	"url_status\x18\x0f \x01(\v2+.build.stack.bazel.bzlmod.v1.ResourceStatusR\turlStatus\x12\x1d\n" +
+	"\n" +
+	"commit_sha\x18\x10 \x01(\tR\tcommitSha\x1a:\n" +
 	"\fPatchesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +

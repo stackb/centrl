@@ -217,7 +217,7 @@ def my_rule():
 			}
 
 			// Read rewritten file
-			dstPath := filepath.Join(tmpDir, workDir, tt.bzlFile.EffectivePath)
+			dstPath := filepath.Join(tmpDir, workDir, tt.bzlFile.Path)
 			rewrittenContent, err := os.ReadFile(dstPath)
 			if err != nil {
 				t.Fatalf("failed to read rewritten file: %v", err)

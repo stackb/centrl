@@ -58,6 +58,7 @@ ModuleSourceInfo = provider(
         "docs_url": "str: Documentation archive URL (empty string if not set)",
         "docs_url_status_code": "int: HTTP status code of the docs URL",
         "docs_url_status_message": "str: HTTP status message of the docs URL",
+        "commit_sha": "str: Git commit SHA for the source URL (resolved from tags/releases)",
     },
 )
 
