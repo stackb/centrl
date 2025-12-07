@@ -28,7 +28,11 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 		module, err := extractModule(cfg, bzlFile)
 		if err != nil {
 			file.Error = err.Error()
-			cfg.Logger.Printf("🔴 failed to extract %+v: %v", bzlFile, err)
+			if cfg.ErrorLimit > 0 && errors > cfg.ErrorLimit {
+				cfg.Logger.Panicf("🔴 failed to extract %+v: %v", bzlFile, err)
+			} else {
+				cfg.Logger.Printf("🔴 failed to extract %+v: %v", bzlFile, err)
+			}
 			errors++
 		} else {
 			stardoc.ModuleToFileInfo(file, module)

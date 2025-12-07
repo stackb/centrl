@@ -39,8 +39,10 @@ const relative = goog.require("goog.date.relative");
 const soy = goog.require("goog.soy");
 const strings = goog.require("goog.string");
 const { App, Component, Route, RouteEvent, RouteEventType } = goog.require("stack.ui");
-const { Application, Searchable } = goog.require("centrl.common");
-const { ModuleSearchHandler, SearchComponent } = goog.require('centrl.search');
+const { Application, SearchProvider, Searchable } = goog.require("centrl.common");
+const { DocumentationSearchHandler } = goog.require("centrl.documentation_search");
+const { ModuleSearchHandler } = goog.require("centrl.module_search");
+const { SearchComponent } = goog.require('centrl.search');
 const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app'); const { moduleVersionsListComponent } = goog.require('soy.registry');
 
 const HIGHLIGHT_SYNTAX = true;
@@ -564,8 +566,44 @@ class HomeOverviewComponent extends Component {
         const maintainers = createMaintainersMap(this.registry_);
 
         let totalModuleVersions = 0;
+        const symbolCounts = {
+            rules: 0,
+            functions: 0,
+            providers: 0,
+            aspects: 0,
+            moduleExtensions: 0,
+            repositoryRules: 0,
+            macros: 0,
+        };
+
         for (const module of modules.values()) {
             totalModuleVersions += module.getVersionsList().length;
+
+            // Count symbols from all versions
+            for (const version of module.getVersionsList()) {
+                const source = version.getSource();
+                if (!source) continue;
+
+                const docs = source.getDocumentation();
+                if (!docs) continue;
+
+                for (const file of docs.getFileList()) {
+                    if (file.getError()) continue;
+
+                    for (const sym of file.getSymbolList()) {
+                        const type = sym.getType();
+                        switch (type) {
+                            case 1: symbolCounts.rules++; break;
+                            case 2: symbolCounts.functions++; break;
+                            case 3: symbolCounts.providers++; break;
+                            case 4: symbolCounts.aspects++; break;
+                            case 5: symbolCounts.moduleExtensions++; break;
+                            case 6: symbolCounts.repositoryRules++; break;
+                            case 7: symbolCounts.macros++; break;
+                        }
+                    }
+                }
+            }
         }
 
         this.setElementInternal(soy.renderAsElement(homeOverviewComponent, {
@@ -574,6 +612,13 @@ class HomeOverviewComponent extends Component {
             totalModules: modules.size,
             totalModuleVersions: totalModuleVersions,
             totalMaintainers: maintainers.size,
+            totalRules: symbolCounts.rules,
+            totalFunctions: symbolCounts.functions,
+            totalProviders: symbolCounts.providers,
+            totalAspects: symbolCounts.aspects,
+            totalModuleExtensions: symbolCounts.moduleExtensions,
+            totalRepositoryRules: symbolCounts.repositoryRules,
+            totalMacros: symbolCounts.macros,
         }));
     }
 }
@@ -3406,6 +3451,9 @@ class RegistryApp extends App {
         /** @const @private @type {!ModuleSearchHandler} */
         this.moduleSearchHandler_ = new ModuleSearchHandler(registry);
 
+        /** @const @private @type {!DocumentationSearchHandler} */
+        this.documentationSearchHandler_ = new DocumentationSearchHandler(registry);
+
         /** @private @type {?SearchComponent} */
         this.search_ = null;
     }
@@ -3479,6 +3527,15 @@ class RegistryApp extends App {
         );
 
         this.moduleSearchHandler_.addModules(this.registry_.getModulesList());
+        this.documentationSearchHandler_.addAllSymbols();
+
+        this.search_.addSearchProvider(
+            this.moduleSearchHandler_.getSearchProvider(),
+        );
+        this.search_.addSearchProvider(
+            this.documentationSearchHandler_.getSearchProvider(),
+        );
+
         this.rebuildSearch();
     }
 
@@ -3510,10 +3567,23 @@ class RegistryApp extends App {
             return;
         }
 
+        // CMD-P (Mac) or CTRL-P (Windows/Linux) to focus documentation search
+        if (e.keyCode === events.KeyCodes.P && (e.metaKey || e.ctrlKey)) {
+            if (this.getKbd().isEnabled()) {
+                this.focusSearchBox(e, this.documentationSearchHandler_.getSearchProvider());
+            }
+            return;
+        }
+
         switch (e.keyCode) {
             case events.KeyCodes.SLASH:
                 if (this.getKbd().isEnabled()) {
-                    this.focusSearchBox(e);
+                    this.focusSearchBox(e, this.moduleSearchHandler_.getSearchProvider());
+                }
+                break;
+            case events.KeyCodes.COMMA:
+                if (this.getKbd().isEnabled()) {
+                    this.focusSearchBox(e, this.documentationSearchHandler_.getSearchProvider());
                 }
                 break;
         }
@@ -3528,8 +3598,12 @@ class RegistryApp extends App {
      *
      * @param {!events.BrowserEvent=} opt_e The browser event this action is
      *     in response to. If provided, the event's propagation will be cancelled.
+     * @param {?SearchProvider=} opt_searchProvider If a provider is given, set to the active one.
      */
-    focusSearchBox(opt_e) {
+    focusSearchBox(opt_e, opt_searchProvider) {
+        if (opt_searchProvider) {
+            this.search_.setCurrentProvider(opt_searchProvider);
+        }
         this.search_.focus();
         if (opt_e) {
             opt_e.preventDefault();
@@ -3633,9 +3707,6 @@ class RegistryApp extends App {
 
     rebuildSearch() {
         this.search_.findSearchProviders(this.activeComponent_);
-        this.search_.addSearchProvider(
-            this.moduleSearchHandler_.getSearchProvider(),
-        );
         this.search_.rebuild();
     }
 

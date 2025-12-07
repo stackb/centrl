@@ -28,6 +28,7 @@ type config struct {
 	Logger              *log.Logger
 	OutputFile          string
 	PersistentWorker    bool
+	ErrorLimit          int
 	Port                int
 	ServerJarFile       string
 	BzlFiles            bzlFileSlice // the transitive set of .bzl files in the sandbox
@@ -45,6 +46,7 @@ func parseConfig(args []string) (*config, error) {
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
 	fs.IntVar(&cfg.Port, "port", 0, "the port number to use for the server process.  If a port is assigned, assume server is running external to this worker.  If it is unassigned, self-host the server as a child process.")
 	fs.BoolVar(&cfg.PersistentWorker, "persistent_worker", false, "present if this tool is being invoked as a bazel persistent worker")
+	fs.IntVar(&cfg.ErrorLimit, "error_limit", 0, "fail if we exceed this limit (must be non-zero to take effect)")
 	fs.Var(&cfg.BzlFiles, "bzl_file", "bzl source file mapping in the format LABEL=PATH (repeatable)")
 	fs.Var(&cfg.moduleDeps, "module_dep", "module dependency map (repeatable)")
 	fs.Usage = func() {

@@ -11,6 +11,7 @@ import {
     octiconSkip24,
     octiconCode16,
     octiconDotFill16,
+    octiconDotFill24,
     octiconFile16,
     octiconGear16,
     octiconGitCommit16,
@@ -225,6 +226,13 @@ import {
   {@param totalModules: int}
   {@param totalModuleVersions: int}
   {@param totalMaintainers: int}
+  {@param totalRules: int}
+  {@param totalFunctions: int}
+  {@param totalProviders: int}
+  {@param totalAspects: int}
+  {@param totalModuleExtensions: int}
+  {@param totalRepositoryRules: int}
+  {@param totalMacros: int}
 <div class="d-flex flex-column flex-items-center flex-justify-center p-4">
     {logo()}
     <div class="p-2 mt-4 text-light" style="background: var(--color-neutral-subtle); border-width: 0.5rem">
@@ -241,9 +249,18 @@ import {
       {octiconChevronLeft16()}
     </div>
     <div class="d-flex flex-row flex-items-center flex-justify-center mt-3" style="gap: 3rem">
-      {statDisplay(value: $totalModules, label: 'Modules')}
-      {statDisplay(value: $totalModuleVersions, label: 'Module Versions')}
-      {statDisplay(value: $totalMaintainers, label: 'Maintainers')}
+      {largeStatDisplay(value: $totalModules, label: 'Modules')}
+      {largeStatDisplay(value: $totalModuleVersions, label: 'Module Versions')}
+      {largeStatDisplay(value: $totalMaintainers, label: 'Maintainers')}
+    </div>
+    <div class="d-flex flex-row flex-items-center flex-justify-center mt-3" style="gap: 2rem">
+      {statDisplay(value: $totalRules, label: 'Rules', color: symbolColor(type: 1))}
+      {statDisplay(value: $totalFunctions, label: 'Functions', color: symbolColor(type: 2))}
+      {statDisplay(value: $totalProviders, label: 'Providers', color: symbolColor(type: 3))}
+      {statDisplay(value: $totalAspects, label: 'Aspects', color: symbolColor(type: 4))}
+      {statDisplay(value: $totalModuleExtensions, label: 'Module Extensions', color: symbolColor(type: 5))}
+      {statDisplay(value: $totalRepositoryRules, label: 'Repository Rules', color: symbolColor(type: 6))}
+      {statDisplay(value: $totalMacros, label: 'Macros', color: symbolColor(type: 7))}
     </div>
     <div class="Box Box--condensed mt-4" style="width: 100%; max-width: 800px">
       <div class="Box-header">
@@ -280,7 +297,7 @@ import {
 {/template}
 
 
-{template statDisplay}
+{template largeStatDisplay}
   {@param value: ?}
   {@param label: string}
 <div class="d-flex flex-column flex-items-center anim-scale-in">
@@ -293,6 +310,22 @@ import {
 </div>
 {/template}
 
+{template statDisplay}
+  {@param value: ?}
+  {@param label: string}
+  {@param? color: string}
+<div class="d-flex flex-column flex-items-right anim-scale-in">
+  <div class="f2-mktg d-flex flex-items-center">
+    {$value}
+    {if $color}
+      {octiconDotFill16(fill: 'var(' + $color + ')')}
+    {/if}
+  </div>
+  <div class="f4-light color-fg-muted d-flex flex-items-center">
+    {$label}
+  </div>
+</div>
+{/template}
 
 {template maintainersMapComponent}
   {@param maintainers: map<string,Maintainer>}
@@ -1674,6 +1707,21 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
         {$description|truncate:96}
       </span>
     {/if}
+  </div>
+{/template}
+
+
+{template symbolSearchRow kind="html<div>"}
+  {@param sym: SymbolInfo}
+  {@param moduleVersion: string}
+  {@param filePath: string}
+  <div class="d-flex flex-items-center">
+    <span class="text-semibold flex-auto">{$sym.getName()}</span>
+    <span class="Label Label--secondary ml-2" style="font-size: 11px;">{$moduleVersion}</span>
+    <span class="color-fg-muted text-small ml-2">{$filePath}</span>
+    <span class="Label ml-2" style="background-color: var({symbolColor(type: $sym.getType())}); color: var(--color-fg-on-emphasis); font-size: 11px;">
+      {symbolTypeName(type: $sym.getType())}
+    </span>
   </div>
 {/template}
 

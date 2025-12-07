@@ -14,7 +14,7 @@ load("//rules:release.bzl", "release_archive")
 
 string_flag(
     name = "release_type",
-    build_setting_default = "production",
+    build_setting_default = "debug",
     values = [
         "debug",
         "production",
@@ -122,7 +122,9 @@ closure_js_library(
     name = "app",
     srcs = [
         "app.js",
+        "documentation_search.js",
         "main.js",
+        "module_search.js",
         "search.js",
         ":shiki",
     ],
