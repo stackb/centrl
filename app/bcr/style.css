@@ -67,7 +67,7 @@
 .treeview-item-row {
     display: flex;
     align-items: center;
-    padding-left: calc((var(--level, 0) - 1) * 24px);
+    padding-left: calc((var(--level, 0) - 1) * 24px + 0.25rem);
     min-height: 24px;
 }
 
@@ -79,15 +79,7 @@
 .treeview-line {
     flex-shrink: 0;
     display: block;
-}
-
-.treeview-chevron {
-    transition: transform 0.2s ease;
-    transform-origin: 0 0;
-}
-
-.treeview-chevron-expanded {
-    transform: rotate(90deg);
+    margin-right: 0.25rem;
 }
 
 .treeview-label {
@@ -95,17 +87,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    user-select: none;
     line-height: 24px;
-    cursor: default;
+    text-decoration: none;
+    color: inherit;
 }
 
-.treeview-label[role="button"] {
-    cursor: pointer;
-}
-
-.treeview-label[role="button"]:hover {
+.treeview-label:hover {
     color: var(--color-accent-fg);
+    text-decoration: underline;
 }
 
 .treeview-metadata {
@@ -132,16 +121,4 @@
     list-style: none;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.2s ease;
-}
-
-.treeview-children-collapsed {
-    max-height: 0;
-    opacity: 0;
-}
-
-.treeview-children-expanded {
-    max-height: none;
-    opacity: 1;
 }

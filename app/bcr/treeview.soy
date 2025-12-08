@@ -1,32 +1,31 @@
 {namespace soy.centrl.treeview}
 
 import {DependencyTree, DependencyTreeNode} from 'build/stack/bazel/bzlmod/v1/bcr.proto';
+import {moduleVersionUrl} from 'app/bcr/registry.soy';
 
 /**
  * Renders a TreeView with SVG tree lines for a DependencyTree.
  */
 {template dependencyTree}
   {@param tree: DependencyTree}
-  {@param? expanded: bool}
   <div class="treeview-root" role="tree">
     <div class="treeview-item treeview-item-root" role="treeitem">
       <div class="treeview-item-row">
-        <span class="treeview-label">
-          {$tree.getModuleVersion()?.getName()}
+        {let $rootVersion: checkNotNull($tree.getModuleVersion()) /}
+        <a class="treeview-label" href="{moduleVersionUrl(name: $rootVersion.getName(), version: $rootVersion.getVersion())}">
+          {$rootVersion.getName()}
           <span class="ml-1 text-light text-small">
-            {$tree.getModuleVersion()?.getVersion()}
+            {$rootVersion.getVersion()}
           </span>
-        </span>
+        </a>
       </div>
       {if $tree.getChildrenList() && length($tree.getChildrenList()) > 0}
-        <div class="treeview-children {$expanded ? 'treeview-children-expanded' : 'treeview-children-collapsed'}"
-            role="group">
+        <div class="treeview-children" role="group">
           {for $child, $index in $tree.getChildrenList()}
             {call dependencyTreeNode}
               {param node: $child /}
               {param level: 1 /}
               {param isLast: $index == length($tree.getChildrenList()) - 1 /}
-              {param expanded: $expanded /}
             {/call}
           {/for}
         </div>
@@ -42,16 +41,11 @@ import {DependencyTree, DependencyTreeNode} from 'build/stack/bazel/bzlmod/v1/bc
   {@param node: DependencyTreeNode}
   {@param level: int}
   {@param isLast: bool}
-  {@param? expanded: bool}
 
   {let $hasChildren: $node.getChildrenList() && length($node.getChildrenList()) > 0 /}
-  {let $isExpanded: $expanded ? true : false /}
 
   <div class="treeview-item {$isLast ? 'treeview-item-last' : ''}" role="treeitem"
       data-tree-id="{$node.getModuleVersion()?.getName()}@{$node.getModuleVersion()?.getVersion()}"
-      {if $hasChildren}
-        aria-expanded="{$isExpanded ? 'true' : 'false'}"
-      {/if}
       style="--level: {$level}; --is-last: {$isLast ? '1' : '0'};">
 
     <div class="treeview-item-row">
@@ -62,45 +56,44 @@ import {DependencyTree, DependencyTreeNode} from 'build/stack/bazel/bzlmod/v1/bc
         <!-- Vertical line coming from above -->
         <line x1="0" y1="0" x2="0" y2="12" stroke="var(--color-border-default)" stroke-width="1.5"/>
 
-        <!-- Vertical line continuing below (only if not last item and either no children or children collapsed) -->
-        {if !$isLast && (!$hasChildren || !$isExpanded)}
+        <!-- Vertical line continuing below (only if not last item) -->
+        {if !$isLast}
           <line x1="0" y1="12" x2="0" y2="24" stroke="var(--color-border-default)" stroke-width="1.5"/>
         {/if}
 
-        <!-- Expand/collapse indicator -->
-        {if $hasChildren}
-          <circle cx="18" cy="12" r="3" fill="var(--color-border-default)"/>
-          <g class="treeview-chevron {$isExpanded ? 'treeview-chevron-expanded' : ''}" transform="translate(18, 12)">
-            <path d="M-2,-1 L0,1 L-2,3" fill="none" stroke="var(--color-canvas-default)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </g>
+        <!-- Indicator dot for nodes with children or pruned -->
+        {if $hasChildren || $node.getPruned()}
+          <circle cx="18" cy="12" r="2.5" fill="var(--color-border-default)"/>
         {/if}
       </svg>
 
-      <span class="treeview-label" {if $hasChildren}role="button" tabindex="0"{/if}>
-        {$node.getModuleVersion()?.getName()}
+      {let $nodeVersion: checkNotNull($node.getModuleVersion()) /}
+      <a class="treeview-label" href="{moduleVersionUrl(name: $nodeVersion.getName(), version: $nodeVersion.getVersion())}">
+        {$nodeVersion.getName()}
         <span class="ml-1 text-light text-small">
-          {if $node.getUpgraded() && $node.getRequestedVersion() != $node.getModuleVersion()?.getVersion()}
+          {if $node.getUpgraded() && $node.getRequestedVersion() != $nodeVersion.getVersion()}
             <span class="mr-1" style="text-decoration: line-through;">{$node.getRequestedVersion()}</span>
-            <span class="text-bold" style="color: var(--fgColor-attention, var(--color-attention-fg));">{$node.getModuleVersion()?.getVersion()}</span>
+            <span class="text-bold" style="color: var(--fgColor-attention, var(--color-attention-fg));">{$nodeVersion.getVersion()}</span>
           {else}
-            {$node.getModuleVersion()?.getVersion()}
+            {$nodeVersion.getVersion()}
           {/if}
         </span>
         {if $node.getDev()}
           <span class="ml-1 text-light text-small">[dev]</span>
         {/if}
-      </span>
+        {if $node.getPruned()}
+          <span class="ml-1 text-light text-small">*</span>
+        {/if}
+      </a>
     </div>
 
     {if $hasChildren}
-      <div class="treeview-children {$isExpanded ? 'treeview-children-expanded' : 'treeview-children-collapsed'}"
-          role="group">
+      <div class="treeview-children" role="group">
         {for $child, $index in $node.getChildrenList()}
           {call dependencyTreeNode}
             {param node: $child /}
             {param level: $level + 1 /}
             {param isLast: $index == length($node.getChildrenList()) - 1 /}
-            {param expanded: $expanded /}
           {/call}
         {/for}
       </div>

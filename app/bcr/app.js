@@ -1919,7 +1919,7 @@ class ModuleVersionComponent extends Component {
         const deps = this.moduleVersion_.getDepsList().filter(d => !d.getDev());
         if (deps.length > 0) {
             const regularTreeContainer = dom.getRequiredElementByClass(goog.getCssName('mvs-tree-reg'), this.getElementStrict());
-            const regularTree = new MvsDependencyTree(moduleName, version, mvs, false, this.dom_, true);
+            const regularTree = new MvsDependencyTree(moduleName, version, mvs, false, this.dom_);
             this.addChild(regularTree, false);
             regularTree.render(regularTreeContainer);
         }
@@ -1928,7 +1928,7 @@ class ModuleVersionComponent extends Component {
         const devDeps = this.moduleVersion_.getDepsList().filter(d => d.getDev());
         if (devDeps.length > 0) {
             const devTreeContainer = dom.getRequiredElementByClass(goog.getCssName('mvs-tree-dev'), this.getElementStrict());
-            const devTree = new MvsDependencyTree(moduleName, version, mvs, true, this.dom_, true);
+            const devTree = new MvsDependencyTree(moduleName, version, mvs, 'only', this.dom_);
             this.addChild(devTree, false);
             devTree.render(devTreeContainer);
         }

@@ -91,7 +91,15 @@ class MVS {
 
         const tree = new DependencyTree();
         tree.setModuleVersion(rootModuleVersion);
-        tree.setChildrenList(children);
+
+        // If includeDev === 'only', filter root children to only include dev dependencies
+        if (includeDev === 'only') {
+            const devOnlyChildren = children.filter(child => child.getDev());
+            tree.setChildrenList(devOnlyChildren);
+        } else {
+            tree.setChildrenList(children);
+        }
+
         return tree;
     }
 
@@ -179,6 +187,10 @@ class MVS {
                 continue;
             }
 
+            // Check if this node was already visited
+            const selectedKey = `${selectedModuleVersion.getName()}@${selectedModuleVersion.getVersion()}`;
+            const isPruned = visited.has(selectedKey);
+
             // Recursively build children (visited set prevents infinite loops)
             const grandchildren = this.buildTree(selectedModuleVersion, visited, selected, includeDev);
 
@@ -187,6 +199,7 @@ class MVS {
             node.setRequestedVersion(requestedVersion);
             node.setUpgraded(upgraded);
             node.setDev(dep.getDev() || false);
+            node.setPruned(isPruned);
             node.setChildrenList(grandchildren);
             children.push(node);
         }

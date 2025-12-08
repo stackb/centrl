@@ -18,9 +18,8 @@ class MvsDependencyTree extends Component {
      * @param {!MVS} mvs The MVS instance
      * @param {(boolean|string)=} includeDev Whether to include dev dependencies: false (exclude), true (include all), 'only' (only dev)
      * @param {?goog.dom.DomHelper=} opt_domHelper
-     * @param {boolean=} expanded Whether to start expanded (default: false)
      */
-    constructor(moduleName, version, mvs, includeDev = false, opt_domHelper = null, expanded = false) {
+    constructor(moduleName, version, mvs, includeDev = false, opt_domHelper = null) {
         super(opt_domHelper);
 
         /** @private @const {string} */
@@ -34,9 +33,6 @@ class MvsDependencyTree extends Component {
 
         /** @private @const {(boolean|string)} */
         this.includeDev_ = includeDev;
-
-        /** @private @const {boolean} */
-        this.expanded_ = expanded;
 
         /** @private {?TreeView} */
         this.treeView_ = null;
@@ -64,7 +60,7 @@ class MvsDependencyTree extends Component {
         }
 
         // Create and render the TreeView with the DependencyTree directly
-        this.treeView_ = new TreeView(dependencyTree, this.expanded_);
+        this.treeView_ = new TreeView(dependencyTree);
         this.addChild(this.treeView_, true);
     }
 
@@ -75,24 +71,6 @@ class MvsDependencyTree extends Component {
             this.treeView_ = null;
         }
         super.disposeInternal();
-    }
-
-    /**
-     * Expands all nodes in the tree.
-     */
-    expandAll() {
-        if (this.treeView_) {
-            this.treeView_.expandAll();
-        }
-    }
-
-    /**
-     * Collapses all nodes in the tree.
-     */
-    collapseAll() {
-        if (this.treeView_) {
-            this.treeView_.collapseAll();
-        }
     }
 }
 
