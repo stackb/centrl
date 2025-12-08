@@ -47,7 +47,7 @@ const { ModuleSearchHandler } = goog.require('centrl.module_search');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
 const { SearchComponent } = goog.require('centrl.search');
 const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app');
-const { moduleVersionsListComponent } = goog.require('soy.registry');
+const { moduleDependencyRow, moduleVersionsListComponent } = goog.require('soy.registry');
 
 const HIGHLIGHT_SYNTAX = true;
 const FORMAT_MARKDOWN = true;
@@ -1991,7 +1991,7 @@ class ModuleVersionComponent extends Component {
         const deps = this.getDirectDeps(this.moduleVersion_.getVersion());
         if (deps.length > 0) {
             const depsEl = dom.getRequiredElementByClass(goog.getCssName('dependents'), this.getElementStrict());
-            const depsComponent = new ModuleVersionDependenciesComponent(this.registry_, this.module_, this.moduleVersion_, false, 'Used By', deps);
+            const depsComponent = new ModuleVersionDependentsComponent(this.registry_, this.module_, this.moduleVersion_, deps, 'Used By');
             this.addChild(depsComponent, false);
             depsComponent.render(depsEl);
         }
@@ -2195,11 +2195,11 @@ class ModuleVersionDependentsComponent extends ContentComponent {
      * @param {!Registry} registry
      * @param {!Module} module
      * @param {!ModuleVersion} moduleVersion
-     * @param {boolean} dev
+     * @param {!Array<!ModuleDependency>} directDeps
      * @param {string} title
      * @param {?dom.DomHelper=} opt_domHelper
      */
-    constructor(registry, module, moduleVersion, dev, title, opt_domHelper) {
+    constructor(registry, module, moduleVersion, directDeps, title, opt_domHelper) {
         super(opt_domHelper);
 
         /** @private @const @type {!Registry} */
@@ -2211,14 +2211,14 @@ class ModuleVersionDependentsComponent extends ContentComponent {
         /** @private @const @type {!ModuleVersion} */
         this.moduleVersion_ = moduleVersion;
 
-        /** @private @const @type {boolean} */
-        this.dev_ = dev;
+        /** @private @const @type {!Array<!ModuleDependency>} */
+        this.directDeps_ = directDeps;
 
         /** @private @const @type {string} */
         this.title_ = title;
 
-        /** @private @type {?MvsDependencyTree} */
-        this.treeComponent_ = null;
+        /** @private @type {?Array<!ModuleDependency>} */
+        this.transitiveDeps_ = null;
     }
 
     /**
@@ -2227,7 +2227,7 @@ class ModuleVersionDependentsComponent extends ContentComponent {
     createDom() {
         this.setElementInternal(soy.renderAsElement(moduleVersionDependentsComponent, {
             title: this.title_,
-            deps: this.moduleVersion_.getDepsList().filter(d => d.getDev() === this.dev_),
+            deps: this.directDeps_,
         }, {
             latestVersions: getLatestModuleVersionsByName(this.registry_),
             versionDistances: getVersionDistances(this.registry_),
@@ -2240,57 +2240,57 @@ class ModuleVersionDependentsComponent extends ContentComponent {
     enterDocument() {
         super.enterDocument();
 
-        this.enterListButton();
-        this.enterTreeButton();
+        this.enterDirectButton();
+        this.enterTransitiveButton();
     }
 
-    enterListButton() {
+    enterDirectButton() {
         this.getHandler().listen(
-            this.getCssElement(goog.getCssName('btn-list')),
+            this.getCssElement(goog.getCssName('btn-direct')),
             events.EventType.CLICK,
-            this.handleListButtonElementClick,
+            this.handleDirectButtonElementClick,
         );
     }
 
-    enterTreeButton() {
+    enterTransitiveButton() {
         this.getHandler().listen(
-            this.getCssElement(goog.getCssName('btn-tree')),
+            this.getCssElement(goog.getCssName('btn-transitive')),
             events.EventType.CLICK,
-            this.handleTreeButtonElementClick,
+            this.handleTransitiveButtonElementClick,
         );
     }
 
     /**
      * @param {!events.Event} e
      */
-    handleListButtonElementClick(e) {
+    handleDirectButtonElementClick(e) {
         this.toggleContentElements(false);
     }
 
     /**
      * @param {!events.Event} e
      */
-    handleTreeButtonElementClick(e) {
+    handleTransitiveButtonElementClick(e) {
         this.toggleContentElements(true);
     }
 
     /**
-     * @param {boolean} displayTree 
+     * @param {boolean} displayTransitive
      */
-    toggleContentElements(displayTree) {
-        const contentEl = this.getContentElement();
-        const treeContentEl = this.getTreeContentElement();
-        const btnListEl = this.getListButtonElement();
-        const btnTreeEl = this.getTreeButtonElement();
+    toggleContentElements(displayTransitive) {
+        const directContentEl = this.getDirectContentElement();
+        const transitiveContentEl = this.getTransitiveContentElement();
+        const btnDirectEl = this.getDirectButtonElement();
+        const btnTransitiveEl = this.getTransitiveButtonElement();
 
-        if (displayTree && !this.treeComponent_) {
-            this.enterTreeComponent(treeContentEl);
+        if (displayTransitive && !this.transitiveDeps_) {
+            this.enterTransitiveContent(transitiveContentEl);
         }
 
-        const displayContentEl = displayTree ? treeContentEl : contentEl;
-        const hideContentEl = displayTree ? contentEl : treeContentEl;
-        const selectButtonEl = displayTree ? btnTreeEl : btnListEl;
-        const unselectButtonEl = displayTree ? btnListEl : btnTreeEl;
+        const displayContentEl = displayTransitive ? transitiveContentEl : directContentEl;
+        const hideContentEl = displayTransitive ? directContentEl : transitiveContentEl;
+        const selectButtonEl = displayTransitive ? btnTransitiveEl : btnDirectEl;
+        const unselectButtonEl = displayTransitive ? btnDirectEl : btnTransitiveEl;
 
         style.setElementShown(displayContentEl, true);
         style.setElementShown(hideContentEl, false);
@@ -2300,42 +2300,104 @@ class ModuleVersionDependentsComponent extends ContentComponent {
     }
 
     /**
-     * @param {!Element} treeContentEl The elenent to render the tree into.
-     * @returns 
+     * @param {!Element} transitiveContentEl The element to render transitive deps into.
      */
-    enterTreeComponent(treeContentEl) {
-        const app = /** @type {!RegistryApp} */(getApplication(this));
-        const mvs = app.getMvs();
+    enterTransitiveContent(transitiveContentEl) {
+        // Calculate transitive dependents
+        this.transitiveDeps_ = this.getTransitiveDeps();
+
+        // Render the transitive dependents
+        for (const dep of this.transitiveDeps_) {
+            const depEl = soy.renderAsElement(moduleDependencyRow, {
+                dep: dep,
+            }, {
+                latestVersions: getLatestModuleVersionsByName(this.registry_),
+                versionDistances: getVersionDistances(this.registry_),
+            });
+            const wrapperEl = dom.createDom('div', 'mx-1 my-2', depEl);
+            dom.appendChild(transitiveContentEl, wrapperEl);
+        }
+    }
+
+    /**
+     * Calculate transitive dependents by finding all modules that transitively depend on this module.
+     * @return {!Array<!ModuleDependency>}
+     */
+    getTransitiveDeps() {
+        const result = [];
+        const visited = new Set();
         const moduleName = this.moduleVersion_.getName();
-        const version = this.moduleVersion_.getVersion();
 
-        /** @type {string|boolean} */
-        const modifier = this.dev_ ? "only" : false;
+        // Start with direct dependents
+        const queue = this.directDeps_.slice();
 
-        const treeComponent = this.treeComponent_ = new MvsDependencyTree(moduleName, version, mvs, modifier, this.dom_);
-        this.addChild(treeComponent, false);
-        treeComponent.render(treeContentEl);
+        // Mark direct dependents as visited to avoid reprocessing
+        for (const dep of this.directDeps_) {
+            visited.add(`${dep.getName()}@${dep.getVersion()}`);
+        }
+
+        while (queue.length > 0) {
+            const dep = queue.shift();
+            result.push(dep);
+
+            // Find dependents of this dependent (modules that depend on dep)
+            for (const module of this.registry_.getModulesList()) {
+                if (module.getName() === moduleName) {
+                    continue;
+                }
+                for (const moduleVersion of module.getVersionsList()) {
+                    const moduleVersionKey = `${moduleVersion.getName()}@${moduleVersion.getVersion()}`;
+
+                    // Skip if we've already processed this module version
+                    if (visited.has(moduleVersionKey)) {
+                        continue;
+                    }
+
+                    // Check if this module version depends on dep
+                    for (const transitiveDep of moduleVersion.getDepsList()) {
+                        if (transitiveDep.getName() === dep.getName()) {
+                            // This module version depends on dep, so add it to queue
+                            visited.add(moduleVersionKey);
+                            const newDep = new ModuleDependency();
+                            newDep.setName(moduleVersion.getName());
+                            newDep.setVersion(moduleVersion.getVersion());
+                            queue.push(newDep);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
-     * @return {!Element} Element to contain the mvs tree.
+     * @return {!Element}
      */
-    getTreeContentElement() {
-        return this.getCssElement(goog.getCssName("tree-content"));
+    getDirectContentElement() {
+        return this.getCssElement(goog.getCssName("direct-content"));
     }
 
     /**
-     * @return {!Element}.
+     * @return {!Element}
      */
-    getListButtonElement() {
-        return this.getCssElement(goog.getCssName("btn-list"));
+    getTransitiveContentElement() {
+        return this.getCssElement(goog.getCssName("transitive-content"));
     }
 
     /**
-     * @return {!Element}.
+     * @return {!Element}
      */
-    getTreeButtonElement() {
-        return this.getCssElement(goog.getCssName("btn-tree"));
+    getDirectButtonElement() {
+        return this.getCssElement(goog.getCssName("btn-direct"));
+    }
+
+    /**
+     * @return {!Element}
+     */
+    getTransitiveButtonElement() {
+        return this.getCssElement(goog.getCssName("btn-transitive"));
     }
 }
 
