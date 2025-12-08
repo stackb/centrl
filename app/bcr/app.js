@@ -46,7 +46,7 @@ const { MVS } = goog.require('centrl.mvs');
 const { ModuleSearchHandler } = goog.require('centrl.module_search');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
 const { SearchComponent } = goog.require('centrl.search');
-const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app');
+const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app');
 const { moduleVersionsListComponent } = goog.require('soy.registry');
 
 const HIGHLIGHT_SYNTAX = true;
@@ -1940,7 +1940,6 @@ class ModuleVersionComponent extends Component {
             metadata: asserts.assertObject(this.module_.getMetadata()),
             deps: this.moduleVersion_.getDepsList().filter(d => !d.getDev()),
             devDeps: this.moduleVersion_.getDepsList().filter(d => d.getDev()),
-            directDeps: this.getDirectDeps(this.moduleVersion_.getVersion()),
             moduleVersion: this.moduleVersion_,
             yanked: getYankedMap(this.module_.getMetadata()),
             commitDate: formatRelativePast(this.moduleVersion_.getCommit().getDate()),
@@ -1965,6 +1964,7 @@ class ModuleVersionComponent extends Component {
         this.enterSyntaxHighlighting();
         this.enterDependencies();
         this.enterDevDependencies();
+        this.enterDependents();
     }
 
     enterDependencies() {
@@ -1982,6 +1982,16 @@ class ModuleVersionComponent extends Component {
         if (deps.length > 0) {
             const depsEl = dom.getRequiredElementByClass(goog.getCssName('dev-deps'), this.getElementStrict());
             const depsComponent = new ModuleVersionDependenciesComponent(this.registry_, this.module_, this.moduleVersion_, true, 'Dev Dependencies');
+            this.addChild(depsComponent, false);
+            depsComponent.render(depsEl);
+        }
+    }
+
+    enterDependents() {
+        const deps = this.getDirectDeps(this.moduleVersion_.getVersion());
+        if (deps.length > 0) {
+            const depsEl = dom.getRequiredElementByClass(goog.getCssName('dependents'), this.getElementStrict());
+            const depsComponent = new ModuleVersionDependenciesComponent(this.registry_, this.module_, this.moduleVersion_, false, 'Used By', deps);
             this.addChild(depsComponent, false);
             depsComponent.render(depsEl);
         }
@@ -2029,6 +2039,164 @@ class ModuleVersionDependenciesComponent extends ContentComponent {
      * @param {!ModuleVersion} moduleVersion
      * @param {boolean} dev
      * @param {string} title
+     * @param {!Array<!ModuleDependency>=} opt_deps
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(registry, module, moduleVersion, dev, title, opt_deps, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const @type {!Registry} */
+        this.registry_ = registry;
+
+        /** @private @const @type {!Module} */
+        this.module_ = module;
+
+        /** @private @const @type {!ModuleVersion} */
+        this.moduleVersion_ = moduleVersion;
+
+        /** @private @const @type {boolean} */
+        this.dev_ = dev;
+
+        /** @private @const @type {string} */
+        this.title_ = title;
+
+        /** @private @const @type {!Array<!ModuleDependency>} */
+        this.deps_ = opt_deps || [];
+
+        /** @private @type {?MvsDependencyTree} */
+        this.treeComponent_ = null;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        const deps = this.deps_.length > 0
+            ? this.deps_
+            : this.moduleVersion_.getDepsList().filter(d => d.getDev() === this.dev_);
+
+        this.setElementInternal(soy.renderAsElement(moduleVersionDependenciesComponent, {
+            title: this.title_,
+            deps: deps,
+        }, {
+            latestVersions: getLatestModuleVersionsByName(this.registry_),
+            versionDistances: getVersionDistances(this.registry_),
+        }));
+    }
+
+    /**
+     * @override
+     */
+    enterDocument() {
+        super.enterDocument();
+
+        this.enterListButton();
+        this.enterTreeButton();
+    }
+
+    enterListButton() {
+        this.getHandler().listen(
+            this.getCssElement(goog.getCssName('btn-list')),
+            events.EventType.CLICK,
+            this.handleListButtonElementClick,
+        );
+    }
+
+    enterTreeButton() {
+        this.getHandler().listen(
+            this.getCssElement(goog.getCssName('btn-tree')),
+            events.EventType.CLICK,
+            this.handleTreeButtonElementClick,
+        );
+    }
+
+    /**
+     * @param {!events.Event} e
+     */
+    handleListButtonElementClick(e) {
+        this.toggleContentElements(false);
+    }
+
+    /**
+     * @param {!events.Event} e
+     */
+    handleTreeButtonElementClick(e) {
+        this.toggleContentElements(true);
+    }
+
+    /**
+     * @param {boolean} displayTree 
+     */
+    toggleContentElements(displayTree) {
+        const contentEl = this.getContentElement();
+        const treeContentEl = this.getTreeContentElement();
+        const btnListEl = this.getListButtonElement();
+        const btnTreeEl = this.getTreeButtonElement();
+
+        if (displayTree && !this.treeComponent_) {
+            this.enterTreeComponent(treeContentEl);
+        }
+
+        const displayContentEl = displayTree ? treeContentEl : contentEl;
+        const hideContentEl = displayTree ? contentEl : treeContentEl;
+        const selectButtonEl = displayTree ? btnTreeEl : btnListEl;
+        const unselectButtonEl = displayTree ? btnListEl : btnTreeEl;
+
+        style.setElementShown(displayContentEl, true);
+        style.setElementShown(hideContentEl, false);
+
+        dom.classlist.add(selectButtonEl, 'selected');
+        dom.classlist.remove(unselectButtonEl, 'selected');
+    }
+
+    /**
+     * @param {!Element} treeContentEl The elenent to render the tree into.
+     * @returns 
+     */
+    enterTreeComponent(treeContentEl) {
+        const app = /** @type {!RegistryApp} */(getApplication(this));
+        const mvs = app.getMvs();
+        const moduleName = this.moduleVersion_.getName();
+        const version = this.moduleVersion_.getVersion();
+
+        /** @type {string|boolean} */
+        const modifier = this.dev_ ? "only" : false;
+
+        const treeComponent = this.treeComponent_ = new MvsDependencyTree(moduleName, version, mvs, modifier, this.dom_);
+        this.addChild(treeComponent, false);
+        treeComponent.render(treeContentEl);
+    }
+
+    /**
+     * @return {!Element} Element to contain the mvs tree.
+     */
+    getTreeContentElement() {
+        return this.getCssElement(goog.getCssName("tree-content"));
+    }
+
+    /**
+     * @return {!Element}.
+     */
+    getListButtonElement() {
+        return this.getCssElement(goog.getCssName("btn-list"));
+    }
+
+    /**
+     * @return {!Element}.
+     */
+    getTreeButtonElement() {
+        return this.getCssElement(goog.getCssName("btn-tree"));
+    }
+}
+
+
+class ModuleVersionDependentsComponent extends ContentComponent {
+    /**
+     * @param {!Registry} registry
+     * @param {!Module} module
+     * @param {!ModuleVersion} moduleVersion
+     * @param {boolean} dev
+     * @param {string} title
      * @param {?dom.DomHelper=} opt_domHelper
      */
     constructor(registry, module, moduleVersion, dev, title, opt_domHelper) {
@@ -2057,7 +2225,7 @@ class ModuleVersionDependenciesComponent extends ContentComponent {
      * @override
      */
     createDom() {
-        this.setElementInternal(soy.renderAsElement(moduleVersionDependenciesComponent, {
+        this.setElementInternal(soy.renderAsElement(moduleVersionDependentsComponent, {
             title: this.title_,
             deps: this.moduleVersion_.getDepsList().filter(d => d.getDev() === this.dev_),
         }, {
@@ -3797,7 +3965,6 @@ class RegistryApp extends App {
 
         // Build MVS maps from registry
         const { moduleVersionMap, moduleMetadataMap } = MVS.buildMaps(registry);
-        console.log(`Built MVS maps: ${moduleVersionMap.size} module versions, ${moduleMetadataMap.size} modules`);
 
         /** @private @const @type {!MVS} */
         this.mvs_ = new MVS(moduleVersionMap, moduleMetadataMap);
