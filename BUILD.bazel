@@ -68,7 +68,7 @@ bcr_exclude_dirs = [
 ]
 
 gazelle(
-    name = "central_registry",
+    name = "central",
     args = [
         "--resource-status-set-file=$BUILD_WORKING_DIRECTORY/resources.json",
         "--repository-metadata-set-file=$BUILD_WORKING_DIRECTORY/repository-metadata.json",

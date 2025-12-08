@@ -246,7 +246,7 @@ bazel_dep(name = "{$name}", version = "{$version}")
 
 
 {template moduleVersionTable}
-  {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>]>}
+  {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>, ageSummary: string|null]>}
   {@param moduleName: string}
   {@param? currentVersion: string}
   {@param yanked: map<string,string>}
@@ -272,10 +272,13 @@ bazel_dep(name = "{$name}", version = "{$version}")
                     {if $yanked.get($version)}style="text-decoration: line-through; color: var(--color-fg-muted);"{/if}
                 >{$version|truncate:18}</a>
               {/if}
+              {if $data.ageSummary}
+                <sup class="color-fg-attention">{sp}+{$data.ageSummary}</sup>
+              {/if}
             </span>
             <span style="flex: 1; border-bottom: 1px dotted var(--color-border-muted); margin: 0 0.5em;"></span>
             {if $depCount > 0}
-              <span class="text-small color-fg-muted" style="padding: 0 0.5em;">{$depCount} ({$percentage}%)</span>
+              <span class="text-small color-fg-muted" style="padding: 0 0.5em;">{$percentage}%<sup>{sp}{$depCount}</sup></span>
             {/if}
             <span class="text-small color-fg-muted" style="padding-left: 0.5em;">{$commitDate}</span>
           </div>
@@ -572,9 +575,11 @@ unknown
 
 {template moduleDependencyRow}
   {@inject latestVersions: map<string,ModuleVersion>}
+  {@inject versionDistances: map<string,map<string,[versionsBehind: int, ageSummary: string|null]>>}
   {@param dep: ModuleDependency}
 {let $latest: $latestVersions.get($dep.getName()) /}
 {let $override: $dep.getOverride() /}
+{let $distanceMap: $versionDistances.get($dep.getName()) /}
 <div style="display: flex; align-items: center;">
   <span style="padding-right: 0.5em;">
     <a class="Box-row-link" href="{moduleVersionUrl(name: $dep.getName(), version: $dep.getVersion())}">
@@ -591,7 +596,7 @@ unknown
           <span class="text-bold" style="color: var(--fgColor-danger, var(--color-danger-fg))">unresolved</span>
           )
         {else}
-          {$dep.getVersion()|truncate:32}
+          {$dep.getVersion()|truncate:32}          
         {/if}
       </span>
       {if $dep.getRepoName()}
@@ -605,9 +610,26 @@ unknown
       {if $dep.getVersion() == $latest.getVersion()}
         {octiconCheck16(class: 'Label--success')}
       {else}
-        <a class="Box-row-link text-light text-small" href="{moduleVersionUrl(name: $dep.getName(), version: $latest.getVersion())}">
-          {$latest.getVersion()|truncate:32}
-        </a>
+        {if $distanceMap}
+          {let $distanceInfo: $distanceMap.get($dep.getVersion()) /}
+          <a class="Box-row-link text-light text-small" href="{moduleVersionUrl(name: $dep.getName(), version: $latest.getVersion())}">
+            {$latest.getVersion()|truncate:32}
+            {if $distanceInfo && $distanceInfo.versionsBehind > 0}
+              <span title="Version Distance">
+                <sup style="padding-left: 3px">
+                  +{$distanceInfo.versionsBehind}
+                  {if $distanceInfo.ageSummary}
+                    <span class="color-fg-attention">{sp}({$distanceInfo.ageSummary})</span>
+                  {/if}
+                </sup>
+              </span>
+            {/if}
+          </a>
+        {else}
+          <a class="Box-row-link text-light text-small" href="{moduleVersionUrl(name: $dep.getName(), version: $latest.getVersion())}">
+            {$latest.getVersion()|truncate:32}
+          </a>
+        {/if}
       {/if}
     </span>
   {/if}

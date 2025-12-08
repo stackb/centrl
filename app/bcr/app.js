@@ -1832,14 +1832,47 @@ class ModuleVersionSelectNav extends SelectNav {
         /** @type {!Array<!VersionData>} */
         const versionData = [];
         let totalDeps = 0;
-        for (const v of this.module_.getVersionsList()) {
+        const versions = this.module_.getVersionsList();
+
+        for (let i = 0; i < versions.length; i++) {
+            const v = versions[i];
             const directDeps = this.getDirectDeps(v.getVersion());
             totalDeps += directDeps.length;
+
+            // Calculate age summary from previous version
+            let ageSummary = null;
+            if (i < versions.length - 1) {
+                const currentCommit = v.getCommit();
+                const prevCommit = versions[i + 1].getCommit();
+                if (!currentCommit || !prevCommit) {
+                    ageSummary = '(no commit)';
+                } else {
+                    const currentDate = new Date(currentCommit.getDate());
+                    const prevDate = new Date(prevCommit.getDate());
+                    const diffMs = currentDate - prevDate;
+                    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    if (totalDays > 0) {
+                        ageSummary = calculateAgeSummary(totalDays);
+                    } else if (totalDays === 0) {
+                        // Same day release - calculate hours
+                        const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+                        if (totalHours > 0) {
+                            ageSummary = `${totalHours}h`;
+                        } else {
+                            ageSummary = '<1h';
+                        }
+                    } else {
+                        ageSummary = '(non-positive date)';
+                    }
+                }
+            }
+
             versionData.push(/** @type{!VersionData} **/({
                 version: v.getVersion(),
                 compat: v.getCompatibilityLevel(),
                 commitDate: formatDate(v.getCommit().getDate()),
                 directDeps,
+                ageSummary,
             }));
         }
 
@@ -1918,6 +1951,7 @@ class ModuleVersionComponent extends Component {
             repositoryUrl: this.registry_.getRepositoryUrl(),
             repositoryCommit: this.registry_.getCommitSha(),
             latestVersions: getLatestModuleVersionsByName(this.registry_),
+            versionDistances: getVersionDistances(this.registry_),
         }));
     }
 
@@ -2028,6 +2062,7 @@ class ModuleVersionDependenciesComponent extends ContentComponent {
             deps: this.moduleVersion_.getDepsList().filter(d => d.getDev() === this.dev_),
         }, {
             latestVersions: getLatestModuleVersionsByName(this.registry_),
+            versionDistances: getVersionDistances(this.registry_),
         }));
     }
 
@@ -3449,7 +3484,95 @@ function getLatestModuleVersionsByName(registry) {
 }
 
 /**
- * @param {!Module} module 
+ * @param {!Registry} registry
+ * @returns {!Map<string, !ModuleMetadata>}
+ */
+function getModuleMetadataByName(registry) {
+    const result = new Map();
+    for (const module of registry.getModulesList()) {
+        const metadata = module.getMetadata();
+        if (metadata) {
+            result.set(module.getName(), metadata);
+        }
+    }
+    return result;
+}
+
+/**
+ * Calculate a human-readable age summary from a number of days.
+ * @param {number} totalDays
+ * @returns {string} Age string like "1y 6m" or "6m 23d"
+ */
+function calculateAgeSummary(totalDays) {
+    // If years, show as decimal years (e.g., "1.2y")
+    if (totalDays >= 365) {
+        const years = (totalDays / 365).toFixed(1);
+        return `${years}y`;
+    }
+
+    // If months, show as decimal months (e.g., "2.5m")
+    if (totalDays >= 30) {
+        const months = (totalDays / 30).toFixed(1);
+        return `${months}m`;
+    }
+
+    // Otherwise just show days
+    return `${totalDays}d`;
+}
+
+/**
+ * Calculate version distances and age summary for each module.
+ * @param {!Registry} registry
+ * @returns {!Map<string, !Map<string, {versionsBehind: number, ageSummary: ?string}>>} Map of moduleName -> (version -> {versionsBehind, ageSummary})
+ */
+function getVersionDistances(registry) {
+    const result = new Map();
+    for (const module of registry.getModulesList()) {
+        const metadata = module.getMetadata();
+        if (!metadata) continue;
+
+        const versions = metadata.getVersionsList();
+        const moduleVersions = module.getVersionsList();
+        const versionDistanceMap = new Map();
+
+        // Get the latest version's commit date for comparison
+        let latestDate = null;
+        if (moduleVersions.length > 0 && moduleVersions[0].getCommit()) {
+            const dateStr = moduleVersions[0].getCommit().getDate();
+            if (dateStr) {
+                latestDate = new Date(dateStr);
+            }
+        }
+
+        for (let i = 0; i < versions.length; i++) {
+            const versionStr = versions[i];
+            let ageSummary = null;
+
+            // Find the corresponding ModuleVersion to get commit date
+            const moduleVersion = moduleVersions.find(mv => mv.getVersion() === versionStr);
+            if (moduleVersion && moduleVersion.getCommit() && latestDate) {
+                const versionDateStr = moduleVersion.getCommit().getDate();
+                if (versionDateStr) {
+                    const versionDate = new Date(versionDateStr);
+                    const diffMs = latestDate - versionDate;
+                    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    ageSummary = calculateAgeSummary(totalDays);
+                }
+            }
+
+            versionDistanceMap.set(versionStr, {
+                versionsBehind: i,
+                ageSummary: ageSummary
+            });
+        }
+
+        result.set(module.getName(), versionDistanceMap);
+    }
+    return result;
+}
+
+/**
+ * @param {!Module} module
  * @returns {!ModuleVersion}
  */
 function getLatestModuleVersion(module) {

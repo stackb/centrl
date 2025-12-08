@@ -45,7 +45,7 @@ import {
   MacroFunction,
   SymbolLocation,
   Value
-} from 'build/stack/starlark/v1beta1/starlark_server.proto';
+} from 'build/stack/starlark/v1beta1/starlark.proto';
 import {
   DocumentationInfo,
   DocumentationSource,
@@ -419,7 +419,7 @@ import {
 {template moduleVersionSelectNav}
   {@param moduleVersion: ModuleVersion}
   {@param metadata: ModuleMetadata}
-  {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>]>}
+  {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>, ageSummary: string|null]>}
 <div>
   {let $isLatest: length($versionData) > 0 && $versionData[0].version == $moduleVersion.getVersion() /}
   {call moduleVersionHeader}
@@ -446,7 +446,7 @@ import {
   {@param totalDeps: int}
   {@param yanked: map<string,string>}
   {@param commitDate: string}
-  {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>]>}
+  {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>, ageSummary: string|null]>}
   {@param languageData: list<[name: string, sanitizedName: string, percentage: number, isPrimary: bool]>}
 <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider">
 <div class="PageLayout-columns">
