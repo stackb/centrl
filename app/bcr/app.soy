@@ -7,6 +7,7 @@ import {
     octiconChevronLeft24,
     octiconChevronUp24,
     octiconChevronRight16,
+    octiconListUnordered16,
     octiconSkip16,
     octiconSkip24,
     octiconCode16,
@@ -20,7 +21,8 @@ import {
     octiconPaintbrush16,
     octiconPerson16,
     octiconSparkleFill16,
-    octiconSquareFill16
+    octiconSquareFill16,
+    octiconWorkflow16
 } from 'app/bcr/octicons.soy';
 import {
   AspectInfo,
@@ -70,6 +72,7 @@ import {
   maintainersTable,
   moduleDependencyOverride,
   moduleDependencyTable,
+  moduleDependencyRow,
   moduleLanguageTable,
   moduleSourceTable,
   moduleVersionBreadcrumb,
@@ -452,49 +455,9 @@ import {
       {param moduleVersion: $moduleVersion /}
     {/call}
 
-    {if length($deps)}
-      <div class="mt-3">
-        {call moduleDependencyTable}
-          {param title: 'Dependencies' /}
-          {param deps: $deps /}
-        {/call}
-      </div>
-    {/if}
+    <div class="{css('deps')}"></div>
 
-    {if length($devDeps)}
-      <div class="mt-3">
-        {call moduleDependencyTable}
-          {param title: 'Dev Dependencies' /}
-          {param deps: $devDeps /}
-        {/call}
-      </div>
-    {/if}
-
-    {if length($deps)}
-      <div class="mt-3">
-        <div class="Box Box--condensed">
-          <div class="Box-header">
-            <span class="Box-title">MVS Dependency Tree</span>
-          </div>
-          <div class="Box-body">
-            <div class="{css('mvs-tree-reg')}"></div>
-          </div>
-        </div>
-      </div>
-    {/if}
-
-    {if length($devDeps)}
-      <div class="mt-3">
-        <div class="Box Box--condensed">
-          <div class="Box-header">
-            <span class="Box-title">MVS Dev Dependency Tree</span>
-          </div>
-          <div class="Box-body">
-            <div class="{css('mvs-tree-dev')}"></div>
-          </div>
-        </div>
-      </div>
-    {/if}
+    <div class="{css('dev-deps')}"></div>
 
     {for $override in $moduleVersion.getOverrideList()}
       <div class="mt-3">
@@ -589,6 +552,37 @@ import {
 </div>
 </div>
 {/template}
+
+
+{template moduleVersionDependenciesComponent}
+  {@param title: string}
+  {@param deps: list<ModuleDependency>}
+<div class="Box Box--condensed mt-3">
+  <div class="Box-header d-flex flex-items-center flex-justify-between">
+    <span class="Box-title">{$title} {counterLabel(count: $deps.length)}</span>
+    <div class="BtnGroup">
+      <button class="BtnGroup-item selected btn btn-sm {css('btn-list')}" title="View direct dependencies">
+        {octiconListUnordered16()}
+      </button>
+      <button class="BtnGroup-item btn btn-sm {css('btn-tree')}" title="View transitive dependencies with minimum version selection (MVS)">
+        {octiconWorkflow16()}
+      </button>
+    </div>
+  </div>
+  <div class="Box-body width-full">
+    <div class="{css('content')}">
+      {for $dep in $deps}
+        <div class="mx-1 my-2">
+          {moduleDependencyRow(dep: $dep)}
+        </div>
+      {/for}
+    </div>
+    <div class="{css('tree-content')}">
+    </div>
+  </div>
+</div>
+{/template}
+
 
 {template fileInfoSelect}
 <div>

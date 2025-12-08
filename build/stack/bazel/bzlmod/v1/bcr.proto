@@ -174,7 +174,7 @@ message ModuleVersion {
     Presubmit presubmit = 9;
     // optional toolchains to be registered
     repeated string toolchains_to_register = 10;
-    // Optional overrides
+    // Optional overrides, indexed by module name
     repeated ModuleDependencyOverride override = 11; 
     // information about when the MODULE.bazel file for the version was committed.
     ModuleCommit commit = 12;
@@ -451,6 +451,8 @@ message DependencyTreeNode {
     bool dev = 4;
     // Child dependencies of this node
     repeated DependencyTreeNode children = 5;
+    // Whether this node's children were pruned because the node was already visited in the tree
+    bool pruned = 6;
 }
 
 // Represents the complete dependency tree for a module version.

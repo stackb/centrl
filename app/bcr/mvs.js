@@ -89,6 +89,11 @@ class MVS {
 
         const children = this.buildTree(rootModuleVersion, visited, selected, includeDev);
 
+        // Run validation checks (output to console only)
+        this.checkYankedVersions_(selected);
+        this.checkBazelCompatibility_(selected);
+        this.checkDirectDeps_(rootModuleVersion, selected);
+
         const tree = new DependencyTree();
         tree.setModuleVersion(rootModuleVersion);
 
@@ -146,7 +151,20 @@ class MVS {
             // If includeDev === true, include all dependencies
 
             const depModuleName = dep.getName();
-            const requestedVersion = dep.getVersion();
+            let requestedVersion = dep.getVersion();
+
+            // Check for override on this dependency
+            let overrideType = '';
+            if (dep.getOverride()) {
+                overrideType = this.getOverrideType_(asserts.assertObject(dep.getOverride()));
+                // For single_version_override, use the override version
+                if (dep.getOverride().hasSingleVersionOverride()) {
+                    const overrideVersion = dep.getOverride().getSingleVersionOverride().getVersion();
+                    if (overrideVersion) {
+                        requestedVersion = overrideVersion;
+                    }
+                }
+            }
 
             const currentSelected = selected.get(depModuleName);
 
@@ -200,6 +218,7 @@ class MVS {
             node.setUpgraded(upgraded);
             node.setDev(dep.getDev() || false);
             node.setPruned(isPruned);
+            node.setOverrideType(overrideType);
             node.setChildrenList(grandchildren);
             children.push(node);
         }
@@ -247,6 +266,82 @@ class MVS {
             const children = node.getChildrenList();
             if (children && children.length > 0) {
                 this.flatten(children, selected);
+            }
+        }
+    }
+
+    /**
+     * Determines the type of override from a ModuleDependencyOverride proto.
+     * @param {!proto.build.stack.bazel.bzlmod.v1.ModuleDependencyOverride} override The override proto
+     * @return {string} Override type: "single_version", "git", "archive", "local_path", or empty string
+     * @private
+     */
+    getOverrideType_(override) {
+        if (override.hasGitOverride()) return 'git';
+        if (override.hasArchiveOverride()) return 'archive';
+        if (override.hasSingleVersionOverride()) return 'single_version';
+        if (override.hasLocalPathOverride()) return 'local_path';
+        return '';
+    }
+
+    /**
+     * Check for yanked versions in the selected dependency graph.
+     * Logs warnings to console for any yanked versions found.
+     * @param {!Map<string,!ModuleVersion>} selected Map of module name -> selected ModuleVersion
+     * @private
+     */
+    checkYankedVersions_(selected) {
+        for (const name of selected.keys()) {
+            const metadata = this.moduleMetadataMap_.get(name);
+            if (!metadata) continue;
+
+            const yankedMap = metadata.getYankedVersionsMap();
+            if (!yankedMap) continue;
+
+            const version = asserts.assertObject(selected.get(name));
+            const yankedInfo = yankedMap.get(version.getVersion());
+            if (yankedInfo) {
+                console.warn(
+                    `⚠️ Yanked version detected: ${name}@${version.getVersion()}\n` +
+                    `Reason: ${yankedInfo}`
+                );
+            }
+        }
+    }
+
+    /**
+     * Check Bazel compatibility requirements for selected modules.
+     * Logs info to console for modules with bazel_compatibility requirements.
+     * @param {!Map<string,!ModuleVersion>} selected Map of module name -> selected ModuleVersion
+     * @private
+     */
+    checkBazelCompatibility_(selected) {
+        for (const version of selected.values()) {
+            const compatList = version.getBazelCompatibilityList();
+            if (compatList && compatList.length > 0) {
+                console.info(
+                    `ℹ️ Bazel compatibility requirements for ${version.getName()}@${version.getVersion()}:`,
+                    compatList.join(', ')
+                );
+            }
+        }
+    }
+
+    /**
+     * Check for direct dependency mismatches between requested and selected versions.
+     * Logs warnings to console for any mismatches.
+     * @param {!ModuleVersion} rootModule The root module version
+     * @param {!Map<string,!ModuleVersion>} selected Map of module name -> selected ModuleVersion
+     * @private
+     */
+    checkDirectDeps_(rootModule, selected) {
+        for (const dep of rootModule.getDepsList()) {
+            const selectedVersion = selected.get(dep.getName());
+            if (selectedVersion && dep.getVersion() !== selectedVersion.getVersion()) {
+                console.warn(
+                    `⚠️ Direct dependency mismatch: ${dep.getName()}\n` +
+                    `Requested: ${dep.getVersion()}, Selected: ${selectedVersion.getVersion()}`
+                );
             }
         }
     }

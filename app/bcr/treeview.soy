@@ -84,6 +84,11 @@ import {moduleVersionUrl} from 'app/bcr/registry.soy';
         {if $node.getPruned()}
           <span class="ml-1 text-light text-small">*</span>
         {/if}
+        {if $node.getOverrideType()}
+          <a class="ml-1 text-light text-small treeview-override-badge" href="#{$nodeVersion.getName()}-override">
+            [override: {$node.getOverrideType()}]
+          </a>
+        {/if}
       </a>
     </div>
 

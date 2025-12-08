@@ -16,6 +16,7 @@ import {
     octiconHome16,
     octiconMail16,
     octiconMarkGithub16,
+    octiconMarkGithub24,
     octiconPaperclip16,
     octiconSparkleFill16,
     octiconSquareFill16,
@@ -741,7 +742,8 @@ unknown
   {@param? isLatest: bool}
 {let $lang: $moduleVersion.getRepositoryMetadata()?.getPrimaryLanguage() /}
 {let $sanitizedLang: sanitizeLangName(lang: $lang) /}
-<div class="f2-light d-flex flex-justify-between">
+{let $repoMeta: $moduleVersion.getRepositoryMetadata() /}
+<div class="f2-light d-flex flex-justify-between flex-items-center">
   <div>
     <span class="f1 text-semibold">{$moduleVersion.getName()}</span>
     {sp}
@@ -752,6 +754,11 @@ unknown
       {/if}
     </span>
   </div>
+  {if $repoMeta}
+    <a class="btn btn-sm" href="{githubRepoUrl(org: $repoMeta.getOrganization(), name: $repoMeta.getName())}" target="_blank" rel="noopener" title="View on GitHub">
+      {octiconMarkGithub24()}
+    </a>
+  {/if}
 </div>
 
 {if $metadata.getYankedVersionsMap()}
