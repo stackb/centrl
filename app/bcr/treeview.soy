@@ -3,109 +3,107 @@
 import {DependencyTree, DependencyTreeNode} from 'build/stack/bazel/bzlmod/v1/bcr.proto';
 
 /**
- * Renders a Primer-style TreeView for a DependencyTree.
+ * Renders a TreeView with SVG tree lines for a DependencyTree.
  */
 {template dependencyTree}
   {@param tree: DependencyTree}
   {@param? expanded: bool}
-  <ul class="treeview-root" role="tree">
-    <li class="treeview-item" role="treeitem" style="--level: 0">
-      <div class="treeview-item-content">
-        {if $tree.getChildrenList() && length($tree.getChildrenList()) > 0}
-          <button class="treeview-expand-button"
-                  aria-label="{$expanded ? 'Collapse' : 'Expand'}"
-                  type="button">
-            <svg class="treeview-chevron {$expanded ? 'treeview-chevron-expanded' : ''}"
-                 xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 0 12 12"
-                 width="12"
-                 height="12">
-              <path fill="currentColor" d="M4.7 10c-.2 0-.4-.1-.5-.2-.3-.3-.3-.8 0-1.1L6.9 6 4.2 3.3c-.3-.3-.3-.8 0-1.1.3-.3.8-.3 1.1 0l3.3 3.2c.3.3.3.8 0 1.1L5.3 9.7c-.2.2-.4.3-.6.3Z"></path>
-            </svg>
-          </button>
-        {else}
-          <span class="treeview-spacer"></span>
-        {/if}
+  <div class="treeview-root" role="tree">
+    <div class="treeview-item treeview-item-root" role="treeitem">
+      <div class="treeview-item-row">
         <span class="treeview-label">
-          {$tree.getModuleVersion()?.getName()}@{$tree.getModuleVersion()?.getVersion()}
+          {$tree.getModuleVersion()?.getName()}
+          <span class="ml-1 text-light text-small">
+            {$tree.getModuleVersion()?.getVersion()}
+          </span>
         </span>
       </div>
       {if $tree.getChildrenList() && length($tree.getChildrenList()) > 0}
-        <ul class="treeview-children {$expanded ? 'treeview-children-expanded' : 'treeview-children-collapsed'}"
+        <div class="treeview-children {$expanded ? 'treeview-children-expanded' : 'treeview-children-collapsed'}"
             role="group">
-          {for $child in $tree.getChildrenList()}
+          {for $child, $index in $tree.getChildrenList()}
             {call dependencyTreeNode}
               {param node: $child /}
               {param level: 1 /}
+              {param isLast: $index == length($tree.getChildrenList()) - 1 /}
               {param expanded: $expanded /}
             {/call}
           {/for}
-        </ul>
+        </div>
       {/if}
-    </li>
-  </ul>
+    </div>
+  </div>
 {/template}
 
 /**
- * Renders a single dependency tree node recursively.
+ * Renders a single dependency tree node recursively with SVG lines.
  */
 {template dependencyTreeNode visibility="private"}
   {@param node: DependencyTreeNode}
   {@param level: int}
+  {@param isLast: bool}
   {@param? expanded: bool}
 
   {let $hasChildren: $node.getChildrenList() && length($node.getChildrenList()) > 0 /}
   {let $isExpanded: $expanded ? true : false /}
 
-  <li class="treeview-item" role="treeitem"
+  <div class="treeview-item {$isLast ? 'treeview-item-last' : ''}" role="treeitem"
       data-tree-id="{$node.getModuleVersion()?.getName()}@{$node.getModuleVersion()?.getVersion()}"
       {if $hasChildren}
         aria-expanded="{$isExpanded ? 'true' : 'false'}"
       {/if}
-      style="--level: {$level}">
+      style="--level: {$level}; --is-last: {$isLast ? '1' : '0'};">
 
-    <div class="treeview-item-content">
-      {if $hasChildren}
-        <button class="treeview-expand-button"
-                aria-label="{$isExpanded ? 'Collapse' : 'Expand'}"
-                type="button">
-          <svg class="treeview-chevron {$isExpanded ? 'treeview-chevron-expanded' : ''}"
-               xmlns="http://www.w3.org/2000/svg"
-               viewBox="0 0 12 12"
-               width="12"
-               height="12">
-            <path fill="currentColor" d="M4.7 10c-.2 0-.4-.1-.5-.2-.3-.3-.3-.8 0-1.1L6.9 6 4.2 3.3c-.3-.3-.3-.8 0-1.1.3-.3.8-.3 1.1 0l3.3 3.2c.3.3.3.8 0 1.1L5.3 9.7c-.2.2-.4.3-.6.3Z"></path>
-          </svg>
-        </button>
-      {else}
-        <span class="treeview-spacer"></span>
-      {/if}
+    <div class="treeview-item-row">
+      <svg class="treeview-line" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+        <!-- Horizontal line -->
+        <line x1="0" y1="12" x2="18" y2="12" stroke="var(--color-border-default)" stroke-width="1.5"/>
 
-      <span class="treeview-label">
-        {$node.getModuleVersion()?.getName()}@{$node.getModuleVersion()?.getVersion()}
-        {if $node.getUpgraded() && $node.getRequestedVersion() != $node.getModuleVersion()?.getVersion()}
-          {sp}(requested {$node.getRequestedVersion()})
+        <!-- Vertical line coming from above -->
+        <line x1="0" y1="0" x2="0" y2="12" stroke="var(--color-border-default)" stroke-width="1.5"/>
+
+        <!-- Vertical line continuing below (only if not last item and either no children or children collapsed) -->
+        {if !$isLast && (!$hasChildren || !$isExpanded)}
+          <line x1="0" y1="12" x2="0" y2="24" stroke="var(--color-border-default)" stroke-width="1.5"/>
         {/if}
+
+        <!-- Expand/collapse indicator -->
+        {if $hasChildren}
+          <circle cx="18" cy="12" r="3" fill="var(--color-border-default)"/>
+          <g class="treeview-chevron {$isExpanded ? 'treeview-chevron-expanded' : ''}" transform="translate(18, 12)">
+            <path d="M-2,-1 L0,1 L-2,3" fill="none" stroke="var(--color-canvas-default)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        {/if}
+      </svg>
+
+      <span class="treeview-label" {if $hasChildren}role="button" tabindex="0"{/if}>
+        {$node.getModuleVersion()?.getName()}
+        <span class="ml-1 text-light text-small">
+          {if $node.getUpgraded() && $node.getRequestedVersion() != $node.getModuleVersion()?.getVersion()}
+            <span class="mr-1" style="text-decoration: line-through;">{$node.getRequestedVersion()}</span>
+            <span class="text-bold" style="color: var(--fgColor-attention, var(--color-attention-fg));">{$node.getModuleVersion()?.getVersion()}</span>
+          {else}
+            {$node.getModuleVersion()?.getVersion()}
+          {/if}
+        </span>
         {if $node.getDev()}
-          <span class="treeview-metadata treeview-metadata-dev">[dev]</span>
-        {/if}
-        {if $node.getUpgraded()}
-          <span class="treeview-metadata treeview-metadata-upgraded">[upgraded]</span>
+          <span class="ml-1 text-light text-small">[dev]</span>
         {/if}
       </span>
     </div>
 
     {if $hasChildren}
-      <ul class="treeview-children {$isExpanded ? 'treeview-children-expanded' : 'treeview-children-collapsed'}"
+      <div class="treeview-children {$isExpanded ? 'treeview-children-expanded' : 'treeview-children-collapsed'}"
           role="group">
-        {for $child in $node.getChildrenList()}
+        {for $child, $index in $node.getChildrenList()}
           {call dependencyTreeNode}
             {param node: $child /}
             {param level: $level + 1 /}
+            {param isLast: $index == length($node.getChildrenList()) - 1 /}
             {param expanded: $expanded /}
           {/call}
         {/for}
-      </ul>
+      </div>
     {/if}
-  </li>
+  </div>
 {/template}

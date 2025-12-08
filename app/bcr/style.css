@@ -42,72 +42,48 @@
 
 
 /* ========================================
- * TreeView Component (Primer-style)
+ * TreeView Component (SVG tree lines)
  * ======================================== */
 
 .treeview-root {
-    list-style: none;
     margin: 0;
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
     font-size: 14px;
-    line-height: 20px;
+    line-height: 24px;
     color: var(--color-fg-default);
 }
 
 .treeview-item {
-    list-style: none;
     margin: 0;
     padding: 0;
+    position: relative;
 }
 
-.treeview-item-content {
+.treeview-item-root {
+    padding-left: 0;
+}
+
+.treeview-item-row {
     display: flex;
     align-items: center;
-    padding: 4px 8px;
-    padding-left: calc(8px + var(--level, 0) * 16px);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+    padding-left: calc((var(--level, 0) - 1) * 24px);
+    min-height: 24px;
 }
 
-.treeview-item-content:hover {
+.treeview-item-row:hover {
     background-color: var(--color-neutral-subtle);
+    border-radius: 6px;
 }
 
-.treeview-expand-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    padding: 0;
-    margin: 0;
-    margin-right: 4px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: var(--color-fg-muted);
-    transition: color 0.2s ease;
-}
-
-.treeview-expand-button:hover {
-    color: var(--color-fg-default);
-}
-
-.treeview-spacer {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    margin-right: 4px;
+.treeview-line {
+    flex-shrink: 0;
+    display: block;
 }
 
 .treeview-chevron {
-    display: block;
-    width: 12px;
-    height: 12px;
     transition: transform 0.2s ease;
-    transform: rotate(0deg);
+    transform-origin: 0 0;
 }
 
 .treeview-chevron-expanded {
@@ -120,6 +96,16 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     user-select: none;
+    line-height: 24px;
+    cursor: default;
+}
+
+.treeview-label[role="button"] {
+    cursor: pointer;
+}
+
+.treeview-label[role="button"]:hover {
+    color: var(--color-accent-fg);
 }
 
 .treeview-metadata {

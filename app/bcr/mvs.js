@@ -65,7 +65,7 @@ class MVS {
      * Computes the MVS dependency tree for a given module version.
      * @param {string} moduleName The root module name
      * @param {string} version The root module version
-     * @param {boolean=} includeDev Whether to include dev dependencies (default: false)
+     * @param {(boolean|string)=} includeDev Whether to include dev dependencies: false (exclude), true (include all), 'only' (only dev)
      * @return {?DependencyTree}
      */
     computeDependencyTree(moduleName, version, includeDev = false) {
@@ -102,7 +102,7 @@ class MVS {
      * @param {!ModuleVersion} moduleVersion The current module version
      * @param {!Set<string>} visited Set of visited module@version keys
      * @param {!Map<string,!ModuleVersion>} selected Map of selected module versions
-     * @param {boolean=} includeDev Whether to include dev dependencies (default: false)
+     * @param {(boolean|string)=} includeDev Whether to include dev dependencies: false (exclude), true (include all), 'only' (only dev)
      * @return {!Array<!DependencyTreeNode>}
      */
     buildTree(moduleVersion, visited, selected, includeDev) {
@@ -128,10 +128,14 @@ class MVS {
                 continue;
             }
 
-            // Skip dev dependencies if not included
-            if (dep.getDev() && !includeDev) {
-                continue;
+            // Filter based on dev dependency mode
+            if (!includeDev) {
+                // Skip dev dependencies when includeDev is false
+                if (dep.getDev()) {
+                    continue;
+                }
             }
+            // If includeDev === true, include all dependencies
 
             const depModuleName = dep.getName();
             const requestedVersion = dep.getVersion();

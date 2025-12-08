@@ -16,7 +16,7 @@ class MvsDependencyTree extends Component {
      * @param {string} moduleName The root module name
      * @param {string} version The root module version
      * @param {!MVS} mvs The MVS instance
-     * @param {boolean=} includeDev Whether to include dev dependencies (default: false)
+     * @param {(boolean|string)=} includeDev Whether to include dev dependencies: false (exclude), true (include all), 'only' (only dev)
      * @param {?goog.dom.DomHelper=} opt_domHelper
      * @param {boolean=} expanded Whether to start expanded (default: false)
      */
@@ -32,7 +32,7 @@ class MvsDependencyTree extends Component {
         /** @private @const {!MVS} */
         this.mvs_ = mvs;
 
-        /** @private @const {boolean} */
+        /** @private @const {(boolean|string)} */
         this.includeDev_ = includeDev;
 
         /** @private @const {boolean} */

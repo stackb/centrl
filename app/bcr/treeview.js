@@ -41,19 +41,19 @@ class TreeView extends Component {
     enterDocument() {
         super.enterDocument();
 
-        // Add click handlers for expand/collapse buttons
-        const buttons = this.getElement().querySelectorAll('.treeview-expand-button');
-        buttons.forEach(button => {
+        // Add click handlers for expandable labels
+        const labels = this.getElement().querySelectorAll('.treeview-label[role="button"]');
+        labels.forEach(label => {
             this.getHandler().listen(
-                button,
+                label,
                 EventType.CLICK,
-                this.handleExpandClick_,
+                this.handleExpandClick_
             );
         });
     }
 
     /**
-     * Handles clicks on expand/collapse buttons.
+     * Handles clicks on expandable tree items.
      * @param {!goog.events.BrowserEvent} e The click event
      * @private
      */
@@ -61,19 +61,20 @@ class TreeView extends Component {
         e.preventDefault();
         e.stopPropagation();
 
-        const button = /** @type {!Element} */ (e.target);
-        const item = button.closest('.treeview-item');
+        const label = /** @type {!Element} */ (e.currentTarget);
+        const item = label.closest('.treeview-item');
         if (!item) return;
 
-        const chevron = button.querySelector('.treeview-chevron');
         const children = item.querySelector('.treeview-children');
+        const chevron = item.querySelector('.treeview-chevron');
         const isExpanded = item.getAttribute('aria-expanded') === 'true';
 
         // Toggle state
         const newState = !isExpanded;
         item.setAttribute('aria-expanded', newState.toString());
-        button.setAttribute('aria-label', newState ? 'Collapse' : 'Expand');
+        label.setAttribute('aria-label', newState ? 'Collapse' : 'Expand');
 
+        // Rotate chevron
         if (chevron) {
             chevron.classList.toggle('treeview-chevron-expanded', newState);
         }
@@ -91,9 +92,9 @@ class TreeView extends Component {
         const items = this.getElement().querySelectorAll('.treeview-item[aria-expanded]');
         items.forEach(item => {
             item.setAttribute('aria-expanded', 'true');
-            const button = item.querySelector('.treeview-expand-button');
-            if (button) {
-                button.setAttribute('aria-label', 'Collapse');
+            const label = item.querySelector('.treeview-label[role="button"]');
+            if (label) {
+                label.setAttribute('aria-label', 'Collapse');
             }
             const chevron = item.querySelector('.treeview-chevron');
             if (chevron) {
@@ -114,9 +115,9 @@ class TreeView extends Component {
         const items = this.getElement().querySelectorAll('.treeview-item[aria-expanded]');
         items.forEach(item => {
             item.setAttribute('aria-expanded', 'false');
-            const button = item.querySelector('.treeview-expand-button');
-            if (button) {
-                button.setAttribute('aria-label', 'Expand');
+            const label = item.querySelector('.treeview-label[role="button"]');
+            if (label) {
+                label.setAttribute('aria-label', 'Expand');
             }
             const chevron = item.querySelector('.treeview-chevron');
             if (chevron) {
