@@ -393,8 +393,18 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 	f.Sync()
 	log.Printf("cleaned up %d old rules", deletedRules)
 
+	// Collect repository names in deterministic order
 	bzlRepoNames := make([]build.Expr, 0, len(bzlRepositories))
-	for _, versions := range bzlRepositories {
+
+	// Sort module names for deterministic order
+	moduleNames := make([]string, 0, len(bzlRepositories))
+	for moduleName := range bzlRepositories {
+		moduleNames = append(moduleNames, string(moduleName))
+	}
+	sort.Strings(moduleNames)
+
+	for _, moduleNameStr := range moduleNames {
+		versions := bzlRepositories[moduleName(moduleNameStr)]
 		for _, version := range versions {
 			if version.rank > 0 {
 				bzlRepoNames = append(bzlRepoNames, &build.StringExpr{Value: version.bzlRepositoryRule.Name()})
@@ -417,10 +427,21 @@ func mergeModuleBazelFile(repoRoot string, binaryProtoHttpArchives []*rule.Rule,
 	}
 	f.Sync()
 
+	// Insert http_archive rules in sorted order
+	sortedHttpArchives := make([]*rule.Rule, 0, len(binaryProtoHttpArchives))
 	for _, r := range binaryProtoHttpArchives {
+		sortedHttpArchives = append(sortedHttpArchives, r)
+	}
+	sort.Slice(sortedHttpArchives, func(i, j int) bool {
+		return sortedHttpArchives[i].Name() < sortedHttpArchives[j].Name()
+	})
+	for _, r := range sortedHttpArchives {
 		r.Insert(f)
 	}
-	for _, versions := range bzlRepositories {
+
+	// Insert starlark_repository rules in sorted order by module name
+	for _, moduleNameStr := range moduleNames {
+		versions := bzlRepositories[moduleName(moduleNameStr)]
 		for _, version := range versions {
 			if version.rank > 0 {
 				version.bzlRepositoryRule.Insert(f)

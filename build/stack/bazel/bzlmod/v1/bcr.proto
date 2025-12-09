@@ -6,7 +6,7 @@ package build.stack.bazel.bzlmod.v1;
 
 option go_package = "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1;bzpb";
 
-import "build/stack/starlark/v1beta1/starlark_server.proto";
+import "build/stack/starlark/v1beta1/starlark.proto";
 
 // Aggregate type about a module registry and all it's modules
 message Registry {
@@ -88,6 +88,71 @@ message RepositoryMetadata {
 
 message RepositoryMetadataSet {
     repeated RepositoryMetadata repository_metadata = 1;
+}
+
+// Metadata about a source repository.
+message BazelRepositoryMetadata {
+    RepositoryMetadata repository_metadata = 1;
+    repeated BazelRelease release = 2;
+}
+
+message BazelRelease {
+    // bazel version tag name
+    string version = 1;
+    // source URL of the .tar.gz asset
+    string url = 2;
+    // commit details fetched from the release
+    ModuleCommit commit = 3;
+}
+
+message BazelReleaseSet {
+    repeated BazelRelease release = 1;
+}
+
+message BazelOption {
+  string name = 1;
+  string type = 2;
+  string default = 3;
+  repeated string description = 4;
+  bool repeatable = 5;
+  bool toggle = 6;
+  string short = 7;
+  repeated string tag = 8;
+  // bazel_version represents which bazel version this flag is present in
+  repeated string bazel_version = 9;
+  // category represents which bazel version this flag is present in
+  repeated string category = 10;
+}
+
+message BazelHelpCategory {
+  string title = 1;
+  repeated BazelOption option = 2;
+}
+
+
+message BazelHelpCommand {
+    string command = 1;
+    repeated BazelHelpCategory category = 2;
+    repeated string usage = 3;
+}
+
+enum BazelHelpParseMode {
+  // Parsing has seen Usage statement but not the first category
+  USAGE = 0;
+  // Within a categoy
+  CATEGORY = 1;
+  // Within a Flag
+  FLAG = 2;
+}
+
+
+message BazelHelpVersion {
+    string version = 1;
+    repeated BazelHelpCommand command = 2;
+}
+
+message BazelHelpRegistry {
+    repeated BazelHelpVersion version = 1;
 }
 
 message ResourceStatus {
@@ -453,6 +518,9 @@ message DependencyTreeNode {
     repeated DependencyTreeNode children = 5;
     // Whether this node's children were pruned because the node was already visited in the tree
     bool pruned = 6;
+    // The type of override applied to this dependency (empty string if no override)
+    // Possible values: "single_version", "git", "archive", "local_path"
+    string override_type = 7;
 }
 
 // Represents the complete dependency tree for a module version.

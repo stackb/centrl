@@ -27,8 +27,9 @@ func moduleRegistryKinds() map[string]rule.KindInfo {
 		moduleRegistryKind: {
 			MatchAny: true,
 			ResolveAttrs: map[string]bool{
-				"deps":   true,
-				"cycles": true,
+				"deps":           true,
+				"cycles":         true,
+				"bazel_versions": true,
 			},
 		},
 	}
@@ -63,8 +64,8 @@ func makeModuleRegistryRule(name string, subdirs []string, registryURL string, c
 	return r
 }
 
-// resolveModuleRegistryRule resolves the deps attribute for a module_registry rule
-// by looking up module_metadata rules for each subdir (module name)
+// resolveModuleRegistryRule resolves the deps and bazel_versions attributes
+// for a module_registry rule by looking up module_metadata and bazel_version rules
 func resolveModuleRegistryRule(r *rule.Rule, ix *resolve.RuleIndex) {
 	// Get the subdirs private attribute
 	subdirsRaw := r.PrivateAttr("subdirs")
@@ -99,6 +100,21 @@ func resolveModuleRegistryRule(r *rule.Rule, ix *resolve.RuleIndex) {
 	// Set the deps attr
 	if len(deps) > 0 {
 		r.SetAttr("deps", deps)
+	}
+
+	// Resolve bazel_version rules
+	bazelVersionImportSpec := resolve.ImportSpec{
+		Lang: bcrLangName,
+		Imp:  bazelVersionKind,
+	}
+
+	results := ix.FindRulesByImport(bazelVersionImportSpec, bcrLangName)
+	if len(results) > 0 {
+		bazelVersions := make([]string, 0, len(results))
+		for _, res := range results {
+			bazelVersions = append(bazelVersions, res.Label.String())
+		}
+		r.SetAttr("bazel_versions", bazelVersions)
 	}
 }
 

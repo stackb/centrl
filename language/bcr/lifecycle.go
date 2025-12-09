@@ -10,6 +10,9 @@ import (
 func (ext *bcrExtension) Before(ctx context.Context) {
 	// Nothing to initialize before processing
 	log.Println("===[Before]======================================")
+
+	// Fetch Bazel release data and create pseudo BCR modules
+	ext.fetchBazelRepositoryMetadata(nil)
 }
 
 // DoneGeneratingRules is called after all rules have been generated. This is
@@ -62,5 +65,9 @@ func (ext *bcrExtension) AfterResolvingDeps(ctx context.Context) {
 
 	if err := ext.writeRepositoryMetadataCacheFile(); err != nil {
 		log.Println("writing repository metadata cache file: ")
+	}
+
+	if err := ext.writeBazelReleaseCacheFile(); err != nil {
+		log.Println("writing bazel release cache file: ")
 	}
 }

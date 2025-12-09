@@ -47,6 +47,7 @@ func NewLanguage() language.Language {
 		moduleMetadataRules:      make(map[moduleName]*protoRule[*bzpb.ModuleMetadata]),
 		moduleVersionRules:       make(map[moduleID]*protoRule[*bzpb.ModuleVersion]),
 		moduleSourceRules:        make(map[moduleID]*protoRule[*bzpb.ModuleSource]),
+		bazelReleasesByVersion:   make(map[string]*bzpb.BazelRelease),
 	}
 }
 
@@ -57,6 +58,7 @@ type bcrExtension struct {
 	modulesRoot               string
 	resourceStatusSetFile     string
 	repositoryMetadataSetFile string
+	bazelReleaseSetFile       string
 	githubToken               string
 	gitlabToken               string
 	registryRoot              string
@@ -75,8 +77,10 @@ type bcrExtension struct {
 	moduleIDsByDocUrl         map[string][]moduleID                           // tracks docs http_archives to fetch
 	moduleIDsBySourceUrl      map[string][]moduleID                           // tracks URLs for starlark_repository
 	resourceStatusByUrl       map[string]*bzpb.ResourceStatus                 // results of reading resourceStatusSetFile, keyed by URL
-	moduleCommits             map[moduleID]*bzpb.ModuleCommit                 // cache of all module commits (preloaded)
+	moduleCommits             map[moduleBazelRelPath]*bzpb.ModuleCommit       // cache of all module commits (preloaded)
+	bazelReleasesByVersion    map[string]*bzpb.BazelRelease                   // cache of Bazel releases (preloaded)
 	fetchedRepositoryMetadata bool                                            // tracks whether we fetched any new repository metadata this run
+	fetchedBazelReleases      bool                                            // tracks whether we fetched any new bazel releases this run
 }
 
 // Name returns the name of the language. This should be a prefix of the kinds
@@ -98,6 +102,8 @@ func (ext *bcrExtension) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.C
 		"resource-status-set-file", "", "path to resource-status.json file containing cached http statuses for the registry URLs (helpful for development)")
 	fs.StringVar(&ext.repositoryMetadataSetFile,
 		"repository-metadata-set-file", "", "path to repository-metadata.json file containing cached repository metadata (helpful for development)")
+	fs.StringVar(&ext.bazelReleaseSetFile,
+		"bazel-release-set-file", "", "path to bazel-releases.json file containing cached Bazel release data (helpful for development)")
 	fs.StringVar(&ext.githubToken,
 		"github-token", os.Getenv("GITHUB_TOKEN"), "GitHub API token (defaults to GITHUB_TOKEN env var)")
 	fs.StringVar(&ext.gitlabToken,
@@ -120,6 +126,7 @@ func (ext *bcrExtension) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	ext.configureGithubClient()
 	ext.readResourceStatusCacheFile()
 	ext.readRepositoryMetadataCacheFile()
+	ext.readBazelReleaseCacheFile()
 	ext.readModuleCommits(c)
 
 	return nil
@@ -155,6 +162,7 @@ func (*bcrExtension) Kinds() map[string]rule.KindInfo {
 	maps.Copy(kinds, singleVersionOverrideKinds())
 	maps.Copy(kinds, localPathOverrideKinds())
 	maps.Copy(kinds, repositoryMetadataKinds())
+	maps.Copy(kinds, bazelVersionKinds())
 	return kinds
 }
 
@@ -178,6 +186,7 @@ func (ext *bcrExtension) Loads() []rule.LoadInfo {
 		singleVersionOverrideLoadInfo(),
 		localPathOverrideLoadInfo(),
 		repositoryMetadataLoadInfo(),
+		bazelVersionLoadInfo(),
 	}
 }
 
@@ -212,6 +221,8 @@ func (ext *bcrExtension) Imports(c *config.Config, r *rule.Rule, f *rule.File) [
 		return localPathOverrideImports(r)
 	case "repository_metadata":
 		return repositoryMetadataImports(r)
+	case "bazel_version":
+		return bazelVersionImports(r)
 	}
 	return nil
 }
@@ -438,6 +449,12 @@ func (ext *bcrExtension) GenerateRules(args language.GenerateArgs) language.Gene
 
 		// Track the module_version rule for later MVS annotation
 		ext.moduleVersionRules[id] = newProtoRule(moduleVersionRule, module)
+
+		// Generate bazel_version rule for Bazel pseudo-modules
+		if module.Name == "bazel" {
+			bazelVersionRule := makeBazelVersionRule(version)
+			rules = append(rules, bazelVersionRule)
+		}
 	}
 
 	imports := make([]interface{}, len(rules))

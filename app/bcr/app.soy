@@ -90,9 +90,7 @@ import {
 } from 'app/bcr/registry.soy';
 
 {template registryApp}
-<div class="container-lg mx-auto">
-  <div class="{css('app-main')}"></div>
-</div>
+<div class="{css('app-main')}"></div>
 {/template}
 
 
@@ -122,8 +120,8 @@ import {
   {@param? label: string}
   {@param? octicon: html}
 <a href="/#/{$path}" class="btn mx-1" style="border: none; box-shadow: none">
-  {if $octicon}<span class="mr-2 color-fg-subtle">{$octicon}</span>{/if}
-  {if $label}{$label}{/if}
+  {if $octicon}<span class="color-fg-subtle{if $label} mr-2{/if}">{$octicon}</span>{/if}
+  {if $label}<span class="hide-sm">{$label}</span>{/if}
 </a>
 {/template}
 
@@ -160,7 +158,7 @@ import {
 {template bodySelect}
   {@param registry: Registry}
   {@param lastUpdated: string}
-<div class="PageLayout">
+<div class="PageLayout px-3">
   {header()}
   <div class="{css('content')} PageLayout-content"></div>
   {footer(registry: $registry, lastUpdated: $lastUpdated)}
@@ -176,7 +174,7 @@ import {
 
 {template settingsSelect}
   {@inject pathUrl: string}
-<div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider mt-3" style="--Layout-pane-width: 10rem">
+<div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider PageLayout--responsive-stackRegions PageLayout--responsive-panePos-start mt-3" style="--Layout-pane-width: 10rem">
   <div class="PageLayout-columns">
     <div class="PageLayout-pane">
     {sectionHeader(title: 'Settings', style: 'font-size: var(--h1-size)')}
@@ -397,7 +395,7 @@ import {
 {template moduleVersionsFilterSelect}
   {@param languages: list<[name: string, sanitizedName: string]>}
   {@inject pathUrl: string}
-<div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider" style="--Layout-pane-width: 10rem">
+<div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider PageLayout--responsive-stackRegions PageLayout--responsive-panePos-start" style="--Layout-pane-width: 10rem">
   <div class="PageLayout-columns">
     {if length($languages) > 0}
     <div class="PageLayout-pane">
@@ -450,7 +448,7 @@ import {
   {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>, ageSummary: string|null]>}
   {@param languageData: list<[name: string, sanitizedName: string, percentage: number, isPrimary: bool]>}
   {@param timeSinceLatest: string}
-<div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider">
+<div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider PageLayout--responsive-stackRegions">
 <div class="PageLayout-columns">
   <div class="PageLayout-content">
     {call moduleVersionModuleBazel}
@@ -634,7 +632,7 @@ import {
   {@param repositoryRules: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param rules: list<[file: FileInfo, sym: SymbolInfo]>}
 <div>
-  <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider" style="--Layout-template-columns: unset">
+  <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider PageLayout--responsive-stackRegions" style="--Layout-template-columns: unset">
     <div class="PageLayout-wrapper">
       <div class="PageLayout-columns">
         <div class="PageLayout-content {css('content')}"></div>
@@ -1025,7 +1023,7 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
       </div>
     </div>
   {/if}
-  {if $originKey && ($originKey.getName() || $originKey.getFile())}
+  {if false && $originKey && ($originKey.getName() || $originKey.getFile())}
     <div class="Subhead-description mt-1 pt-2 border-top">
       <div class="text-small color-fg-muted">
         <strong>Origin:</strong>
@@ -1733,7 +1731,7 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
   {@param maintainer: Maintainer}
   {@param moduleVersions: list<ModuleVersion>}
 <div>
-  <div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider mt-3">
+  <div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider PageLayout--responsive-stackRegions PageLayout--responsive-panePos-start mt-3">
     <div class="PageLayout-wrapper">
       <div class="PageLayout-columns">
         <div class="PageLayout-content">

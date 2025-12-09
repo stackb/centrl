@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.32.1
-// source: build/stack/starlark/v1beta1/starlark_server.proto
+// source: build/stack/starlark/v1beta1/starlark.proto
 
 package v1beta1
 
@@ -155,5 +155,5 @@ var Starlark_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "build/stack/starlark/v1beta1/starlark_server.proto",
+	Metadata: "build/stack/starlark/v1beta1/starlark.proto",
 }

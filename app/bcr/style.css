@@ -2,6 +2,84 @@
  * style.css contains assorted css classes that are used directly, not subject
  * to closure_css_binary.
  */
+
+/* ========================================
+ * Mobile Responsive Fixes
+ * ======================================== */
+
+/* Allow Header to wrap on small screens */
+@media (max-width: 767.98px) {
+    .Header {
+        flex-wrap: wrap !important;
+        gap: 8px;
+    }
+
+    .Header-item {
+        margin-right: 8px !important;
+    }
+
+    .Header-item--full {
+        flex-basis: 100%;
+        order: 2;
+    }
+}
+
+/* Reduce logo size on mobile */
+@media (max-width: 543.98px) {
+    .Header-item[style*="max-width: 54px"] {
+        max-width: 40px !important;
+    }
+}
+
+/* ========================================
+ * Code Block Overflow Fixes
+ * ======================================== */
+
+/* Prevent pre/code blocks from expanding viewport on mobile */
+pre {
+    overflow-x: auto !important;
+    max-width: 100%;
+    /* Smooth scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+}
+
+pre code {
+    white-space: pre;
+    word-wrap: normal;
+    overflow-wrap: normal;
+}
+
+/* Ensure Box containers don't overflow */
+.Box {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.Box .Box-body {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.Box .Box-body pre {
+    margin: 0;
+}
+
+/* Ensure tables in boxes don't overflow */
+.Box .Box-body table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* width-full on mobile should respect container bounds */
+@media (max-width: 767.98px) {
+    .width-full {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+}
+
 .btn-language {
     color: var(--lang-fg) !important;
     background-color: var(--lang-bg) !important;

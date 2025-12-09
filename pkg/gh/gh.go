@@ -208,7 +208,7 @@ func FetchRepositoryMetadataBatch(ctx context.Context, token string, repos []*bz
 	queryBuilder.WriteString("}\n")
 
 	// Execute raw GraphQL query
-	response, err := executeRawGraphQL(ctx, token, queryBuilder.String())
+	response, err := ExecuteRawGraphQL(ctx, token, queryBuilder.String())
 	if err != nil {
 		return fmt.Errorf("failed to execute GraphQL query: %w", err)
 	}
@@ -251,8 +251,8 @@ func populateRepoMetadata(repo *bzpb.RepositoryMetadata, fields interface{}) {
 	}
 }
 
-// executeRawGraphQL executes a raw GraphQL query against GitHub's API
-func executeRawGraphQL(ctx context.Context, token, query string) (map[string]any, error) {
+// ExecuteRawGraphQL executes a raw GraphQL query against GitHub's API
+func ExecuteRawGraphQL(ctx context.Context, token, query string) (map[string]any, error) {
 	reqBody := map[string]string{
 		"query": query,
 	}

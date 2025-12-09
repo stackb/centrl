@@ -3,6 +3,7 @@
 load("@build_stack_rules_proto//rules:starlark_module_library.bzl", "StarlarkModuleLibraryInfo")
 load(
     "//rules:providers.bzl",
+    "BazelVersionInfo",
     "ModuleDependencyCycleInfo",
     "ModuleMetadataInfo",
     "ModuleRegistryInfo",
@@ -32,6 +33,33 @@ def _write_registry_languages_json_action(ctx, mds):
     language_list = sorted(languages.keys())
 
     ctx.actions.write(output, json.encode(language_list))
+
+    return output
+
+def _is_allowed_bazel_help_release(v):
+    return v in [
+        "8.4.2",
+        "7.7.1",
+        "6.5.0",
+        "5.4.1",
+    ]
+
+def _compile_bazel_help_registry_action(ctx, bazel_versions):
+    output = ctx.actions.declare_file("bazelhelpregistry.pb")
+    want_versions = [v for v in bazel_versions if _is_allowed_bazel_help_release(v.version)]
+    files = [v.bazel_help for v in want_versions]
+    args = ctx.actions.args()
+    args.add("--output_file")
+    args.add(output)
+    args.add_all(files)
+
+    ctx.actions.run(
+        executable = ctx.executable._bazelhelpregistrycompiler,
+        arguments = [args],
+        inputs = files,
+        outputs = [output],
+        mnemonic = "CompileBazelHelpRegistry",
+    )
 
     return output
 
@@ -350,6 +378,8 @@ def _compile_registry_action(ctx, modules, docRegistry):
 def _module_registry_impl(ctx):
     deps = [d[ModuleMetadataInfo] for d in ctx.attr.deps]
     cycles = [d[ModuleDependencyCycleInfo] for d in ctx.attr.cycles]
+    bazel_versions = [d[BazelVersionInfo] for d in ctx.attr.bazel_versions]
+
     modules = [d.proto for d in deps]
     repository_metadatas = [dep.repository_metadata for dep in deps if dep.repository_metadata]
 
@@ -362,10 +392,7 @@ def _module_registry_impl(ctx):
     documentation_registry_pb = _compile_documentation_registry(ctx, doc_results)
     registry_pb = _compile_registry_action(ctx, modules, documentation_registry_pb)
     sitemap_xml = _compile_sitemap_action(ctx, registry_pb)
-
-    doc_output_groups = {d.mv.id.replace("@", "_"): depset([d.output]) for d in doc_results}
-    # for k in doc_output_groups.keys():
-    #     print("available: --output_groups=" + k)
+    bazel_help = _compile_bazel_help_registry_action(ctx, bazel_versions)
 
     return [
         DefaultInfo(files = depset([registry_pb])),
@@ -379,7 +406,8 @@ def _module_registry_impl(ctx):
             codesearch_index = [codesearch_index],
             docs = depset([r.output for r in doc_results]),
             documentation_registry_pb = depset([documentation_registry_pb]),
-            **doc_output_groups
+            bazel_help = depset([bazel_help]),
+            **{d.mv.id.replace("@", "_"): depset([d.output]) for d in doc_results}
         ),
         ModuleRegistryInfo(
             deps = depset(deps),
@@ -398,6 +426,10 @@ module_registry = rule(
     attrs = {
         "deps": attr.label_list(providers = [ModuleMetadataInfo]),
         "cycles": attr.label_list(providers = [ModuleDependencyCycleInfo]),
+        "bazel_versions": attr.label_list(
+            doc = "List of bazel_version targets",
+            providers = [BazelVersionInfo],
+        ),
         "repository_url": attr.string(doc = "Repository URL of the registry (e.g. 'https://github.com/bazelbuild/bazel-central-registry')"),
         "registry_url": attr.string(doc = "URL of the registry UI (e.g. 'https://registry.bazel.build')", mandatory = True),
         "branch": attr.string(doc = "Branch name of the repository data (e.g. 'main')"),
@@ -439,6 +471,11 @@ module_registry = rule(
         ),
         "_documentationregistrycompiler": attr.label(
             default = "//cmd/documentationregistrycompiler",
+            executable = True,
+            cfg = "exec",
+        ),
+        "_bazelhelpregistrycompiler": attr.label(
+            default = "//cmd/bazelhelpregistrycompiler",
             executable = True,
             cfg = "exec",
         ),

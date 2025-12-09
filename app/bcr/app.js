@@ -1836,7 +1836,7 @@ class ModuleVersionSelectNav extends SelectNav {
 
         for (let i = 0; i < versions.length; i++) {
             const v = versions[i];
-            const directDeps = this.getDirectDeps(v.getVersion());
+            const directDeps = getModuleDirectDeps(this.registry_, this.module_, v.getVersion());
             totalDeps += directDeps.length;
 
             // Calculate age summary from previous version
@@ -1879,30 +1879,6 @@ class ModuleVersionSelectNav extends SelectNav {
         return { versionData, totalDeps };
     }
 
-    /**
-     * @param {string} version
-     * @returns {!Array<!ModuleDependency>}
-     */
-    getDirectDeps(version) {
-        const result = [];
-        for (const module of this.registry_.getModulesList()) {
-            if (module.getName() === this.module_.getName()) {
-                continue;
-            }
-            versionLoop: for (const moduleVersion of module.getVersionsList()) {
-                for (const dep of moduleVersion.getDepsList()) {
-                    if (dep.getName() === this.moduleVersion_.getName() && dep.getVersion() === version) {
-                        const direct = new ModuleDependency();
-                        direct.setName(moduleVersion.getName());
-                        direct.setVersion(moduleVersion.getVersion());
-                        result.push(direct);
-                        break versionLoop;
-                    }
-                }
-            }
-        }
-        return result;
-    }
 }
 
 class ModuleVersionComponent extends Component {
@@ -2009,7 +1985,7 @@ class ModuleVersionComponent extends Component {
     }
 
     enterDependents() {
-        const deps = this.getDirectDeps(this.moduleVersion_.getVersion());
+        const deps = getModuleDirectDeps(this.registry_, this.module_, this.moduleVersion_.getVersion());
         if (deps.length > 0) {
             const depsEl = dom.getRequiredElementByClass(goog.getCssName('dependents'), this.getElementStrict());
             const depsComponent = new ModuleVersionDependentsComponent(this.registry_, this.module_, this.moduleVersion_, deps, 'Used By');
@@ -2064,30 +2040,6 @@ class ModuleVersionComponent extends Component {
         }
     }
 
-    /**
-     * @param {string} version
-     * @returns {!Array<!ModuleDependency>}
-     */
-    getDirectDeps(version) {
-        const result = [];
-        for (const module of this.registry_.getModulesList()) {
-            if (module.getName() === this.module_.getName()) {
-                continue;
-            }
-            versionLoop: for (const moduleVersion of module.getVersionsList()) {
-                for (const dep of moduleVersion.getDepsList()) {
-                    if (dep.getName() === this.moduleVersion_.getName() && dep.getVersion() === version) {
-                        const direct = new ModuleDependency();
-                        direct.setName(moduleVersion.getName());
-                        direct.setVersion(moduleVersion.getVersion());
-                        result.push(direct);
-                        break versionLoop;
-                    }
-                }
-            }
-        }
-        return result;
-    }
 }
 
 class ModuleVersionDependenciesComponent extends ContentComponent {
@@ -3884,6 +3836,33 @@ function getEffectiveColorMode(ownerDocument) {
     return colorMode; // 'light' or 'dark'
 }
 
+
+/**
+ * @param {!Registry} registry
+ * @param {!Module} module
+ * @param {string} version
+ * @returns {!Array<!ModuleDependency>}
+ */
+function getModuleDirectDeps(registry, module, version) {
+    const result = [];
+    for (const m of registry.getModulesList()) {
+        if (m.getName() === module.getName()) {
+            continue;
+        }
+        versionLoop: for (const moduleVersion of module.getVersionsList()) {
+            for (const dep of moduleVersion.getDepsList()) {
+                if (dep.getName() === moduleVersion.getName() && dep.getVersion() === version) {
+                    const direct = new ModuleDependency();
+                    direct.setName(moduleVersion.getName());
+                    direct.setVersion(moduleVersion.getVersion());
+                    result.push(direct);
+                    break versionLoop;
+                }
+            }
+        }
+    }
+    return result;
+}
 
 /**
  * Builds a mapping of module versions from a module.

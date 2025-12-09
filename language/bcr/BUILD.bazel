@@ -4,6 +4,9 @@ go_library(
     name = "bcr",
     srcs = [
         "archive_override.go",
+        "bazel.go",
+        "bazel_release_cache.go",
+        "bazel_version.go",
         "bcr.go",
         "config.go",
         "git_override.go",

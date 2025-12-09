@@ -197,3 +197,11 @@ ModuleCommitInfo = provider(
         "message": "str: Git commit message",
     },
 )
+
+BazelVersionInfo = provider(
+    doc = "Information about a specific Bazel release version.",
+    fields = {
+        "version": "str: Bazel version (e.g., '7.0.0', '8.0.0-pre.20241128.3')",
+        "bazel_help": "File: the output file for compilation of bazel help text",
+    },
+)

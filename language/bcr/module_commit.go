@@ -11,6 +11,8 @@ import (
 	gitpkg "github.com/stackb/centrl/pkg/git"
 )
 
+type moduleBazelRelPath string
+
 const moduleCommitKind = "module_commit"
 
 // moduleCommitLoadInfo returns load info for the module_commit rule
@@ -30,13 +32,16 @@ func moduleCommitKinds() map[string]rule.KindInfo {
 	}
 }
 
-// makeModuleVersionCommitRule creates a module_commit rule with git commit metadata
-// modulePath should be relative to the workspace root (e.g., "data/bazel-central-registry/modules/apple_support/1.22.0")
-// submoduleRoot should be the path to the submodule root relative to workspace (e.g., "data/bazel-central-registry")
-// commitsCache is the preloaded cache of module commits (can be nil for fallback)
-func makeModuleVersionCommitRule(cfg *config.Config, registryRoot, rel string, commitsCache map[moduleID]*bzpb.ModuleCommit) (*rule.Rule, error) {
+// makeModuleVersionCommitRule creates a module_commit rule with git commit
+// metadata modulePath should be relative to the workspace root (e.g.,
+// "data/bazel-central-registry/modules/apple_support/1.22.0") submoduleRoot
+// should be the path to the submodule root relative to workspace (e.g.,
+// "data/bazel-central-registry") commitsCache is the preloaded cache of module
+// commits (can be nil for fallback)
+func makeModuleVersionCommitRule(cfg *config.Config, registryRoot, rel string, commitsCache map[moduleBazelRelPath]*bzpb.ModuleCommit) (*rule.Rule, error) {
 	// Strip submodule prefix from modulePath to get path relative to submodule
-	// e.g., "data/bazel-central-registry/modules/apple_support/1.22.0" -> "modules/apple_support/1.22.0"
+	// e.g., "data/bazel-central-registry/modules/apple_support/1.22.0" ->
+	// "modules/apple_support/1.22.0"
 	relPath, err := filepath.Rel(registryRoot, rel)
 	if err != nil {
 		return nil, err
@@ -49,7 +54,7 @@ func makeModuleVersionCommitRule(cfg *config.Config, registryRoot, rel string, c
 
 	// Try to get from cache first
 	if commitsCache != nil {
-		if cached, ok := commitsCache[moduleID(moduleFile)]; ok {
+		if cached, ok := commitsCache[moduleBazelRelPath(moduleFile)]; ok {
 			commit = cached
 		}
 	}
@@ -83,11 +88,11 @@ func (ext *bcrExtension) readModuleCommits(c *config.Config) {
 	commits, err := gitpkg.GetAllModuleCommits(ctx, submodulePath, "modules/*/*/MODULE.bazel")
 	if err != nil {
 		log.Printf("warning: failed to preload module commits: %v", err)
-		ext.moduleCommits = make(map[moduleID]*bzpb.ModuleCommit)
+		ext.moduleCommits = make(map[moduleBazelRelPath]*bzpb.ModuleCommit)
 	} else {
-		ext.moduleCommits = make(map[moduleID]*bzpb.ModuleCommit, len(commits))
+		ext.moduleCommits = make(map[moduleBazelRelPath]*bzpb.ModuleCommit, len(commits))
 		for key, commit := range commits {
-			ext.moduleCommits[moduleID(key)] = commit
+			ext.moduleCommits[moduleBazelRelPath(key)] = commit
 		}
 		log.Printf("Preloaded %d module commits", len(commits))
 	}
