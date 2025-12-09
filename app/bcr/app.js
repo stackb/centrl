@@ -1935,6 +1935,25 @@ class ModuleVersionComponent extends Component {
     createDom() {
         const { versionData, totalDeps } = this.versionData_;
 
+        // Calculate time since latest release
+        let timeSinceLatest = '';
+        if (versionData.length > 0) {
+            const latestVersion = this.module_.getVersionsList()[0];
+            const latestCommit = latestVersion.getCommit();
+            if (latestCommit) {
+                const latestDate = new Date(latestCommit.getDate());
+                const now = new Date();
+                const diffMs = now - latestDate;
+                const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                if (totalDays > 0) {
+                    timeSinceLatest = calculateAgeSummary(totalDays);
+                } else if (totalDays === 0) {
+                    const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+                    timeSinceLatest = totalHours > 0 ? `${totalHours}h` : '<1h';
+                }
+            }
+        }
+
         this.setElementInternal(soy.renderAsElement(moduleVersionComponent, {
             module: this.module_,
             metadata: asserts.assertObject(this.module_.getMetadata()),
@@ -1946,6 +1965,7 @@ class ModuleVersionComponent extends Component {
             languageData: computeLanguageData(this.module_.getRepositoryMetadata()),
             versionData,
             totalDeps,
+            timeSinceLatest,
         }, {
             repositoryUrl: this.registry_.getRepositoryUrl(),
             repositoryCommit: this.registry_.getCommitSha(),
@@ -1965,6 +1985,7 @@ class ModuleVersionComponent extends Component {
         this.enterDependencies();
         this.enterDevDependencies();
         this.enterDependents();
+        this.enterNextVersion();
     }
 
     enterDependencies() {
@@ -1995,6 +2016,43 @@ class ModuleVersionComponent extends Component {
             this.addChild(depsComponent, false);
             depsComponent.render(depsEl);
         }
+    }
+
+    enterNextVersion() {
+        const rootEl = this.getElementStrict();
+
+        // Find the next-version placeholder element
+        const placeholderEl = dom.getElementByClass(goog.getCssName('next-version'), rootEl);
+        if (!placeholderEl) {
+            return;
+        }
+
+        // Get the latest version from versionData
+        const { versionData } = this.versionData_;
+        if (!versionData || versionData.length === 0) {
+            return;
+        }
+
+        const latestVersion = versionData[0].version;
+
+        // Find the element with data-version matching the latest version
+        const versionEls = dom.findElements(rootEl, el => el.getAttribute('data-version') === latestVersion);
+        if (versionEls.length === 0) {
+            return;
+        }
+
+        const versionContainerEl = versionEls[0];
+
+        // Get the first child element (the actual text span or link, not the container with padding)
+        const textEl = dom.getFirstElementChild(versionContainerEl);
+        if (!textEl) {
+            return;
+        }
+
+        // Measure the width of the text element and set it on the placeholder
+        // Add a few pixels for visual comfort
+        const size = style.getSize(textEl);
+        style.setStyle(placeholderEl, 'width', `${size.width + 2}px`);
     }
 
     enterSyntaxHighlighting() {
@@ -2075,9 +2133,18 @@ class ModuleVersionDependenciesComponent extends ContentComponent {
             ? this.deps_
             : this.moduleVersion_.getDepsList().filter(d => d.getDev() === this.dev_);
 
+        // Get the set of module names in this dependency list
+        const depModuleNames = new Set(deps.map(d => d.getName()));
+
+        // Filter overrides to only include those for modules in this dependency list
+        const overrides = this.moduleVersion_.getOverrideList().filter(
+            override => depModuleNames.has(override.getModuleName())
+        );
+
         this.setElementInternal(soy.renderAsElement(moduleVersionDependenciesComponent, {
             title: this.title_,
             deps: deps,
+            overrides: overrides,
         }, {
             latestVersions: getLatestModuleVersionsByName(this.registry_),
             versionDistances: getVersionDistances(this.registry_),
@@ -2092,6 +2159,17 @@ class ModuleVersionDependenciesComponent extends ContentComponent {
 
         this.enterListButton();
         this.enterTreeButton();
+
+        this.enterSyntaxHighlighting();
+    }
+
+    enterSyntaxHighlighting() {
+        if (HIGHLIGHT_SYNTAX) {
+            const rootEl = this.getElementStrict();
+            const className = goog.getCssName('shiki');
+            const preEls = dom.findElements(rootEl, el => el.classList.contains(className));
+            arrays.forEach(preEls, preEl => syntaxHighlight(this.dom_.getWindow(), preEl));
+        }
     }
 
     enterListButton() {
@@ -2217,8 +2295,8 @@ class ModuleVersionDependentsComponent extends ContentComponent {
         /** @private @const @type {string} */
         this.title_ = title;
 
-        /** @private @type {?Array<!ModuleDependency>} */
-        this.transitiveDeps_ = null;
+        /** @private @type {?Object} */
+        this.matrixData_ = null;
     }
 
     /**
@@ -2228,9 +2306,6 @@ class ModuleVersionDependentsComponent extends ContentComponent {
         this.setElementInternal(soy.renderAsElement(moduleVersionDependentsComponent, {
             title: this.title_,
             deps: this.directDeps_,
-        }, {
-            latestVersions: getLatestModuleVersionsByName(this.registry_),
-            versionDistances: getVersionDistances(this.registry_),
         }));
     }
 
@@ -2240,57 +2315,57 @@ class ModuleVersionDependentsComponent extends ContentComponent {
     enterDocument() {
         super.enterDocument();
 
-        this.enterDirectButton();
-        this.enterTransitiveButton();
+        this.enterListButton();
+        this.enterTableButton();
     }
 
-    enterDirectButton() {
+    enterListButton() {
         this.getHandler().listen(
-            this.getCssElement(goog.getCssName('btn-direct')),
+            this.getCssElement(goog.getCssName('btn-list')),
             events.EventType.CLICK,
-            this.handleDirectButtonElementClick,
+            this.handleListButtonElementClick,
         );
     }
 
-    enterTransitiveButton() {
+    enterTableButton() {
         this.getHandler().listen(
-            this.getCssElement(goog.getCssName('btn-transitive')),
+            this.getCssElement(goog.getCssName('btn-table')),
             events.EventType.CLICK,
-            this.handleTransitiveButtonElementClick,
+            this.handleTableButtonElementClick,
         );
     }
 
     /**
      * @param {!events.Event} e
      */
-    handleDirectButtonElementClick(e) {
+    handleListButtonElementClick(e) {
         this.toggleContentElements(false);
     }
 
     /**
      * @param {!events.Event} e
      */
-    handleTransitiveButtonElementClick(e) {
+    handleTableButtonElementClick(e) {
         this.toggleContentElements(true);
     }
 
     /**
-     * @param {boolean} displayTransitive
+     * @param {boolean} displayTable
      */
-    toggleContentElements(displayTransitive) {
-        const directContentEl = this.getDirectContentElement();
-        const transitiveContentEl = this.getTransitiveContentElement();
-        const btnDirectEl = this.getDirectButtonElement();
-        const btnTransitiveEl = this.getTransitiveButtonElement();
+    toggleContentElements(displayTable) {
+        const listContentEl = this.getListContentElement();
+        const tableContentEl = this.getTableContentElement();
+        const btnListEl = this.getListButtonElement();
+        const btnTableEl = this.getTableButtonElement();
 
-        if (displayTransitive && !this.transitiveDeps_) {
-            this.enterTransitiveContent(transitiveContentEl);
+        if (displayTable && !this.matrixData_) {
+            this.enterTableContent(tableContentEl);
         }
 
-        const displayContentEl = displayTransitive ? transitiveContentEl : directContentEl;
-        const hideContentEl = displayTransitive ? directContentEl : transitiveContentEl;
-        const selectButtonEl = displayTransitive ? btnTransitiveEl : btnDirectEl;
-        const unselectButtonEl = displayTransitive ? btnDirectEl : btnTransitiveEl;
+        const displayContentEl = displayTable ? tableContentEl : listContentEl;
+        const hideContentEl = displayTable ? listContentEl : tableContentEl;
+        const selectButtonEl = displayTable ? btnTableEl : btnListEl;
+        const unselectButtonEl = displayTable ? btnListEl : btnTableEl;
 
         style.setElementShown(displayContentEl, true);
         style.setElementShown(hideContentEl, false);
@@ -2300,104 +2375,240 @@ class ModuleVersionDependentsComponent extends ContentComponent {
     }
 
     /**
-     * @param {!Element} transitiveContentEl The element to render transitive deps into.
+     * @param {!Element} tableContentEl The element to render the table into.
      */
-    enterTransitiveContent(transitiveContentEl) {
-        // Calculate transitive dependents
-        this.transitiveDeps_ = this.getTransitiveDeps();
+    enterTableContent(tableContentEl) {
+        // Calculate matrix data
+        this.matrixData_ = this.getDependentsByVersion();
 
-        // Render the transitive dependents
-        for (const dep of this.transitiveDeps_) {
-            const depEl = soy.renderAsElement(moduleDependencyRow, {
-                dep: dep,
-            }, {
-                latestVersions: getLatestModuleVersionsByName(this.registry_),
-                versionDistances: getVersionDistances(this.registry_),
-            });
-            const wrapperEl = dom.createDom('div', 'mx-1 my-2', depEl);
-            dom.appendChild(transitiveContentEl, wrapperEl);
-        }
+        // Render the table
+        this.renderDependentsMatrix(tableContentEl, this.matrixData_);
     }
 
     /**
-     * Calculate transitive dependents by finding all modules that transitively depend on this module.
-     * @return {!Array<!ModuleDependency>}
+     * Get dependents organized by module and version.
+     * Returns a structure showing which modules depend on each version of the current module.
+     * Only shows versions from the current version backwards, and each dependent appears only once
+     * at the newest version it depends on (the "front").
+     * @return {{modules: !Array<string>, versions: !Array<string>, matrix: !Map<string, string>}}
      */
-    getTransitiveDeps() {
-        const result = [];
-        const visited = new Set();
+    getDependentsByVersion() {
         const moduleName = this.moduleVersion_.getName();
+        const module = this.module_;
+        const currentVersion = this.moduleVersion_.getVersion();
 
-        // Start with direct dependents
-        const queue = this.directDeps_.slice();
+        // Get all versions in order (newest to oldest)
+        const allVersions = module.getVersionsList().map(v => v.getVersion());
 
-        // Mark direct dependents as visited to avoid reprocessing
-        for (const dep of this.directDeps_) {
-            visited.add(`${dep.getName()}@${dep.getVersion()}`);
+        // Find index of current version
+        const currentIndex = allVersions.indexOf(currentVersion);
+        if (currentIndex === -1) {
+            return { modules: [], versions: [], matrix: new Map() };
         }
 
-        while (queue.length > 0) {
-            const dep = queue.shift();
-            result.push(dep);
+        // Only show versions from current backwards (current version and older)
+        const versions = allVersions.slice(currentIndex);
 
-            // Find dependents of this dependent (modules that depend on dep)
-            for (const module of this.registry_.getModulesList()) {
-                if (module.getName() === moduleName) {
-                    continue;
-                }
-                for (const moduleVersion of module.getVersionsList()) {
-                    const moduleVersionKey = `${moduleVersion.getName()}@${moduleVersion.getVersion()}`;
+        // Map to track the newest version each module depends on
+        // Structure: moduleDepName -> version (the newest/front version)
+        /** @type {!Map<string, string>} */
+        const dependentsMap = new Map();
 
-                    // Skip if we've already processed this module version
-                    if (visited.has(moduleVersionKey)) {
-                        continue;
-                    }
+        // Iterate through all modules in the registry
+        for (const depModule of this.registry_.getModulesList()) {
+            if (depModule.getName() === moduleName) {
+                continue;
+            }
 
-                    // Check if this module version depends on dep
-                    for (const transitiveDep of moduleVersion.getDepsList()) {
-                        if (transitiveDep.getName() === dep.getName()) {
-                            // This module version depends on dep, so add it to queue
-                            visited.add(moduleVersionKey);
-                            const newDep = new ModuleDependency();
-                            newDep.setName(moduleVersion.getName());
-                            newDep.setVersion(moduleVersion.getVersion());
-                            queue.push(newDep);
-                            break;
+            const depModuleName = depModule.getName();
+
+            // Check all versions of this dependent module
+            for (const depModuleVersion of depModule.getVersionsList()) {
+                for (const dep of depModuleVersion.getDepsList()) {
+                    if (dep.getName() === moduleName) {
+                        const version = dep.getVersion();
+
+                        // Only consider versions in our range (current and older)
+                        if (!versions.includes(version)) {
+                            continue;
+                        }
+
+                        // If we haven't seen this dependent yet, or if this version is newer
+                        // than what we've seen, update it
+                        const existingVersion = dependentsMap.get(depModuleName);
+                        if (!existingVersion) {
+                            dependentsMap.set(depModuleName, version);
+                        } else {
+                            // Check if this version is newer (earlier in the versions array)
+                            const existingIndex = versions.indexOf(existingVersion);
+                            const newIndex = versions.indexOf(version);
+                            if (newIndex < existingIndex) {
+                                dependentsMap.set(depModuleName, version);
+                            }
                         }
                     }
                 }
             }
         }
 
-        return result;
+        // Get unique versions that actually have dependents
+        /** @type {!Set<string>} */
+        const usedVersions = new Set(dependentsMap.values());
+        /** @type {function(string): boolean} */
+        const hasVersion = (v) => usedVersions.has(v);
+        const filteredVersions = versions.filter(hasVersion);
+
+        // Sort modules by their front version (newest first)
+        // This makes checkmarks appear more to the left at the top, moving right as you scroll down
+        const moduleNames = Array.from(dependentsMap.keys()).sort(
+            /**
+             * @param {string} a
+             * @param {string} b
+             * @returns {number}
+             */
+            (a, b) => {
+                const versionA = dependentsMap.get(a);
+                const versionB = dependentsMap.get(b);
+
+                if (!versionA || !versionB) {
+                    return 0;
+                }
+
+                const indexA = filteredVersions.indexOf(versionA);
+                const indexB = filteredVersions.indexOf(versionB);
+
+                // Sort by version index (earlier index = newer version = top of list)
+                return indexA - indexB;
+            });
+
+        return {
+            modules: moduleNames,
+            versions: filteredVersions,
+            matrix: dependentsMap
+        };
+    }
+
+    /**
+     * Render the dependents matrix as a table.
+     * @param {!Element} container
+     * @param {{modules: !Array<string>, versions: !Array<string>, matrix: !Map<string, string>}} data
+     */
+    renderDependentsMatrix(container, data) {
+        // Wrapper for horizontal scroll with grab cursor
+        const wrapper = dom.createDom('div', {
+            'class': 'm-1',
+            'style': 'overflow-x: scroll; cursor: grab;',
+            'onmousedown': /** @this {!HTMLElement} */ function () { this.style.cursor = 'grabbing'; },
+            'onmouseup': /** @this {!HTMLElement} */ function () { this.style.cursor = 'grab'; },
+            'onmouseleave': /** @this {!HTMLElement} */ function () { this.style.cursor = 'grab'; }
+        });
+
+        const table = dom.createDom('table', {
+            'class': 'width-full p-0',
+            'style': 'border-collapse: collapse;'
+        });
+
+        // Header row
+        const thead = dom.createDom('thead');
+        const headerRow = dom.createDom('tr');
+
+        const moduleHeader = dom.createDom('th', {
+            'class': 'text-left p-1 pr-2 position-sticky',
+            'style': 'z-index: 2;'
+        });
+        dom.appendChild(headerRow, moduleHeader);
+
+        for (const version of data.versions) {
+            const headerContent = dom.createDom('div', {
+                'style': 'writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; min-height: 100px; display: flex; align-items: left; justify-content: left;'
+            }, version);
+
+            const th = dom.createDom('th', {
+                'class': 'text-left text-small p-1 pl-2'
+            }, headerContent);
+            dom.appendChild(headerRow, th);
+        }
+        dom.appendChild(thead, headerRow);
+        dom.appendChild(table, thead);
+
+        // Body rows
+        const tbody = dom.createDom('tbody');
+        for (const moduleName of data.modules) {
+            const frontVersion = data.matrix.get(moduleName);
+
+            // Skip if no version (shouldn't happen, but be safe)
+            if (!frontVersion) {
+                continue;
+            }
+
+            const row = dom.createDom('tr');
+
+            // Get the latest version of the dependent module
+            const depModule = this.registry_.getModulesList().find(m => m.getName() === moduleName);
+            const latestVersion = depModule ? depModule.getVersionsList()[0].getVersion() : '';
+
+            // Create link to module version with version displayed
+            const moduleNameText = dom.createDom('span', {}, moduleName);
+            const versionText = dom.createDom('span', {
+                'class': 'mr-1 text-light text-small'
+            }, latestVersion);
+            const moduleLink = dom.createDom('a', {
+                'href': `/#/modules/${moduleName}/${latestVersion}`,
+                'class': 'Box-row-link'
+            }, [versionText, moduleNameText]);
+
+            const moduleCell = dom.createDom('td', {
+                'class': 'p-1 pr-2 position-sticky text-right',
+                'style': 'left: 0;'
+            }, moduleLink);
+            dom.appendChild(row, moduleCell);
+
+            // Render cells - only mark the front version
+            for (const version of data.versions) {
+                const isAtFront = version === frontVersion;
+                const cellClasses = isAtFront
+                    ? 'text-center p-1 border color-bg-success'
+                    : 'text-center p-1 border color-bg-subtle';
+                const cell = dom.createDom('td', {
+                    'class': cellClasses,
+                    'style': 'max-width: 2em; width: 2em;'
+                }, isAtFront ? '•' : '');
+                dom.appendChild(row, cell);
+            }
+            dom.appendChild(tbody, row);
+        }
+        dom.appendChild(table, tbody);
+
+        dom.appendChild(wrapper, table);
+        dom.appendChild(container, wrapper);
     }
 
     /**
      * @return {!Element}
      */
-    getDirectContentElement() {
-        return this.getCssElement(goog.getCssName("direct-content"));
+    getListContentElement() {
+        return this.getCssElement(goog.getCssName("list-content"));
     }
 
     /**
      * @return {!Element}
      */
-    getTransitiveContentElement() {
-        return this.getCssElement(goog.getCssName("transitive-content"));
+    getTableContentElement() {
+        return this.getCssElement(goog.getCssName("table-content"));
     }
 
     /**
      * @return {!Element}
      */
-    getDirectButtonElement() {
-        return this.getCssElement(goog.getCssName("btn-direct"));
+    getListButtonElement() {
+        return this.getCssElement(goog.getCssName("btn-list"));
     }
 
     /**
      * @return {!Element}
      */
-    getTransitiveButtonElement() {
-        return this.getCssElement(goog.getCssName("btn-transitive"));
+    getTableButtonElement() {
+        return this.getCssElement(goog.getCssName("btn-table"));
     }
 }
 

@@ -251,10 +251,24 @@ bazel_dep(name = "{$name}", version = "{$version}")
   {@param? currentVersion: string}
   {@param yanked: map<string,string>}
   {@param totalDeps: int}
+  {@param? timeSinceLatest: string}
 <div>
   {sectionHeader(title: 'Versions', count: length($versionData))}
 
   <table class="width-full">
+    {if $timeSinceLatest && length($versionData) > 0}
+      <tr style="opacity: 0.5;">
+        <td title="Unreleased; time since latest release" colspan="2" class="py-1">
+          <div style="display: flex; align-items: center;">
+            <span style="position: relative; padding-right: 0.5em;">
+              <span class="{css('skeleton-box')} {css('next-version')}"></span>
+              <sup class="color-fg-attention">{sp}+{$timeSinceLatest}</sup>
+            </span>
+            <span style="flex: 1; border-bottom: 1px dotted var(--color-border-muted); margin: 0 0.5em;"></span>
+          </div>
+        </td>
+      </tr>
+    {/if}
     {for $data in $versionData}
       {let $version: $data.version /}
       {let $commitDate: $data.commitDate /}
@@ -264,7 +278,7 @@ bazel_dep(name = "{$name}", version = "{$version}")
       <tr class="{if ($currentVersion === $version)}Box-row-link{/if}">
         <td title="{$version}; compatibility level {$data.compat}" colspan="2" class="py-1" style="background: linear-gradient(to right, var(--color-accent-muted) {$percentage}%, transparent {$percentage}%);">
           <div style="display: flex; align-items: center;">
-            <span style="position: relative; padding-right: 0.5em;">
+            <span style="position: relative; padding-right: 0.5em;" data-version="{$version}">
               {if $currentVersion === $version}
                 <span class="text-bold">{$version|truncate:18}</span>
               {else}
@@ -777,7 +791,7 @@ unknown
     </span>
   </div>
   {if $repoMeta}
-    <a class="btn btn-sm" href="{githubRepoUrl(org: $repoMeta.getOrganization(), name: $repoMeta.getName())}" target="_blank" rel="noopener" title="View on GitHub">
+    <a class="btn btn-sm btn-invisible" href="{githubRepoUrl(org: $repoMeta.getOrganization(), name: $repoMeta.getName())}" target="_blank" rel="noopener" title="View on GitHub">
       {octiconMarkGithub24()}
     </a>
   {/if}

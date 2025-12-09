@@ -21,8 +21,8 @@ import {
     octiconPaintbrush16,
     octiconPerson16,
     octiconSparkleFill16,
-    octiconSparklesFill16,
     octiconSquareFill16,
+    octiconTable16,
     octiconWorkflow16
 } from 'app/bcr/octicons.soy';
 import {
@@ -56,6 +56,7 @@ import {
   Maintainer,
   Module,
   ModuleDependency,
+  ModuleDependencyOverride,
   ModuleMetadata,
   ModuleVersion,
   Registry
@@ -448,6 +449,7 @@ import {
   {@param commitDate: string}
   {@param versionData: list<[version: string, compat: int, commitDate: string, directDeps: list<ModuleVersion>, ageSummary: string|null]>}
   {@param languageData: list<[name: string, sanitizedName: string, percentage: number, isPrimary: bool]>}
+  {@param timeSinceLatest: string}
 <div class="PageLayout PageLayout--panePos-end PageLayout--hasPaneDivider">
 <div class="PageLayout-columns">
   <div class="PageLayout-content">
@@ -460,14 +462,6 @@ import {
     <div class="{css('dev-deps')}"></div>
 
     <div class="{css('dependents')}"></div>
-
-    {for $override in $moduleVersion.getOverrideList()}
-      <div class="mt-3">
-        {call moduleDependencyOverride}
-          {param override: $override /}
-        {/call}
-      </div>
-    {/for}
 
   </div>
 
@@ -538,6 +532,7 @@ import {
           {param currentVersion: $moduleVersion.getVersion() /}
           {param yanked: $yanked /}
           {param totalDeps: $totalDeps /}
+          {param timeSinceLatest: $timeSinceLatest /}
         {/call}
       </div>
     </div>
@@ -550,6 +545,7 @@ import {
 {template moduleVersionDependenciesComponent}
   {@param title: string}
   {@param deps: list<ModuleDependency>}
+  {@param overrides: list<ModuleDependencyOverride>}
 <div class="Box Box--condensed mt-3">
   <div class="Box-header d-flex flex-items-center flex-justify-between">
     <span class="Box-title">{$title} {counterLabel(count: $deps.length)}</span>
@@ -569,6 +565,15 @@ import {
           {moduleDependencyRow(dep: $dep)}
         </div>
       {/for}
+      {if length($overrides) > 0}
+        <div class="mt-3 pt-3 border-top">
+          {for $override in $overrides}
+            <div class="overflow-auto pb-3">
+              <pre class="{css('shiki')}"><code lang="py">{$override.getCode()}</code></pre>
+            </div>
+          {/for}
+        </div>
+      {/if}
     </div>
     <div class="{css('tree-content')}">
     </div>
@@ -584,23 +589,29 @@ import {
   <div class="Box-header d-flex flex-items-center flex-justify-between">
     <span class="Box-title">{$title} {counterLabel(count: $deps.length)}</span>
     <div class="BtnGroup">
-      <button class="BtnGroup-item selected btn btn-sm {css('btn-direct')}" title="View direct dependents">
-        {octiconSparkleFill16()}
+      <button class="BtnGroup-item selected btn btn-sm {css('btn-list')}" title="View list of dependents">
+        {octiconListUnordered16()}
       </button>
-      <button class="BtnGroup-item btn btn-sm {css('btn-transitive')}" title="View transitive dependents">
-        {octiconSparklesFill16()}
+      <button class="BtnGroup-item btn btn-sm {css('btn-table')}" title="View matrix of dependents by version">
+        {octiconTable16()}
       </button>
     </div>
   </div>
-  <div class="Box-body width-full">
-    <div class="{css('direct-content')}">
+  <div class="Box-body">
+    <div class="{css('list-content')}">
       {for $dep in $deps}
-        <div class="mx-1 my-2">
-          {moduleDependencyRow(dep: $dep)}
+        <div class="mx-1 my-2" style="display: flex; align-items: center;">
+          <span style="padding-right: 0.5em;">
+            <a class="Box-row-link" href="{moduleVersionUrl(name: $dep.getName(), version: $dep.getVersion())}">
+              {$dep.getName()|truncate:32}
+              <span class="ml-1 text-light text-small">{$dep.getVersion()|truncate:32}</span>
+            </a>
+          </span>
+          <span style="flex: 1; border-bottom: 1px dotted var(--color-border-muted); margin: 0 0.5em;"></span>
         </div>
       {/for}
     </div>
-    <div class="{css('transitive-content')}">
+    <div class="{css('table-content')} width-full" >
     </div>
   </div>
 </div>
@@ -994,7 +1005,7 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
             <a href="{$githubUrl}" target="_blank" rel="noopener noreferrer" class="anim-pulse-in btn btn-sm btn-octicon ml-1 d-inline-flex flex-items-center" title="View source on GitHub">
               {octiconMarkGithub24()}
               <span class="ml-1">
-                Ln {$location.getStart().getLine()}
+                L{$location.getStart().getLine()}
               </span>
             </a>
           {/if}

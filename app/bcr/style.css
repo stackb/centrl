@@ -132,3 +132,40 @@
     margin: 0;
     padding: 0;
 }
+
+
+/* ========================================
+ * Skeleton Loading Animation
+ * ======================================== */
+
+@keyframes skeleton-shimmer {
+    0% {
+        mask-position: 200%;
+    }
+    to {
+        mask-position: 0;
+    }
+}
+
+.skeleton-box {
+    background-color: var(--skeletonLoader-bgColor, var(--color-neutral-muted));
+    border-radius: var(--borderRadius-small, 0.1875rem);
+    display: inline-block;
+    height: 1rem;
+    width: 6rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .skeleton-box {
+        animation: skeleton-shimmer 4s infinite;
+        mask-image: linear-gradient(75deg, #000 30%, rgba(0, 0, 0, 0.65) 80%);
+        mask-size: 200%;
+    }
+}
+
+@media (forced-colors: active) {
+    .skeleton-box {
+        outline: 1px solid transparent;
+        outline-offset: -1px;
+    }
+}
