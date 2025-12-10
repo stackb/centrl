@@ -446,6 +446,7 @@ enum SymbolType {
     SYMBOL_TYPE_MODULE_EXTENSION = 5;
     SYMBOL_TYPE_REPOSITORY_RULE = 6;
     SYMBOL_TYPE_MACRO = 7;
+    SYMBOL_TYPE_RULE_MACRO = 8;
 }
 
 // SymbolInfo represents information about a symbol in a Bazel module
@@ -465,6 +466,7 @@ message SymbolInfo {
         build.stack.starlark.v1beta1.ModuleExtension module_extension = 9;
         build.stack.starlark.v1beta1.RepositoryRule repository_rule = 10;
         build.stack.starlark.v1beta1.Macro macro = 11;
+        build.stack.starlark.v1beta1.RuleMacro rule_macro = 12;
     }
 }
 

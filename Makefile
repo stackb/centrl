@@ -26,3 +26,6 @@ devserver:
 
 deploy:
 	bazel run //app/bcr:deploy
+
+build_docs_for_module_version:
+	bazel build //data/bazel-central-registry/modules --output_groups=rules_go-0.59.0

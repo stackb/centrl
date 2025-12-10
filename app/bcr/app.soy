@@ -651,6 +651,7 @@ import {
   {@param aspects: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param funcs: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param macros: list<[file: FileInfo, sym: SymbolInfo]>}
+  {@param ruleMacros: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param moduleExtensions: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param providers: list<[file: FileInfo, sym: SymbolInfo]>}
   {@param repositoryRules: list<[file: FileInfo, sym: SymbolInfo]>}
@@ -667,10 +668,11 @@ import {
               {param info: $info /}
             {/call}
 
-            {if length($funcs) + length($rules) + length($aspects) + length($providers) + length($moduleExtensions) + length($repositoryRules) + length($macros) > 0}
+            {if length($funcs) + length($rules) + length($aspects) + length($providers) + length($moduleExtensions) + length($repositoryRules) + length($macros) + length($ruleMacros) > 0}
               <div class="pb-2 d-inline-block">
                 {if length($funcs) > 0}{symbolCount(type: $funcs[0].sym.getType(), n: length($funcs))} {sp}{/if}
                 {if length($macros) > 0}{symbolCount(type: $macros[0].sym.getType(), n: length($macros))} {sp}{/if}
+                {if length($ruleMacros) > 0}{symbolCount(type: $ruleMacros[0].sym.getType(), n: length($ruleMacros))} {sp}{/if}
                 {if length($rules) > 0}{symbolCount(type: $rules[0].sym.getType(), n: length($rules))} {sp}{/if}
                 {if length($aspects) > 0}{symbolCount(type: $aspects[0].sym.getType(), n: length($aspects))} {sp}{/if}
                 {if length($providers) > 0}{symbolCount(type: $providers[0].sym.getType(), n: length($providers))} {sp}{/if}
@@ -680,6 +682,7 @@ import {
             {/if}
             {symbolSection(title: 'Rules', items: $rules)}
             {symbolSection(title: 'Macros', items: $macros)}
+            {symbolSection(title: 'Rule Macros', items: $ruleMacros)}
             {symbolSection(title: 'Functions', items: $funcs)}
             {symbolSection(title: 'Providers', items: $providers)}
             {symbolSection(title: 'Aspects', items: $aspects)}
@@ -802,6 +805,8 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
   {@param aspects: list<SymbolInfo>}
   {@param moduleExtensions: list<SymbolInfo>}
   {@param repositoryRules: list<SymbolInfo>}
+  {@param macros: list<SymbolInfo>}
+  {@param ruleMacros: list<SymbolInfo>}
 <div style="min-width: 0">
   <div class="Subhead mb-2" style="border-bottom: none;">
     <div class="Subhead-heading d-flex flex-items-center">
@@ -842,6 +847,12 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
       {/if}
       {if length($rules) > 0}
         {symbolListBox(file: $file, symbols: $rules, title: 'Rules')}
+      {/if}
+      {if length($macros) > 0}
+        {symbolListBox(file: $file, symbols: $macros, title: 'Macros')}
+      {/if}
+      {if length($ruleMacros) > 0}
+        {symbolListBox(file: $file, symbols: $ruleMacros, title: 'Rule Macros')}
       {/if}
       {if length($funcs) > 0}
         {symbolListBox(file: $file, symbols: $funcs, title: 'Functions')}
@@ -1116,6 +1127,52 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
     {let $macro: $sym.getMacro()?.getInfo() /}
     {if $macro && length($macro.getAttributeList()) > 0}
       {attributeListBox(attributes: $macro.getAttributeList(), title: 'Attributes')}
+    {/if}
+  {/if}
+</div>
+{/template}
+
+{template ruleMacroInfoComponent}
+  {@param moduleVersion: ModuleVersion}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+  {@param? exampleCode: string}
+<div style="min-width: 0">
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param originKey: $sym.getRuleMacro()?.getFunction()?.getInfo()?.getOriginKey() /}
+    {param location: $sym.getRuleMacro()?.getFunction()?.getLocation() /}
+  {/call}
+
+  {if $exampleCode}
+    {exampleCodeBox(exampleCode: $exampleCode)}
+  {/if}
+
+  {if $sym.getRuleMacro()}
+    {let $ruleMacro: $sym.getRuleMacro() /}
+    {if $ruleMacro.getRule()?.getInfo()}
+      {let $rule: $ruleMacro.getRule()?.getInfo() /}
+      {if length($rule.getAttributeList()) > 0}
+        {attributeListBox(attributes: $rule.getAttributeList(), title: 'Attributes')}
+      {/if}
+    {/if}
+
+    // Show additional called symbols if any
+    {if $ruleMacro.getSymbolList() && length($ruleMacro.getSymbolList()) > 0}
+      <div class="Box mt-3">
+        <div class="Box-header">
+          <h3 class="Box-title">Additional Symbols Called</h3>
+        </div>
+        <div class="Box-body">
+          <ul class="list-style-none">
+            {for $symbol in $ruleMacro.getSymbolList()}
+              <li class="py-1"><code>{$symbol}</code></li>
+            {/for}
+          </ul>
+        </div>
+      </div>
     {/if}
   {/if}
 </div>
@@ -1616,6 +1673,8 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
     --color-prettylights-syntax-entity-tag
   {case 7} /* SYMBOL_TYPE_MACRO */
     --color-prettylights-syntax-markup-heading
+  {case 8} /* SYMBOL_TYPE_RULE_MACRO */
+    --color-prettylights-syntax-markup-heading
   {default}
     --color-fg-default
 {/switch}
@@ -1638,6 +1697,8 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
     Repository Rule
   {case 7} /* SYMBOL_TYPE_MACRO */
     Macro
+  {case 8} /* SYMBOL_TYPE_RULE_MACRO */
+    Rule Macro
   {default}
     Unknown
 {/switch}

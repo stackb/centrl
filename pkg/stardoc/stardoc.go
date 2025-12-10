@@ -106,69 +106,76 @@ func ParseModuleSymbolsWithLocation(module *slpb.Module) []*bzpb.SymbolInfo {
 
 	var symbols []*bzpb.SymbolInfo
 
-	// Build a map of symbol names to locations for quick lookup
-	locations := make(map[string]*slpb.SymbolLocation)
-	for _, loc := range module.SymbolLocation {
-		locations[loc.Name] = loc
+	// Process rules
+	for _, rule := range module.Rule {
+		name := ""
+		if rule.Info != nil {
+			name = rule.Info.RuleName
+		}
+
+		// Clone the rule and strip the name from its location
+		clonedRule := cloneRuleWithoutLocationName(rule)
+
+		symbols = append(symbols, &bzpb.SymbolInfo{
+			Type:        bzpb.SymbolType_SYMBOL_TYPE_RULE,
+			Name:        name,
+			Description: Truncate(rule.Info.GetDocString()),
+			Info:        &bzpb.SymbolInfo_Rule{Rule: clonedRule},
+		})
 	}
 
-	// If module has Info, process legacy types (rules, functions, providers, aspects)
-	if module.Info != nil {
-		// Process rules
-		for _, rule := range module.Info.RuleInfo {
-			loc := cloneLocationWithoutName(locations[rule.RuleName])
-			symbols = append(symbols, &bzpb.SymbolInfo{
-				Type:        bzpb.SymbolType_SYMBOL_TYPE_RULE,
-				Name:        rule.RuleName,
-				Description: Truncate(rule.DocString),
-				Info: &bzpb.SymbolInfo_Rule{Rule: &slpb.Rule{
-					Info:     rule,
-					Location: loc,
-				}},
-			})
+	// Process functions (skip if there's a RuleMacro with the same name)
+	for _, fn := range module.Function {
+		name := ""
+		if fn.Info != nil {
+			name = fn.Info.FunctionName
 		}
 
-		// Process functions
-		for _, fn := range module.Info.FuncInfo {
-			loc := cloneLocationWithoutName(locations[fn.FunctionName])
-			symbols = append(symbols, &bzpb.SymbolInfo{
-				Type:        bzpb.SymbolType_SYMBOL_TYPE_FUNCTION,
-				Name:        fn.FunctionName,
-				Description: Truncate(fn.DocString),
-				Info: &bzpb.SymbolInfo_Func{Func: &slpb.Function{
-					Info:     fn,
-					Location: loc,
-				}},
-			})
+		// Clone the function and strip the name from its location
+		clonedFn := cloneFunctionWithoutLocationName(fn)
+
+		symbols = append(symbols, &bzpb.SymbolInfo{
+			Type:        bzpb.SymbolType_SYMBOL_TYPE_FUNCTION,
+			Name:        name,
+			Description: Truncate(fn.Info.GetDocString()),
+			Info:        &bzpb.SymbolInfo_Func{Func: clonedFn},
+		})
+	}
+
+	// Process providers
+	for _, provider := range module.Provider {
+		name := ""
+		if provider.Info != nil {
+			name = provider.Info.ProviderName
 		}
 
-		// Process providers
-		for _, provider := range module.Info.ProviderInfo {
-			loc := cloneLocationWithoutName(locations[provider.ProviderName])
-			symbols = append(symbols, &bzpb.SymbolInfo{
-				Type:        bzpb.SymbolType_SYMBOL_TYPE_PROVIDER,
-				Name:        provider.ProviderName,
-				Description: Truncate(provider.DocString),
-				Info: &bzpb.SymbolInfo_Provider{Provider: &slpb.Provider{
-					Info:     provider,
-					Location: loc,
-				}},
-			})
+		// Clone the provider and strip the name from its location
+		clonedProvider := cloneProviderWithoutLocationName(provider)
+
+		symbols = append(symbols, &bzpb.SymbolInfo{
+			Type:        bzpb.SymbolType_SYMBOL_TYPE_PROVIDER,
+			Name:        name,
+			Description: Truncate(provider.Info.GetDocString()),
+			Info:        &bzpb.SymbolInfo_Provider{Provider: clonedProvider},
+		})
+	}
+
+	// Process aspects
+	for _, aspect := range module.Aspect {
+		name := ""
+		if aspect.Info != nil {
+			name = aspect.Info.AspectName
 		}
 
-		// Process aspects
-		for _, aspect := range module.Info.AspectInfo {
-			loc := cloneLocationWithoutName(locations[aspect.AspectName])
-			symbols = append(symbols, &bzpb.SymbolInfo{
-				Type:        bzpb.SymbolType_SYMBOL_TYPE_ASPECT,
-				Name:        aspect.AspectName,
-				Description: Truncate(aspect.DocString),
-				Info: &bzpb.SymbolInfo_Aspect{Aspect: &slpb.Aspect{
-					Info:     aspect,
-					Location: loc,
-				}},
-			})
-		}
+		// Clone the aspect and strip the name from its location
+		clonedAspect := cloneAspectWithoutLocationName(aspect)
+
+		symbols = append(symbols, &bzpb.SymbolInfo{
+			Type:        bzpb.SymbolType_SYMBOL_TYPE_ASPECT,
+			Name:        name,
+			Description: Truncate(aspect.Info.GetDocString()),
+			Info:        &bzpb.SymbolInfo_Aspect{Aspect: clonedAspect},
+		})
 	}
 
 	// Process repository rules
@@ -225,6 +232,33 @@ func ParseModuleSymbolsWithLocation(module *slpb.Module) []*bzpb.SymbolInfo {
 		})
 	}
 
+	// Process rule macros
+	for _, ruleMacro := range module.RuleMacro {
+		name := ""
+		if ruleMacro.Function != nil && ruleMacro.Function.Info != nil {
+			name = ruleMacro.Function.Info.FunctionName
+		}
+
+		// Clone the rule macro and strip the name from its location
+		clonedRuleMacro := cloneRuleMacroWithoutLocationName(ruleMacro)
+
+		// Get description from function or rule
+		description := ""
+		if ruleMacro.Function != nil && ruleMacro.Function.Info != nil {
+			description = Truncate(ruleMacro.Function.Info.GetDocString())
+		}
+		if description == "" && ruleMacro.Rule != nil && ruleMacro.Rule.Info != nil {
+			description = Truncate(ruleMacro.Rule.Info.GetDocString())
+		}
+
+		symbols = append(symbols, &bzpb.SymbolInfo{
+			Type:        bzpb.SymbolType_SYMBOL_TYPE_RULE_MACRO,
+			Name:        name,
+			Description: description,
+			Info:        &bzpb.SymbolInfo_RuleMacro{RuleMacro: clonedRuleMacro},
+		})
+	}
+
 	return symbols
 }
 
@@ -237,6 +271,57 @@ func cloneLocationWithoutName(loc *slpb.SymbolLocation) *slpb.SymbolLocation {
 		Start: loc.Start,
 		End:   loc.End,
 		Name:  "", // Clear the name to save space
+	}
+}
+
+// cloneRuleWithoutLocationName creates a copy of a Rule with the location name cleared
+func cloneRuleWithoutLocationName(rule *slpb.Rule) *slpb.Rule {
+	if rule == nil {
+		return nil
+	}
+	return &slpb.Rule{
+		Info:      rule.Info,
+		Location:  cloneLocationWithoutName(rule.Location),
+		Attribute: rule.Attribute,
+	}
+}
+
+// cloneFunctionWithoutLocationName creates a copy of a Function with the location name cleared
+func cloneFunctionWithoutLocationName(fn *slpb.Function) *slpb.Function {
+	if fn == nil {
+		return nil
+	}
+	return &slpb.Function{
+		Info:             fn.Info,
+		Location:         cloneLocationWithoutName(fn.Location),
+		Param:            fn.Param,
+		CallsRuleOrMacro: fn.CallsRuleOrMacro,
+		ForwardsKwargsTo: fn.ForwardsKwargsTo,
+		ForwardsNameTo:   fn.ForwardsNameTo,
+	}
+}
+
+// cloneProviderWithoutLocationName creates a copy of a Provider with the location name cleared
+func cloneProviderWithoutLocationName(provider *slpb.Provider) *slpb.Provider {
+	if provider == nil {
+		return nil
+	}
+	return &slpb.Provider{
+		Info:     provider.Info,
+		Location: cloneLocationWithoutName(provider.Location),
+		Field:    provider.Field,
+	}
+}
+
+// cloneAspectWithoutLocationName creates a copy of an Aspect with the location name cleared
+func cloneAspectWithoutLocationName(aspect *slpb.Aspect) *slpb.Aspect {
+	if aspect == nil {
+		return nil
+	}
+	return &slpb.Aspect{
+		Info:      aspect.Info,
+		Location:  cloneLocationWithoutName(aspect.Location),
+		Attribute: aspect.Attribute,
 	}
 }
 
@@ -273,6 +358,19 @@ func cloneMacroWithoutLocationName(macro *slpb.Macro) *slpb.Macro {
 		Info:      macro.Info,
 		Location:  cloneLocationWithoutName(macro.Location),
 		Attribute: macro.Attribute,
+	}
+}
+
+// cloneRuleMacroWithoutLocationName creates a copy of a RuleMacro with location names cleared
+func cloneRuleMacroWithoutLocationName(ruleMacro *slpb.RuleMacro) *slpb.RuleMacro {
+	if ruleMacro == nil {
+		return nil
+	}
+	return &slpb.RuleMacro{
+		Function: cloneFunctionWithoutLocationName(ruleMacro.Function),
+		Rule:     cloneRuleWithoutLocationName(ruleMacro.Rule),
+		Symbol:   ruleMacro.Symbol,
+		Loads:    ruleMacro.Loads,
 	}
 }
 
@@ -313,7 +411,7 @@ func ModuleToFileInfo(file *bzpb.FileInfo, module *slpb.Module) {
 	if module == nil {
 		return
 	}
-	file.Description = Truncate(module.Info.ModuleDocstring)
+	file.Description = Truncate(module.ModuleDocstring)
 	file.Symbol = ParseModuleSymbolsWithLocation(module)
 	file.Load = module.Load
 	file.Global = module.Global

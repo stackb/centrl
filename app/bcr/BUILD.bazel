@@ -161,6 +161,8 @@ closure_js_library(
         "@stackb_rules_closure//closure/goog/ui/tree:treecontrol",
         "@stackb_rules_closure//closure/goog/ui/tree:treenode",
         "@stackb_rules_closure//closure/protobuf:jspb",
+        "@stackb_rules_closure//google3/third_party/javascript/safevalues",
+        "@stackb_rules_closure//google3/third_party/javascript/safevalues/dom/elements",
         "@stackb_ui_js//js/ui:core",
         "@stackb_ui_js//js/ui:select",
     ],

@@ -23,6 +23,13 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 			return nil, fmt.Errorf("file not found: %q (was in also included as a --bzl_file?)", filePath)
 		}
 
+		// if bzlFile.Label.Repo != "rules_java" || bzlFile.Label.Pkg != "java" || bzlFile.Label.Name != "java_binary.bzl" {
+		// 	cfg.Logger.Printf("skipping %s", filePath)
+		// 	continue
+		// }
+
+		// cfg.Logger.Panicf("extracting %s: %+v", filePath, bzlFile.Label)
+
 		file := &bzpb.FileInfo{Label: bzlFile.Label}
 
 		module, err := extractModule(cfg, bzlFile)
@@ -37,6 +44,7 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 		} else {
 			stardoc.ModuleToFileInfo(file, module)
 			cfg.Logger.Printf("🟢 successfully extracted %s", bzlFile.Label)
+			// cfg.Logger.Panicf("extracted %s: %+v", filePath, module)
 		}
 
 		result.File = append(result.File, file)

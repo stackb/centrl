@@ -683,11 +683,11 @@ unknown
   {@param name: string}
   {@param? size: int}
   {@param? title: bool}
-<a class="d-inline-flex flex-items-center" href="{githubRepoUrl(org: $org, name: $name)}" title="@{$org}">
+<a class="d-inline-flex flex-column flex-content-start" href="{githubRepoUrl(org: $org, name: $name)}" title="@{$org}">
   {if $title}
-    <span class="text-small mr-2 color-fg-muted" style="min-width: 0; word-break: break-all">@{$org}/{$name}</span>
-  {/if}=------------------------------------------------------------------------------------------------------------
-    <img class="avatar mr-2 flex-shrink-0 rounded" style="padding: 2px" width="{$size ? $size : 42}" height="{$size ? $size : 42}" src="{githubAvatarUrl(name: $org)}" alt="@{$org}">
+    <span class="text-small mb-1 color-fg-muted" style="min-width: 0; word-break: break-all">@{$org}/{$name}</span>
+  {/if}
+    <img class="avatar flex-shrink-0 rounded" style="padding: 2px" width="{$size ? $size : 42}" height="{$size ? $size : 42}" src="{githubAvatarUrl(name: $org)}" alt="@{$org}">
 </a>
 {/template}
 

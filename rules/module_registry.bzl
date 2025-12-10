@@ -200,7 +200,7 @@ def _compile_bzl_for_module_version(ctx, mv, all_mv_by_id):
 
     # use these for development
     # args.add("--port", 3535)  # e.g. java -jar ./cmd/bzlcompiler/constellate.jar --listen_port=3535
-    # args.add("--error_limit=5")
+    # args.add("--error_limit=0")
     # args.add("--log_file", "/tmp/bzlcompiler.log")
 
     # Add bzl_files and module_deps without flattening depsets
@@ -407,7 +407,7 @@ def _module_registry_impl(ctx):
             docs = depset([r.output for r in doc_results]),
             documentation_registry_pb = depset([documentation_registry_pb]),
             bazel_help = depset([bazel_help]),
-            **{d.mv.id.replace("@", "_"): depset([d.output]) for d in doc_results}
+            **{d.mv.id.replace("@", "-"): depset([d.output]) for d in doc_results}
         ),
         ModuleRegistryInfo(
             deps = depset(deps),

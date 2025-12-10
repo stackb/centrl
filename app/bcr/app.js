@@ -45,9 +45,12 @@ const { DocumentationSearchHandler } = goog.require('centrl.documentation_search
 const { MVS } = goog.require('centrl.mvs');
 const { ModuleSearchHandler } = goog.require('centrl.module_search');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
+const { SafeHtml, htmlEscape, sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
 const { SearchComponent } = goog.require('centrl.search');
-const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app');
+const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, toastSuccess } = goog.require('soy.centrl.app');
 const { moduleDependencyRow, moduleVersionsListComponent } = goog.require('soy.registry');
+const { setElementInnerHtml } = goog.require('google3.third_party.javascript.safevalues.dom.elements.element');
+
 
 const HIGHLIGHT_SYNTAX = true;
 const FORMAT_MARKDOWN = true;
@@ -1751,6 +1754,82 @@ class ModuleSelect extends ContentSelect {
     }
 }
 
+// Global cache for version data computation
+/** @type {!Map<string, {versionData: !Array<!VersionData>, totalDeps: number}>} */
+const versionDataCache = new Map();
+
+/**
+ * Get cached version data for a module, computing it if not cached
+ * @param {!Registry} registry
+ * @param {!Module} module
+ * @returns {{versionData: !Array<!VersionData>, totalDeps: number}}
+ */
+function getCachedVersionData(registry, module) {
+    const cacheKey = `${module.getName()}@${registry.getCommitSha()}`;
+
+    if (versionDataCache.has(cacheKey)) {
+        return versionDataCache.get(cacheKey);
+    }
+
+    console.log(`Computing version data for ${module.getName()}...`);
+    const startTime = performance.now();
+
+    /** @type {!Array<!VersionData>} */
+    const versionData = [];
+    let totalDeps = 0;
+    const versions = module.getVersionsList();
+
+    for (let i = 0; i < versions.length; i++) {
+        const v = versions[i];
+        const directDeps = getModuleDirectDeps(registry, module, v.getVersion());
+        totalDeps += directDeps.length;
+
+        // Calculate age summary from previous version
+        let ageSummary = null;
+        if (i < versions.length - 1) {
+            const currentCommit = v.getCommit();
+            const prevCommit = versions[i + 1].getCommit();
+            if (!currentCommit || !prevCommit) {
+                ageSummary = '(no commit)';
+            } else {
+                const currentDate = new Date(currentCommit.getDate());
+                const prevDate = new Date(prevCommit.getDate());
+                const diffMs = currentDate - prevDate;
+                const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                if (totalDays > 0) {
+                    ageSummary = calculateAgeSummary(totalDays);
+                } else if (totalDays === 0) {
+                    // Same day release - calculate hours
+                    const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+                    if (totalHours > 0) {
+                        ageSummary = `${totalHours}h`;
+                    } else {
+                        ageSummary = '<1h';
+                    }
+                } else {
+                    ageSummary = '(non-positive date)';
+                }
+            }
+        }
+
+        versionData.push(/** @type{!VersionData} **/({
+            version: v.getVersion(),
+            compat: v.getCompatibilityLevel(),
+            commitDate: formatDate(v.getCommit().getDate()),
+            directDeps,
+            ageSummary,
+        }));
+    }
+
+    const result = { versionData, totalDeps };
+    versionDataCache.set(cacheKey, result);
+
+    const endTime = performance.now();
+    console.log(`Computed version data for ${module.getName()} in ${(endTime - startTime).toFixed(2)}ms`);
+
+    return result;
+}
+
 
 class ModuleVersionSelectNav extends SelectNav {
     /**
@@ -1772,7 +1851,7 @@ class ModuleVersionSelectNav extends SelectNav {
         this.moduleVersion_ = moduleVersion;
 
         /** @private @const @type {{versionData: !Array<!VersionData>, totalDeps: number}} */
-        this.versionData_ = this.computeVersionData();
+        this.versionData_ = getCachedVersionData(registry, module);
     }
 
     /**
@@ -1823,62 +1902,6 @@ class ModuleVersionSelectNav extends SelectNav {
 
         }
     }
-
-    /**
-     * Compute version data with dependency counts and total dependents
-     * @return {{versionData: !Array<!VersionData>, totalDeps: number}}
-     */
-    computeVersionData() {
-        /** @type {!Array<!VersionData>} */
-        const versionData = [];
-        let totalDeps = 0;
-        const versions = this.module_.getVersionsList();
-
-        for (let i = 0; i < versions.length; i++) {
-            const v = versions[i];
-            const directDeps = getModuleDirectDeps(this.registry_, this.module_, v.getVersion());
-            totalDeps += directDeps.length;
-
-            // Calculate age summary from previous version
-            let ageSummary = null;
-            if (i < versions.length - 1) {
-                const currentCommit = v.getCommit();
-                const prevCommit = versions[i + 1].getCommit();
-                if (!currentCommit || !prevCommit) {
-                    ageSummary = '(no commit)';
-                } else {
-                    const currentDate = new Date(currentCommit.getDate());
-                    const prevDate = new Date(prevCommit.getDate());
-                    const diffMs = currentDate - prevDate;
-                    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                    if (totalDays > 0) {
-                        ageSummary = calculateAgeSummary(totalDays);
-                    } else if (totalDays === 0) {
-                        // Same day release - calculate hours
-                        const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-                        if (totalHours > 0) {
-                            ageSummary = `${totalHours}h`;
-                        } else {
-                            ageSummary = '<1h';
-                        }
-                    } else {
-                        ageSummary = '(non-positive date)';
-                    }
-                }
-            }
-
-            versionData.push(/** @type{!VersionData} **/({
-                version: v.getVersion(),
-                compat: v.getCompatibilityLevel(),
-                commitDate: formatDate(v.getCommit().getDate()),
-                directDeps,
-                ageSummary,
-            }));
-        }
-
-        return { versionData, totalDeps };
-    }
-
 }
 
 class ModuleVersionComponent extends Component {
@@ -1988,7 +2011,14 @@ class ModuleVersionComponent extends Component {
         const deps = getModuleDirectDeps(this.registry_, this.module_, this.moduleVersion_.getVersion());
         if (deps.length > 0) {
             const depsEl = dom.getRequiredElementByClass(goog.getCssName('dependents'), this.getElementStrict());
-            const depsComponent = new ModuleVersionDependentsComponent(this.registry_, this.module_, this.moduleVersion_, deps, 'Used By');
+            // Convert ModuleVersion to ModuleDependency for the component
+            const moduleDeps = deps.map(mv => {
+                const dep = new ModuleDependency();
+                dep.setName(mv.getName());
+                dep.setVersion(mv.getVersion());
+                return dep;
+            });
+            const depsComponent = new ModuleVersionDependentsComponent(this.registry_, this.module_, this.moduleVersion_, moduleDeps, 'Used By');
             this.addChild(depsComponent, false);
             depsComponent.render(depsEl);
         }
@@ -2775,6 +2805,8 @@ class DocumentationInfoSelect extends ContentSelect {
         const repositoryRules = [];
         /** @type {!Array<!FileSymbol>} */
         const macros = [];
+        /** @type {!Array<!FileSymbol>} */
+        const ruleMacros = [];
 
         for (const file of this.docs_.getFileList()) {
             // Skip files in /private/ or /internal/ directories
@@ -2805,6 +2837,9 @@ class DocumentationInfoSelect extends ContentSelect {
                     case 7: // SYMBOL_TYPE_MACRO
                         macros.push({ file, sym });
                         break;
+                    case 8: // SYMBOL_TYPE_RULE_MACRO
+                        ruleMacros.push({ file, sym });
+                        break;
                 }
             }
         }
@@ -2816,12 +2851,14 @@ class DocumentationInfoSelect extends ContentSelect {
         moduleExtensions.sort(bySymbolName);
         repositoryRules.sort(bySymbolName);
         macros.sort(bySymbolName);
+        ruleMacros.sort(bySymbolName);
 
         this.setElementInternal(soy.renderAsElement(documentationInfoSelect, {
             info: this.docs_,
             aspects,
             funcs,
             macros,
+            ruleMacros,
             moduleExtensions,
             providers,
             repositoryRules,
@@ -2875,14 +2912,14 @@ class DocumentationInfoSelect extends ContentSelect {
 }
 
 
-class FileInfoSelect extends NavigableSelect {
+class FileInfoSelect extends ContentSelect {
     /**
      * @param {!ModuleVersion} moduleVersion
      * @param {!FileInfo} file
      * @param {?dom.DomHelper=} opt_domHelper
      */
     constructor(moduleVersion, file, opt_domHelper) {
-        super(file.getSymbolList(), opt_domHelper);
+        super(opt_domHelper);
 
         /** @private @const */
         this.moduleVersion_ = moduleVersion;
@@ -2891,26 +2928,26 @@ class FileInfoSelect extends NavigableSelect {
         this.file_ = file;
     }
 
-    /**
-     * @override
-     * @returns {?Object}
-     */
-    getCurrentItem() {
-        const currentTab = this.getCurrent();
-        if (currentTab && (currentTab instanceof SymbolInfoComponent)) {
-            return /** @type {!SymbolInfoComponent} */(currentTab).getSymbol();
-        }
-        return null;
-    }
+    // /**
+    //  * @override
+    //  * @returns {?Object}
+    //  */
+    // getCurrentItem() {
+    //     const currentTab = this.getCurrent();
+    //     if (currentTab && (currentTab instanceof SymbolInfoComponent)) {
+    //         return /** @type {!SymbolInfoComponent} */(currentTab).getSymbol();
+    //     }
+    //     return null;
+    // }
 
-    /**
-     * @override
-     * @param {!Object} item
-     * @returns {!Array<string>}
-     */
-    getItemPath(item) {
-        return [/** @type {!SymbolInfo} */(item).getName()];
-    }
+    // /**
+    //  * @override
+    //  * @param {!Object} item
+    //  * @returns {!Array<string>}
+    //  */
+    // getItemPath(item) {
+    //     return [/** @type {!SymbolInfo} */(item).getName()];
+    // }
 
     /**
      * @returns {!FileInfo}
@@ -2990,6 +3027,8 @@ class FileInfoSelect extends NavigableSelect {
                 return new RepositoryRuleInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             case 7: // SYMBOL_TYPE_MACRO
                 return new MacroInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
+            case 8: // SYMBOL_TYPE_RULE_MACRO
+                return new RuleMacroInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             default:
                 return new SymbolInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
         }
@@ -3492,6 +3531,73 @@ class MacroInfoComponent extends SymbolInfoComponent {
     }
 }
 
+class RuleMacroInfoComponent extends SymbolInfoComponent {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(moduleVersion, file, sym, opt_domHelper);
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        const exampleCode = this.generateRuleMacroExample();
+
+        this.setElementInternal(soy.renderAsElement(ruleMacroInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+            exampleCode: exampleCode,
+        }, {
+            baseUrl: this.getDocsBaseUrl(),
+        }));
+    }
+
+    /**
+     * Generate a Starlark example for the rule macro
+     * @returns {string}
+     */
+    generateRuleMacroExample() {
+        const ruleMacro = this.sym_.getRuleMacro();
+        if (!ruleMacro) {
+            return '';
+        }
+
+        const macroName = this.sym_.getName();
+        const lines = [this.generateLoadStatement(macroName), ''];
+
+        // Rule macro invocation (looks like the underlying rule)
+        lines.push(`${macroName}(`);
+
+        // Add attributes from the underlying rule
+        const rule = ruleMacro.getRule();
+        if (rule && rule.getInfo()) {
+            const attrs = rule.getInfo().getAttributeList();
+            const requiredAttrs = attrs.filter(attr => attr.getMandatory() || attr.getName() === 'name');
+            const optionalAttrs = attrs.filter(attr => !attr.getMandatory() && attr.getName() !== 'name');
+
+            // Required attributes first (including 'name')
+            requiredAttrs.forEach((attr) => {
+                const value = getAttributeExampleValue(attr, this.sym_.getName());
+                lines.push(`    ${attr.getName()} = ${value},`);
+            });
+            optionalAttrs.forEach((attr) => {
+                const value = getAttributeExampleValue(attr, this.sym_.getName());
+                lines.push(`    # ${attr.getName()} = ${value},`);
+            });
+        }
+
+        lines.push(')');
+
+        return lines.join('\n');
+    }
+}
+
 class ModuleExtensionInfoComponent extends SymbolInfoComponent {
     /**
      * @param {!ModuleVersion} moduleVersion
@@ -3634,6 +3740,8 @@ class FileInfoListComponent extends MarkdownComponent {
         const aspects = [];
         const moduleExtensions = [];
         const repositoryRules = [];
+        const macros = [];
+        const ruleMacros = [];
 
         for (const sym of this.file_.getSymbolList()) {
             switch (sym.getType()) {
@@ -3655,6 +3763,12 @@ class FileInfoListComponent extends MarkdownComponent {
                 case 6: // SYMBOL_TYPE_REPOSITORY_RULE
                     repositoryRules.push(sym);
                     break;
+                case 7: // SYMBOL_TYPE_MACRO
+                    macros.push(sym);
+                    break;
+                case 8: // SYMBOL_TYPE_RULE_MACRO
+                    ruleMacros.push(sym);
+                    break;
             }
         }
 
@@ -3667,6 +3781,8 @@ class FileInfoListComponent extends MarkdownComponent {
             aspects: aspects,
             moduleExtensions: moduleExtensions,
             repositoryRules: repositoryRules,
+            macros: macros,
+            ruleMacros: ruleMacros,
         }, {
             baseUrl: path.join('modules', this.moduleVersion_.getName(), this.moduleVersion_.getVersion(), 'docs'),
         }));
@@ -3803,22 +3919,52 @@ async function syntaxHighlight(window, preEl) {
  */
 function formatMarkdownAll(rootEl) {
     if (FORMAT_MARKDOWN) {
-        const divEls = dom.findElements(rootEl, el => dom.classlist.contains(el, 'marked'));
+        const divEls = dom.findElements(rootEl, el => dom.classlist.contains(el, goog.getCssName('marked')));
+        console.log('formatting as markdown:', divEls);
         arrays.forEach(divEls, formatMarkdown);
     }
 }
 
 /**
- * formats the innner text of an element as markdown using 'marked'.
+ * renders a docstring as SafeHtml.
  *
  * @param {!Element} el The element to convert
+ * @returns {!SafeHtml} The safe html object
+ */
+function renderDocstring(el) {
+    const text = el.textContent;
+    // markdown format this, then sanitize the result
+    const htmlText = parseMarkdownToHTML(text);
+    return sanitizeHtml(htmlText);
+}
+
+/**
+ * formats a docstring, either as HTML or markdown.
+*
+* @param {!Element} el The element to convert
+*/
+function formatMarkdown(el) {
+    setElementInnerHtml(el, renderDocstring(el));
+
+    // Trim whitespace from code blocks in the rendered HTML
+    const codeElements = el.querySelectorAll('pre code, code');
+    for (const code of codeElements) {
+        code.textContent = code.textContent.trim();
+    }
+
+    // 
+    dom.dataset.set(el, "formatted", "markdown");
+}
+
+/**
+ * formats the innner text of an element as markdown using 'marked'.
+ *
+ * @param {string} text The text to convert
+ * @returns {string} text formatted text
  * @suppress {reportUnknownTypes, missingSourcesWarnings}
  */
-function formatMarkdown(el) {
-    const text = el.textContent;
-    const html = window['marked']['parse'](text);
-    el.innerHTML = html;
-    dom.dataset.set(el, "formatted", "markdown");
+function parseMarkdownToHTML(text) {
+    return window['marked']['parse'](text);
 }
 
 /**
@@ -3843,25 +3989,62 @@ function getEffectiveColorMode(ownerDocument) {
  * @param {string} version
  * @returns {!Array<!ModuleDependency>}
  */
-function getModuleDirectDeps(registry, module, version) {
-    const result = [];
+/**
+ * Build a reverse dependency index: "module@version" -> [dependent ModuleVersions]
+ * This is computed once and cached for O(1) lookups
+ * @param {!Registry} registry
+ * @returns {!Map<string, !Array<!ModuleVersion>>}
+ */
+function buildReverseDependencyIndex(registry) {
+    /** @type {!Map<string, !Array<!ModuleVersion>>} */
+    const index = new Map();
+
     for (const m of registry.getModulesList()) {
-        if (m.getName() === module.getName()) {
-            continue;
-        }
-        versionLoop: for (const moduleVersion of module.getVersionsList()) {
-            for (const dep of moduleVersion.getDepsList()) {
-                if (dep.getName() === moduleVersion.getName() && dep.getVersion() === version) {
-                    const direct = new ModuleDependency();
-                    direct.setName(moduleVersion.getName());
-                    direct.setVersion(moduleVersion.getVersion());
-                    result.push(direct);
-                    break versionLoop;
+        for (const mv of m.getVersionsList()) {
+            for (const dep of mv.getDepsList()) {
+                const key = `${dep.getName()}@${dep.getVersion()}`;
+                if (!index.has(key)) {
+                    index.set(key, []);
+                }
+                const depList = index.get(key);
+                if (depList) {
+                    depList.push(mv);
                 }
             }
         }
     }
-    return result;
+
+    return index;
+}
+
+// Cache the reverse dependency index globally (tied to registry commit)
+let cachedReverseDepsIndex = null;
+let cachedReverseDepsCommit = null;
+
+/**
+ * Get modules that directly depend on a specific version of a module
+ * Uses a cached reverse dependency index for O(1) lookups
+ * @param {!Registry} registry
+ * @param {!Module} module
+ * @param {string} version
+ * @returns {!Array<!ModuleVersion>}
+ */
+function getModuleDirectDeps(registry, module, version) {
+    // Build/refresh index if needed
+    if (!cachedReverseDepsIndex || cachedReverseDepsCommit !== registry.getCommitSha()) {
+        console.log('Building reverse dependency index...');
+        const startTime = performance.now();
+        cachedReverseDepsIndex = buildReverseDependencyIndex(registry);
+        cachedReverseDepsCommit = registry.getCommitSha();
+        const endTime = performance.now();
+        console.log(`Built index in ${(endTime - startTime).toFixed(2)}ms`);
+    }
+
+    const key = `${module.getName()}@${version}`;
+    const dependents = cachedReverseDepsIndex.get(key) || [];
+
+    // Return ModuleVersion objects directly (as expected by templates)
+    return dependents;
 }
 
 /**
