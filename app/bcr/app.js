@@ -50,7 +50,7 @@ const { ModuleSearchHandler } = goog.require('centrl.module_search');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
 const { SafeHtml, htmlEscape, sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
 const { SearchComponent } = goog.require('centrl.search');
-const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, symbolTypeName, toastSuccess } = goog.require('soy.centrl.app');
+const { aspectInfoComponent, bodySelect, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoBlankslateComponent, documentationInfoListComponent, documentationInfoSelect, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, symbolTypeName, toastSuccess } = goog.require('soy.centrl.app');
 const { copyToClipboardButton, moduleDependencyRow, moduleVersionsListComponent } = goog.require('soy.registry');
 const { setElementInnerHtml } = goog.require('google3.third_party.javascript.safevalues.dom.elements.element');
 
@@ -884,6 +884,29 @@ class ModuleVersionBlankslateComponent extends Component {
         this.setElementInternal(soy.renderAsElement(moduleVersionBlankslateComponent, {
             module: this.module_,
             version: this.version_,
+        }));
+    }
+}
+
+
+class DocumentationInfoBlankslateComponent extends Component {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, opt_domHelper) {
+        super(opt_domHelper);
+
+        /** @private @const @type {!ModuleVersion} */
+        this.moduleVersion_ = moduleVersion;
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(documentationInfoBlankslateComponent, {
+            moduleVersion: this.moduleVersion_,
         }));
     }
 }
@@ -1920,16 +1943,15 @@ class ModuleVersionSelectNav extends SelectNav {
         );
 
         const docs = this.moduleVersion_.getSource().getDocumentation();
-        if (docs) {
-            this.addNavTab(
-                'docs',
-                'Documentation',
-                'Generated Stardoc Documentation',
-                undefined,
-                new DocumentationInfoSelect(this.moduleVersion_, docs),
-            );
-
-        }
+        this.addNavTab(
+            'docs',
+            'Documentation',
+            'Generated Stardoc Documentation',
+            undefined,
+            docs ?
+                new DocumentationInfoSelect(this.moduleVersion_, docs)
+                : new DocumentationInfoBlankslateComponent(getLatestModuleVersion(this.module_)),
+        );
     }
 }
 

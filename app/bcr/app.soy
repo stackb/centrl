@@ -2,6 +2,7 @@
 
 import {
     octiconBook16,
+    octiconBook24,
     octiconCheck16,
     octiconChevronLeft16,
     octiconChevronLeft24,
@@ -183,7 +184,7 @@ import {
 {template bodySelect}
   {@param registry: Registry}
   {@param lastUpdated: string}
-<div style="position: relative">
+<div class="container-xl" style="position: relative">
   <a href="/#/settings" class="btn-octicon color-fg-muted" title="Settings" style="position: absolute; right: 12px; top: 12px; z-index: 100;">{octiconGear16()}</a>
   <div class="PageLayout px-3">
     {header()}
@@ -1928,6 +1929,27 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
       Module Version Not Found
     </div>
     <p>Module <a href="/#/modules/{$module.getName()}">{$module.getName()}</a> has no known version <code>{$version}</code></p>
+  </div>
+</div>
+{/template}
+
+
+{template documentationInfoBlankslateComponent}
+  {@param moduleVersion: ModuleVersion}
+<div class="blankslate-container">
+  <div class="blankslate border rounded">
+    <div class="blankslate-icon">
+      {octiconBook24()}
+    </div>
+    <div class="blankslate-heading">
+      No Documentation Available
+    </div>
+    <p style="max-width: 40rem; margin-left: auto; margin-right: auto;">
+      Auto-generated documentation is only available for the latest version. Modules may optionally publish documentation for older versions by including a <code>.docs.tar.gz</code> archive in their release.
+    </p>
+    <p>
+      <a class="btn btn-primary" href="{moduleVersionUrl(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}">View Latest</a>
+    </p>
   </div>
 </div>
 {/template}
