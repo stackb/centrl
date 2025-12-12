@@ -51,7 +51,7 @@ const { ModuleSearchHandler } = goog.require('centrl.module_search');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
 const { SafeHtml, htmlEscape, sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
 const { SearchComponent } = goog.require('centrl.search');
-const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoBlankslateComponent, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
+const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, loadInfoComponent, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
 const { copyToClipboardButton, moduleDependencyRow, moduleVersionsListComponent } = goog.require('soy.registry');
 const { setElementInnerHtml } = goog.require('google3.third_party.javascript.safevalues.dom.elements.element');
 
@@ -891,29 +891,6 @@ class ModuleVersionBlankslateComponent extends Component {
         this.setElementInternal(soy.renderAsElement(moduleVersionBlankslateComponent, {
             module: this.module_,
             version: this.version_,
-        }));
-    }
-}
-
-
-class DocumentationInfoBlankslateComponent extends Component {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, opt_domHelper) {
-        super(opt_domHelper);
-
-        /** @private @const @type {!ModuleVersion} */
-        this.moduleVersion_ = moduleVersion;
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(documentationInfoBlankslateComponent, {
-            moduleVersion: this.moduleVersion_,
         }));
     }
 }
@@ -1800,8 +1777,13 @@ class ModuleSelect extends ContentSelect {
      * @param {!Route} route
      */
     selectFail(name, route) {
-        const moduleVersion = this.moduleVersions_.get(name);
+        if (name === "latest") {
+            this.addTab(name, new ModuleVersionSelectNav(this.registry_, this.module_, this.latest_));
+            this.select(name, route);
+            return;
+        }
 
+        const moduleVersion = this.moduleVersions_.get(name);
         if (moduleVersion) {
             this.addTab(name, new ModuleVersionSelectNav(this.registry_, this.module_, moduleVersion));
             this.select(name, route);
@@ -2886,7 +2868,6 @@ class DocumentationInfoSelect extends ContentSelect {
 
         if (this.docs_) {
             for (const file of this.docs_.getFileList()) {
-                // Skip files in /private/ or /internal/ directories
                 if (!isPublicFile(file)) {
                     continue;
                 }
@@ -3138,6 +3119,8 @@ class FileInfoSelect extends ContentSelect {
                 return new RuleMacroInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             case SymbolType.SYMBOL_TYPE_VALUE:
                 return new ValueInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
+            case SymbolType.SYMBOL_TYPE_LOAD_STMT:
+                return new LoadInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
             default:
                 return new SymbolInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
         }
@@ -3838,6 +3821,31 @@ class ValueInfoComponent extends SymbolInfoComponent {
     }
 }
 
+class LoadInfoComponent extends SymbolInfoComponent {
+    /**
+     * @param {!ModuleVersion} moduleVersion
+     * @param {!FileInfo} file
+     * @param {!SymbolInfo} sym
+     * @param {?dom.DomHelper=} opt_domHelper
+     */
+    constructor(moduleVersion, file, sym, opt_domHelper) {
+        super(moduleVersion, file, sym, opt_domHelper);
+    }
+
+    /**
+     * @override
+     */
+    createDom() {
+        this.setElementInternal(soy.renderAsElement(loadInfoComponent, {
+            moduleVersion: this.moduleVersion_,
+            file: this.file_,
+            sym: this.sym_,
+        }, {
+            baseUrl: this.getDocsBaseUrl(),
+        }));
+    }
+}
+
 class ModuleExtensionInfoComponent extends SymbolInfoComponent {
     /**
      * @param {!ModuleVersion} moduleVersion
@@ -4239,34 +4247,34 @@ class FileInfoListComponent extends MarkdownComponent {
 
         for (const sym of this.file_.getSymbolList()) {
             switch (sym.getType()) {
-                case 1: // SYMBOL_TYPE_RULE
+                case SymbolType.SYMBOL_TYPE_RULE:
                     rules.push(sym);
                     break;
-                case 2: // SYMBOL_TYPE_FUNCTION
+                case SymbolType.SYMBOL_TYPE_FUNCTION:
                     funcs.push(sym);
                     break;
-                case 3: // SYMBOL_TYPE_PROVIDER
+                case SymbolType.SYMBOL_TYPE_PROVIDER:
                     providers.push(sym);
                     break;
-                case 4: // SYMBOL_TYPE_ASPECT
+                case SymbolType.SYMBOL_TYPE_ASPECT:
                     aspects.push(sym);
                     break;
-                case 5: // SYMBOL_TYPE_MODULE_EXTENSION
+                case SymbolType.SYMBOL_TYPE_MODULE_EXTENSION:
                     moduleExtensions.push(sym);
                     break;
-                case 6: // SYMBOL_TYPE_REPOSITORY_RULE
+                case SymbolType.SYMBOL_TYPE_REPOSITORY_RULE:
                     repositoryRules.push(sym);
                     break;
-                case 7: // SYMBOL_TYPE_MACRO
+                case SymbolType.SYMBOL_TYPE_MACRO:
                     macros.push(sym);
                     break;
-                case 8: // SYMBOL_TYPE_RULE_MACRO
+                case SymbolType.SYMBOL_TYPE_RULE_MACRO:
                     ruleMacros.push(sym);
                     break;
-                case 9: // SYMBOL_TYPE_LOAD
+                case SymbolType.SYMBOL_TYPE_LOAD_STMT:
                     loads.push(sym);
                     break;
-                case 10: // SYMBOL_TYPE_VALUE
+                case SymbolType.SYMBOL_TYPE_VALUE:
                     values.push(sym);
                     break;
             }
@@ -4436,6 +4444,77 @@ class DocumentationReadmeComponent extends MarkdownComponent {
             this.setElementInternal(newElement);
             // Re-format markdown after update
             formatMarkdownAll(this.getElementStrict());
+            // Rewrite relative links to point to GitHub
+            this.rewriteReadmeLinks_();
+        }
+    }
+
+    /**
+     * Rewrite relative links in the README to point to GitHub
+     * @private
+     */
+    rewriteReadmeLinks_() {
+        const metadata = this.moduleVersion_.getRepositoryMetadata();
+        if (!metadata || metadata.getType() !== 1 /* GITHUB */) {
+            return;
+        }
+
+        // Get commit SHA
+        let commitSha = this.moduleVersion_.getSource()?.getCommitSha();
+        if (!commitSha) {
+            const latestVersion = getLatestModuleVersion(this.module_);
+            commitSha = latestVersion?.getSource()?.getCommitSha();
+            if (!commitSha) {
+                return;
+            }
+        }
+
+        const org = metadata.getOrganization();
+        const repo = metadata.getName();
+        const githubBase = `https://github.com/${org}/${repo}`;
+        const githubBlobBase = `${githubBase}/blob/${commitSha}`;
+        const githubRawBase = `https://raw.githubusercontent.com/${org}/${repo}/${commitSha}`;
+
+        const rootEl = this.getElement();
+        if (!rootEl) return;
+
+        // Rewrite links
+        const links = rootEl.querySelectorAll('a[href]');
+        for (const link of links) {
+            const href = link.getAttribute('href');
+            if (!href) continue;
+
+            // Skip absolute URLs
+            if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//')) {
+                continue;
+            }
+
+            // Skip anchors and mailto
+            if (href.startsWith('#') || href.startsWith('mailto:')) {
+                continue;
+            }
+
+            // Rewrite relative URLs to GitHub blob URLs
+            const newHref = `${githubBlobBase}/${href.replace(/^\.\//, '')}`;
+            link.setAttribute('href', newHref);
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+        }
+
+        // Rewrite image sources
+        const images = rootEl.querySelectorAll('img[src]');
+        for (const img of images) {
+            const src = img.getAttribute('src');
+            if (!src) continue;
+
+            // Skip absolute URLs
+            if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('//')) {
+                continue;
+            }
+
+            // Rewrite relative URLs to GitHub raw URLs
+            const newSrc = `${githubRawBase}/${src.replace(/^\.\//, '')}`;
+            img.setAttribute('src', newSrc);
         }
     }
 }
@@ -4698,7 +4777,7 @@ async function syntaxHighlight(preEl) {
     const html = await dom.getWindow()['codeToHtml'](text, {
         'lang': lang,
         'theme': theme,
-        'lineNumbers': lineNumbers,
+        'lineNumbers': true,
     });
     console.log('rendering hl', lineNumbers, preEl);
     preEl.outerHTML = html;
@@ -5209,19 +5288,19 @@ class RegistryApp extends App {
         this.activeComponent_ = null;
 
         /** @private @type {!BodySelect} */
-        this.body_ = new BodySelect(registry, opt_domHelper);
+        this.body_ = new BodySelect(this.registry_, opt_domHelper);
 
         /** @const @private @type {!ModuleSearchHandler} */
-        this.moduleSearchHandler_ = new ModuleSearchHandler(registry);
+        this.moduleSearchHandler_ = new ModuleSearchHandler(this.registry_);
 
         /** @const @private @type {!DocumentationSearchHandler} */
-        this.documentationSearchHandler_ = new DocumentationSearchHandler(registry);
+        this.documentationSearchHandler_ = new DocumentationSearchHandler(this.registry_);
 
         /** @private @type {?SearchComponent} */
         this.search_ = null;
 
-        // Build MVS maps from registry
-        const { moduleVersionMap, moduleMetadataMap } = MVS.buildMaps(registry);
+        // Build MVS maps from this.registry_
+        const { moduleVersionMap, moduleMetadataMap } = MVS.buildMaps(this.registry_);
 
         /** @private @const @type {!MVS} */
         this.mvs_ = new MVS(moduleVersionMap, moduleMetadataMap);

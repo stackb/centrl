@@ -82,6 +82,7 @@ import {
   maintainerProfile,
   maintainersList,
   maintainersTable,
+  modulesUrl,
   moduleDependencyOverride,
   moduleDependencyRow,
   moduleDependencyTable,
@@ -673,31 +674,8 @@ import {
         <div class="PageLayout-content PageLayout-pane--sticky {css('content')}"></div>
         <div class="PageLayout-pane pl-2 overflow-x-hidden">
           <nav class="SideNav" style="background-color: transparent; border: none">
-
             {documentationAboutSection(module: $module, moduleVersion: $moduleVersion, info: $info, fileSymbols: $fileSymbols)}
-
-            // {if length($funcs) + length($rules) + length($aspects) + length($providers) + length($moduleExtensions) + length($repositoryRules) + length($macros) + length($ruleMacros) > 0}
-            //   <div class="pb-2 d-inline-block">
-            //     {if length($funcs) > 0}{symbolCount(type: $funcs[0].sym.getType(), n: length($funcs))} {sp}{/if}
-            //     {if length($macros) > 0}{symbolCount(type: $macros[0].sym.getType(), n: length($macros))} {sp}{/if}
-            //     {if length($ruleMacros) > 0}{symbolCount(type: $ruleMacros[0].sym.getType(), n: length($ruleMacros))} {sp}{/if}
-            //     {if length($rules) > 0}{symbolCount(type: $rules[0].sym.getType(), n: length($rules))} {sp}{/if}
-            //     {if length($aspects) > 0}{symbolCount(type: $aspects[0].sym.getType(), n: length($aspects))} {sp}{/if}
-            //     {if length($providers) > 0}{symbolCount(type: $providers[0].sym.getType(), n: length($providers))} {sp}{/if}
-            //     {if length($moduleExtensions) > 0}{symbolCount(type: $moduleExtensions[0].sym.getType(), n: length($moduleExtensions))} {sp}{/if}
-            //     {if length($repositoryRules) > 0}{symbolCount(type: $repositoryRules[0].sym.getType(), n: length($repositoryRules))}{/if}
-            //   </div>
-            // {/if}
-            // {symbolSection(title: 'Rules', items: $rules)}
-            // {symbolSection(title: 'Macros', items: $macros)}
-            // {symbolSection(title: 'Rule Macros', items: $ruleMacros)}
-            // {symbolSection(title: 'Functions', items: $funcs)}
-            // {symbolSection(title: 'Providers', items: $providers)}
-            // {symbolSection(title: 'Aspects', items: $aspects)}
-            // {symbolSection(title: 'Repository Rules', items: $repositoryRules)}
-            // {symbolSection(title: 'Module Extensions', items: $moduleExtensions)}
           </nav>
-
         </div>
       </div>
     </div>
@@ -1092,9 +1070,17 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
               {/if}
             </span>
             <span style="flex-shrink: 0;">{octiconDotFill16(fill: 'var(' + $color + ')')}</span>
-            <a class="Link--primary flex-auto" href="{symbolInfoUrl(file: $file, sym: $symbol)}" style="margin-left: 0.25rem;">
-              {$symbol.getName()}
-            </a>
+            {if $type == SymbolType.SYMBOL_TYPE_LOAD_STMT}
+              {if $symbol.getLoad()?.getLabel()}
+                <a class="Link--primary flex-auto" href="{moduleLabelDocsUri(label: $symbol.getLoad().getLabel())}" style="margin-left: 0.25rem;">
+                  {renderLabel(label: $symbol.getLoad().getLabel())}
+                </a>
+              {/if}
+            {else}
+              <a class="Link--primary flex-auto" href="{symbolInfoUrl(file: $file, sym: $symbol)}" style="margin-left: 0.25rem;">
+                {$symbol.getName()}
+              </a>
+            {/if}
             {if $showDocstrings}
               <span class="text-small text-light ml-2 flex-shrink-0">{$symbol.getDescription()|truncate:63}</span>
             {/if}
@@ -1134,6 +1120,20 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
   {else}
     # unknown
   {/if}
+{/template}
+
+{template kwargReceiversBox}
+  {@param receivers: list<string>}
+<div class="Box Box--condensed my-3">
+  <div class="Box-header">
+    <div class="Box-title">Forwards **kwargs to</div>
+  </div>
+  {for $receiver in $receivers}
+    <div class="Box-row">
+      <code class="text-semibold">{$receiver}</code>
+    </div>
+  {/for}
+</div>
 {/template}
 
 {template symbolListBox}
@@ -1364,8 +1364,80 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
         <pre class="{css('shiki')}"><code class="language-python">{$sym.getName()} = {call renderValueAsCode}{param value: $value /}{/call}</code></pre>
       </div>
     </div>
+
+    {if $value.getMacro()}
+      {let $receivers: $value.getMacro().getKwargsReceiverList() /}
+      {if length($receivers) > 0}
+        {kwargReceiversBox(receivers: $receivers)}
+      {/if}
+    {/if}
   {/if}
 </div>
+{/template}
+
+{template loadInfoComponent}
+  {@param moduleVersion: ModuleVersion}
+  {@param file: FileInfo}
+  {@param sym: SymbolInfo}
+<div style="min-width: 0">
+  {call symbolInfoHeader}
+    {param moduleVersion: $moduleVersion /}
+    {param file: $file /}
+    {param sym: $sym /}
+    {param location: $sym.getLoad()?.getLocation() /}
+  {/call}
+
+  {if $sym.getLoad()}
+    {let $load: $sym.getLoad() /}
+    {let $label: $load.getLabel() /}
+    {if $label}
+      <div class="Box mt-3">
+        <div class="Box-header">
+          <h3 class="Box-title">Label</h3>
+        </div>
+        <div class="Box-row">
+          {if $label.getRepo()}
+            {let $labelUrl: loadLabelUrl(label: $label) /}
+            <a href="{$labelUrl}" class="Link--primary">
+              <code class="text-semibold">{renderLabel(label: $label)}</code>
+            </a>
+          {else}
+            <code class="text-semibold">{renderLabel(label: $label)}</code>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    {if length($load.getSymbolList()) > 0}
+      <div class="Box mt-3">
+        <div class="Box-header">
+          <h3 class="Box-title">Loaded Symbols {counterLabel(count: length($load.getSymbolList()))}</h3>
+        </div>
+        {for $loadSym in $load.getSymbolList()}
+          <div class="Box-row">
+            <code>{$loadSym.getFrom()}</code>
+            {if $loadSym.getFrom() != $loadSym.getTo()}
+              <span class="text-light ml-1">as</span>
+              <code class="ml-1">{$loadSym.getTo()}</code>
+            {/if}
+          </div>
+        {/for}
+      </div>
+    {/if}
+  {/if}
+</div>
+{/template}
+
+{template loadLabelUrl kind="uri"}
+  {@param label: Label}
+{let $repo: $label.getRepo() /}
+{let $pkg: $label.getPkg() /}
+{let $name: $label.getName() /}
+{if $repo}
+  /#/modules/{$repo}/latest/docs/{if $pkg}{$pkg}/{/if}{$name}
+{else}
+  // {# Local file - no link #}
+{/if}
 {/template}
 
 {template functionInfoComponent}
@@ -1392,28 +1464,21 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
 
     {let $callsList: $func?.getCallsRuleOrMacroList() /}
     {let $kwargsToList: $func?.getForwardsKwargsToList() /}
-    {if (length($callsList) > 0) || (length($kwargsToList) > 0)}
+
+    {if length($kwargsToList) > 0}
+      {kwargReceiversBox(receivers: $kwargsToList)}
+    {/if}
+
+    {if length($callsList) > 0}
       <div class="flash flash-warn mb-3">
-        {if length($callsList) > 0}
-          <div class="mb-2">
-            <strong>Calls:</strong>
-            {sp}
-            {for $target, $index in $callsList}
-              {if $index > 0}, {/if}
-              <code>{$target}</code>
-            {/for}
-          </div>
-        {/if}
-        {if length($kwargsToList) > 0}
-          <div>
-            <strong>Forwards **kwargs to:</strong>
-            {sp}
-            {for $target, $index in $kwargsToList}
-              {if $index > 0}, {/if}
-              <code>{$target}</code>
-            {/for}
-          </div>
-        {/if}
+        <div>
+          <strong>Calls:</strong>
+          {sp}
+          {for $target, $index in $callsList}
+            {if $index > 0}, {/if}
+            <code>{$target}</code>
+          {/for}
+        </div>
       </div>
     {/if}
 
@@ -1933,6 +1998,18 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
 {if $repo}@{$repo}//{/if}{if $pkg}{$pkg}:{/if}{$name}
 {/template}
 
+{template moduleLabelDocsUri kind="uri"}
+  {@param label: Label}
+{let $repo: $label.getRepo() /}
+{let $pkg: $label.getPkg() /}
+{let $name: $label.getName() /}
+{if $repo}
+  {modulesUrl()}/{$repo}/latest/docs/{if $pkg}{$pkg}/{/if}{$name}
+{else}
+  {renderLabel(label: $label)}
+{/if}
+{/template}
+
 {template moduleBlankslateComponent}
   {@param moduleName: string}
 <div class="blankslate-container">
@@ -1955,27 +2032,6 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
       Module Version Not Found
     </div>
     <p>Module <a href="/#/modules/{$module.getName()}">{$module.getName()}</a> has no known version <code>{$version}</code></p>
-  </div>
-</div>
-{/template}
-
-
-{template documentationInfoBlankslateComponent}
-  {@param moduleVersion: ModuleVersion}
-<div class="blankslate-container">
-  <div class="blankslate border rounded">
-    <div class="blankslate-icon">
-      {octiconBook24()}
-    </div>
-    <div class="blankslate-heading">
-      No Documentation Available
-    </div>
-    <p style="max-width: 40rem; margin-left: auto; margin-right: auto;">
-      Auto-generated documentation is only available for the latest version. Modules may optionally publish documentation for older versions by including a <code>.docs.tar.gz</code> archive in their release.
-    </p>
-    <p>
-      <a class="btn btn-primary" href="{moduleVersionDocsUrl(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}">View Latest</a>
-    </p>
   </div>
 </div>
 {/template}

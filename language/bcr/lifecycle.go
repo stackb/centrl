@@ -54,8 +54,9 @@ func (ext *bcrExtension) AfterResolvingDeps(ctx context.Context) {
 		log.Fatal(err)
 	}
 
-	// Resolve source commit SHAs for ranked modules (those we're generating docs for)
-	// Only do this after MVS calculation and MODULE.bazel merge to narrow down the set
+	// Resolve source commit SHAs for ranked modules (those we're generating
+	// docs for) Only do this after MVS calculation and MODULE.bazel merge to
+	// narrow down the set
 	ext.resolveSourceCommitSHAsForRankedModules(availableBzlRepositories)
 
 	// Write the updated caches back to files - best effort, ignoring errors
