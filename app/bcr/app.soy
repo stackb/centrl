@@ -1212,7 +1212,7 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
       {/if}
     </h3>
     <div class="d-flex flex-row flex-items-center">
-      <a class="Link--muted text-light f3-light" href="{fileInfoUrl(label: $file.getLabel())}">{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' + $file.getLabel()?.getName() : $file.getLabel()?.getName()}</a>
+      <a class="Link--muted text-semibold" href="{fileInfoUrl(label: $file.getLabel())}">{$file.getLabel()?.getPkg() ? $file.getLabel()?.getPkg() + '/' + $file.getLabel()?.getName() : $file.getLabel()?.getName()}</a>
     </div>
   </div>
   {if $sym.getDescription()}
@@ -2052,12 +2052,12 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
   {elseif $error}
     <div class="flash flash-warn">
       {octiconAlert16()}
-      <span class="ml-2">{$error}</span>
+      <span class="ml-2">README could not be loaded: {$error}</span>
     </div>
   {elseif $content}
     <div class="Box Box--condensed">
       <div class="Box-header">
-        <div class="Box-title">README.md</div>
+        <div class="Box-title">README</div>
       </div>
       <div class="Box-row">
         <div class="{css('marked')} markdown-body">
@@ -2068,7 +2068,7 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
   {else}
     <div class="blankslate">
       <div class="blankslate-heading">No README</div>
-      <p>No README.md file found in this repository.</p>
+      <p>No README file found in this repository.</p>
     </div>
   {/if}
 </div>
@@ -2261,23 +2261,44 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
 <div>
   {sectionHeader(title: 'About')}
 
+  <div class="f4 color-fg-muted mt-3">
   {if $info}
-    <div class="f4 mb-3 color-fg-muted">
-      {if $info.getSource() == DocumentationSource.PUBLISHED}
-        Official published documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.
-      {elseif $info.getSource() == DocumentationSource.BEST_EFFORT}
-        Auto-generated documentation using best-effort extraction method.
-      {else}
-        Documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.
-      {/if}
-    </div>
+    {if $info.getSource() == DocumentationSource.PUBLISHED}
+      Official published documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.
+    {elseif $info.getSource() == DocumentationSource.BEST_EFFORT}
+      Auto-generated documentation using best-effort extraction method.
+    {else}
+      Documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.
+    {/if}
+  {else}
+    {if $moduleVersion.getIsLatestVersion()}
+      Documentation not available. Only repositories with <code>.bzl</code> files have auto-generated documentation.
+    {else}
+      Auto-generated documentation is only available for the latest version. Modules may optionally publish documentation for older versions by including a <code>.docs.tar.gz</code> archive in their release.
+      <p class="mt-3">
+        {let $latestVersion: $module.getVersionsList()[0].getVersion() /}
+        <a class="btn btn-sm btn-primary" href="{moduleVersionDocsUrl(name: $moduleVersion.getName(), version: $latestVersion)}">View Latest</a>
+      </p>
+    {/if}
+  {/if}
+  </div>
 
-    <div class="mb-3">
-      <a class="Link--primary" href="{moduleVersionDocsUrl(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}">View README</a>
-    </div>
+  <div class="mt-3">
+      <a class="Link--muted d-flex flex-items-center mb-2" href="{moduleVersionDocsUrl(name: $moduleVersion.getName(), version: $moduleVersion.getVersion())}">
+        <span class="mr-2">{octiconBook16()}</span>
+        <span>View README</span>
+      </a>
+    {if $moduleVersion.getSource()?.getCommitSha()}
+        <a class="Link--muted d-flex flex-items-center mb-2" href="{githubSourceUrl(moduleVersion: $moduleVersion)}">
+          <span class="mr-2">{octiconMarkGithub16()}</span>
+          <span>View on GitHub</span>
+        </a>
+    {/if}
+  </div>
 
+  {if $info}
     {if length($fileSymbols) > 0}
-      <div class="mt-4">
+      <div class="mt-3 pt-3 border-top">
         {for $fileSymbol in $fileSymbols}
           {let $file: $fileSymbol.file /}
           {let $pkg: $file.getLabel()?.getPkg() /}
@@ -2303,16 +2324,6 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
         {/for}
       </div>
     {/if}
-  {else}
-    <div class="f4 mb-3 color-fg-muted">
-      <p>
-        Auto-generated documentation is only available for the latest version. Modules may optionally publish documentation for older versions by including a <code>.docs.tar.gz</code> archive in their release.
-      </p>
-      <p class="mt-3">
-        {let $latestVersion: $module.getVersionsList()[0].getVersion() /}
-        <a class="btn btn-sm btn-primary" href="{moduleVersionDocsUrl(name: $moduleVersion.getName(), version: $latestVersion)}">View Latest</a>
-      </p>
-    </div>
   {/if}
 
 </div>

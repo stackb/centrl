@@ -9,6 +9,7 @@ import (
 
 	bzpb "github.com/stackb/centrl/build/stack/bazel/bzlmod/v1"
 	"github.com/stackb/centrl/pkg/gh"
+	"github.com/schollz/progressbar/v3"
 )
 
 func (ext *bcrExtension) configureGithubClient() {
@@ -222,6 +223,20 @@ func (ext *bcrExtension) resolveSourceCommitSHAsForRankedModules(rankedModules r
 	totalURLs := len(urlInfos)
 	log.Printf("Resolving commit SHAs for %d unique GitHub source URLs from ranked modules...", totalURLs)
 
+	// Create progress bar
+	bar := progressbar.NewOptions(totalURLs,
+		progressbar.OptionSetDescription("Resolving commit SHAs (ranked)"),
+		progressbar.OptionShowCount(),
+		progressbar.OptionSetWidth(40),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "=",
+			SaucerHead:    ">",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+
 	// Convert to the format expected by BatchResolveSourceCommits
 	batchInfos := make([]struct {
 		URL  string
@@ -252,12 +267,14 @@ func (ext *bcrExtension) resolveSourceCommitSHAsForRankedModules(rankedModules r
 		if result.Error != nil {
 			log.Printf("warning: [%d/%d] failed to resolve commit SHA for %s: %v", processedCount, totalURLs, result.URL, result.Error)
 			errorCount++
+			bar.Add(1)
 			continue
 		}
 
 		if result.CommitSHA == "" {
 			log.Printf("warning: [%d/%d] empty commit SHA for %s", processedCount, totalURLs, result.URL)
 			errorCount++
+			bar.Add(1)
 			continue
 		}
 
@@ -273,7 +290,167 @@ func (ext *bcrExtension) resolveSourceCommitSHAsForRankedModules(rankedModules r
 		if len(moduleIDs) > 0 {
 			log.Printf("info: [%d/%d] resolved %s → %s", processedCount, totalURLs, result.URL, result.CommitSHA[:8])
 		}
+
+		bar.Add(1)
 	}
 
 	log.Printf("Commit SHA resolution complete: %d successful, %d errors, %d total URLs", successCount, errorCount, totalURLs)
+}
+
+// resolveSourceCommitSHAsForLatestVersions resolves commit SHAs for ALL latest
+// versions, regardless of whether they have documentation or rank.
+func (ext *bcrExtension) resolveSourceCommitSHAsForLatestVersions() {
+	if ext.githubClient == nil {
+		log.Printf("No GitHub client available, skipping source commit SHA resolution")
+		return
+	}
+
+	ctx := context.Background()
+
+	// Collect source URLs from all latest versions
+	type urlInfo struct {
+		URL  string
+		Org  string
+		Repo string
+		Type string
+		Ref  string
+	}
+
+	urlToModuleID := make(map[string][]moduleID)
+	var urlInfos []urlInfo
+	totalLatestVersions := 0
+	processedVersions := 0
+
+	// Iterate through all module versions
+	for id, versionRule := range ext.moduleVersionRules {
+		// Check if this is marked as the latest version
+		isLatest := versionRule.Rule().PrivateAttr(isLatestVersionPrivateAttr)
+		if isLatest == nil || !isLatest.(bool) {
+			continue
+		}
+
+		totalLatestVersions++
+
+		// Get the module source for this version
+		sourceRule, exists := ext.moduleSourceRules[id]
+		if !exists {
+			continue
+		}
+
+		moduleSource := sourceRule.Proto()
+		if moduleSource == nil {
+			continue
+		}
+
+		processedVersions++
+
+		// Skip if already has a commit SHA
+		if moduleSource.CommitSha != "" {
+			continue
+		}
+
+		// Parse the GitHub URL
+		parsed, err := gh.ParseGitHubSourceURL(moduleSource.Url)
+		if err != nil {
+			// Not a GitHub URL or doesn't match our patterns - skip silently
+			continue
+		}
+
+		// Track which module ID uses this URL
+		urlToModuleID[moduleSource.Url] = append(urlToModuleID[moduleSource.Url], id)
+
+		// Add to our batch (deduplicate by URL - only add first occurrence)
+		if len(urlToModuleID[moduleSource.Url]) == 1 {
+			urlInfos = append(urlInfos, urlInfo{
+				URL:  moduleSource.Url,
+				Org:  parsed.Organization,
+				Repo: parsed.Repository,
+				Type: parsed.Type.String(),
+				Ref:  parsed.Reference,
+			})
+		}
+	}
+
+	log.Printf("Processing %d latest versions with sources (out of %d total latest versions)", processedVersions, totalLatestVersions)
+
+	if len(urlInfos) == 0 {
+		log.Printf("No GitHub source URLs need commit SHA resolution for latest versions")
+		return
+	}
+
+	totalURLs := len(urlInfos)
+	log.Printf("Resolving commit SHAs for %d unique GitHub source URLs from latest versions...", totalURLs)
+
+	// Create progress bar
+	bar := progressbar.NewOptions(totalURLs,
+		progressbar.OptionSetDescription("Resolving commit SHAs"),
+		progressbar.OptionShowCount(),
+		progressbar.OptionSetWidth(40),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "=",
+			SaucerHead:    ">",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+
+	// Convert to the format expected by BatchResolveSourceCommits
+	batchInfos := make([]struct {
+		URL  string
+		Org  string
+		Repo string
+		Type string
+		Ref  string
+	}, len(urlInfos))
+	for i, info := range urlInfos {
+		batchInfos[i] = info
+	}
+
+	// Resolve all commit SHAs in batch
+	results, err := gh.BatchResolveSourceCommits(ctx, ext.githubClient, batchInfos)
+	if err != nil {
+		log.Printf("error: failed to resolve source commit SHAs: %v", err)
+		return
+	}
+
+	// Update the module source rules with resolved commit SHAs
+	successCount := 0
+	errorCount := 0
+	processedCount := 0
+
+	for _, result := range results {
+		processedCount++
+
+		if result.Error != nil {
+			log.Printf("warning: [%d/%d] failed to resolve commit SHA for %s: %v", processedCount, totalURLs, result.URL, result.Error)
+			errorCount++
+			bar.Add(1)
+			continue
+		}
+
+		if result.CommitSHA == "" {
+			log.Printf("warning: [%d/%d] empty commit SHA for %s", processedCount, totalURLs, result.URL)
+			errorCount++
+			bar.Add(1)
+			continue
+		}
+
+		// Update all module IDs that use this URL
+		moduleIDs := urlToModuleID[result.URL]
+		for _, id := range moduleIDs {
+			if source, ok := ext.moduleSourceRules[id]; ok {
+				updateModuleSourceRuleSourceCommitSha(source, result.CommitSHA)
+				successCount++
+			}
+		}
+
+		if len(moduleIDs) > 0 {
+			log.Printf("info: [%d/%d] resolved %s → %s", processedCount, totalURLs, result.URL, result.CommitSHA[:8])
+		}
+
+		bar.Add(1)
+	}
+
+	log.Printf("Commit SHA resolution complete for latest versions: %d successful, %d errors, %d total URLs", successCount, errorCount, totalURLs)
 }

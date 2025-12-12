@@ -9,8 +9,9 @@ clean:
 	(cd data/bazel-central-registry && git reset --hard && git clean -fd)
 	(cd data/bazel-central-registry && git sparse-checkout set --no-cone modules)
 
-central:
-	bazel run central
+.PHONY: modules
+modules:
+	bazel run modules
 
 regenerate_protos:
 	bazel run //:proto_assets

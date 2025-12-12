@@ -92,6 +92,7 @@ func resolveModuleRegistryRule(r *rule.Rule, ix *resolve.RuleIndex) {
 		results := ix.FindRulesByImport(importSpec, bcrLangName)
 		if len(results) == 0 {
 			log.Printf("No module_metadata found for module %s", moduleName)
+			continue
 		}
 
 		deps = append(deps, results[0].Label.String())

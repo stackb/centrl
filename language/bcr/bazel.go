@@ -96,7 +96,6 @@ func (ext *bcrExtension) createBazelModulesFromReleases(releases []*bzpb.BazelRe
 	log.Printf("Successfully created %d Bazel pseudo-modules (out of %d releases)", successCount, len(releases))
 }
 
-
 // fetchBazelReleasesGraphQL fetches all Bazel releases from GitHub using GraphQL with pagination
 func (ext *bcrExtension) fetchBazelReleasesGraphQL(ctx context.Context) ([]*bzpb.BazelRelease, error) {
 	var allReleases []*bzpb.BazelRelease
@@ -354,7 +353,7 @@ func (ext *bcrExtension) createBazelModuleVersion(release *bzpb.BazelRelease) er
 	// 	// Module already exists, skip
 	// }
 
-	log.Printf("Creating Bazel module version %s at %s", release.Version, moduleDir)
+	// log.Printf("Creating Bazel module version %s at %s", release.Version, moduleDir)
 
 	if err := os.MkdirAll(moduleDir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", moduleDir, err)
@@ -364,13 +363,13 @@ func (ext *bcrExtension) createBazelModuleVersion(release *bzpb.BazelRelease) er
 	if err := ext.writeBazelModuleFile(moduleDir, release.Version); err != nil {
 		return fmt.Errorf("failed to write MODULE.bazel: %w", err)
 	}
-	log.Printf("  Wrote %s", filepath.Join(moduleDir, "MODULE.bazel"))
+	// log.Printf("  Wrote %s", filepath.Join(moduleDir, "MODULE.bazel"))
 
 	// Write source.json
 	if err := ext.writeBazelSourceFile(moduleDir, release); err != nil {
 		return fmt.Errorf("failed to write source.json: %w", err)
 	}
-	log.Printf("  Wrote %s", filepath.Join(moduleDir, "source.json"))
+	// log.Printf("  Wrote %s", filepath.Join(moduleDir, "source.json"))
 
 	return nil
 }
