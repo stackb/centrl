@@ -15,15 +15,29 @@ import (
 )
 
 const (
-	bazelOrg  = "bazelbuild"
-	bazelRepo = "bazel"
+	bazelOrg       = "bazelbuild"
+	bazelRepo      = "bazel"
+	bazelToolsName = "bazel_tools"
 )
 
 // fetchBazelRepositoryMetadata fetches Bazel release data from GitHub and creates
 // pseudo BCR modules under modules/bazel/{VERSION}
 func (ext *bcrExtension) fetchBazelRepositoryMetadata(todo []*bzpb.RepositoryMetadata) {
+
+	// Create repository metadata for bazel module
+	bazelRepoID := repositoryID(fmt.Sprintf("github:%s/%s", bazelOrg, bazelRepo))
+	if _, exists := ext.repositoriesMetadataByID[bazelRepoID]; !exists {
+		ext.repositoriesMetadataByID[bazelRepoID] = &bzpb.RepositoryMetadata{
+			Type:          bzpb.RepositoryType_GITHUB,
+			Organization:  bazelOrg,
+			Name:          bazelRepo,
+			CanonicalName: fmt.Sprintf("github:%s/%s", bazelOrg, bazelRepo),
+		}
+		log.Printf("Created repository metadata for %s", bazelRepoID)
+	}
+
 	// Check if we already have cached releases
-	if len(ext.bazelReleasesByVersion) > 0 {
+	if false && len(ext.bazelReleasesByVersion) > 0 {
 		log.Printf("Using %d cached Bazel releases", len(ext.bazelReleasesByVersion))
 		releases := make([]*bzpb.BazelRelease, 0, len(ext.bazelReleasesByVersion))
 		for _, release := range ext.bazelReleasesByVersion {
@@ -66,7 +80,7 @@ func (ext *bcrExtension) fetchBazelRepositoryMetadata(todo []*bzpb.RepositoryMet
 	}
 
 	// Write metadata.json at module level (once for all versions)
-	bazelModuleDir := filepath.Join(ext.repoRoot, ext.modulesRoot, "bazel")
+	bazelModuleDir := filepath.Join(ext.repoRoot, ext.modulesRoot, bazelToolsName)
 	log.Printf("Writing Bazel metadata.json to %s", filepath.Join(bazelModuleDir, "metadata.json"))
 	if err := ext.writeBazelMetadataFile(bazelModuleDir, releases, maintainers); err != nil {
 		log.Printf("error: failed to write bazel metadata.json: %v", err)
@@ -345,13 +359,7 @@ func parseBazelContributorsResponse(data map[string]any) ([]string, error) {
 // createBazelModuleVersion creates a pseudo BCR module version for a Bazel release
 func (ext *bcrExtension) createBazelModuleVersion(release *bzpb.BazelRelease) error {
 	// Create directory: {repoRoot}/{modulesRoot}/bazel/{VERSION}
-	moduleDir := filepath.Join(ext.repoRoot, ext.modulesRoot, "bazel", release.Version)
-
-	// // Check if module already exists - if so, skip creation
-	// moduleBazelPath := filepath.Join(moduleDir, "MODULE.bazel")
-	// if _, err := os.Stat(moduleBazelPath); err == nil {
-	// 	// Module already exists, skip
-	// }
+	moduleDir := filepath.Join(ext.repoRoot, ext.modulesRoot, bazelToolsName, release.Version)
 
 	// log.Printf("Creating Bazel module version %s at %s", release.Version, moduleDir)
 
@@ -379,10 +387,10 @@ func (ext *bcrExtension) writeBazelModuleFile(moduleDir, version string) error {
 	modulePath := filepath.Join(moduleDir, "MODULE.bazel")
 
 	content := fmt.Sprintf(`module(
-    name = "bazel",
+    name = "%s",
     version = "%s",
 )
-`, version)
+`, bazelToolsName, version)
 
 	if err := os.WriteFile(modulePath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
@@ -425,7 +433,7 @@ func (ext *bcrExtension) populateBazelModuleCommit(release *bzpb.BazelRelease) {
 	}
 
 	// Create the module rel path - format: modules/bazel/{VERSION}/MODULE.bazel
-	key := moduleBazelRelPath(path.Join("modules", "bazel", release.Version, "MODULE.bazel"))
+	key := moduleBazelRelPath(path.Join("modules", bazelToolsName, release.Version, "MODULE.bazel"))
 
 	// Store in the moduleCommits map
 	ext.moduleCommits[key] = release.Commit

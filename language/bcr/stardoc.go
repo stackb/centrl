@@ -23,7 +23,7 @@ const (
 	debugBzlRepositoryResolution          = false
 	binaryProtoRepositorySuffix           = ".binaryprotos"
 	binaryProtosRepositoryRootTargetName  = "files"
-	bzlRepositoryRootTargetName           = "modules"
+	bzlRepositoryModulesName              = "modules"
 	bzlRepositoryPrefix                   = "bzl."
 	httpArchiveKind                       = "http_archive"
 	starlarkRepositoryArchiveKind         = "starlark_repository.archive"
@@ -185,7 +185,7 @@ func (ext *bcrExtension) handleSourceUrlStatus(url string, moduleIDs []moduleID,
 	module := moduleSourceProtoRule.Rule().PrivateAttr(moduleVersionPrivateAttr).(*bzpb.ModuleVersion)
 	source := moduleSourceProtoRule.Proto()
 	lbl := makeBzlRepositoryLabel(module.Name, module.Version)
-	rule := makeBzlRepository(lbl, source)
+	rule := makeBzlRepository(lbl, module, source)
 	name := moduleName(module.Name)
 	version := moduleVersion(module.Version)
 	versions[name] = append(versions[name], &rankedVersion{version: version, bzlRepositoryRule: rule, bzlRepositoryLabel: lbl})
@@ -509,10 +509,19 @@ func makeBzlRepositoryName(moduleName, moduleVersion string) (name string) {
 // makeBzlRepositoryLabel creates a label for a starlark_repository rule.
 func makeBzlRepositoryLabel(moduleName, moduleVersion string) label.Label {
 	repo := makeBzlRepositoryName(moduleName, moduleVersion)
-	return label.New(repo, "", bzlRepositoryRootTargetName)
+	pkg := ""
+	name := bzlRepositoryModulesName
+
+	// special case: if this is the bazel_tools repo
+	if moduleName == bazelToolsName {
+		pkg = "tools"
+	}
+
+	return label.New(repo, pkg, name)
 }
 
-func makeBzlRepository(from label.Label, source *bzpb.ModuleSource) *rule.Rule {
+func makeBzlRepository(from label.Label, moduleVersion *bzpb.ModuleVersion, source *bzpb.ModuleSource) *rule.Rule {
+
 	r := rule.NewRule(starlarkRepositoryArchiveKind, from.Repo)
 	r.SetAttr("urls", []string{source.Url})
 	r.SetAttr("type", getArchiveTypeOrDefault(source.Url, "tar.gz"))
@@ -526,9 +535,15 @@ func makeBzlRepository(from label.Label, source *bzpb.ModuleSource) *rule.Rule {
 	}
 	r.SetAttr("build_file_generation", "clean")
 	r.SetAttr("languages", []string{starlarkRepositoryLanguageName})
-	r.SetAttr("build_directives", []string{
-		fmt.Sprintf("gazelle:%s_root", starlarkRepositoryLanguageName),
-	})
+
+	rootDirective := fmt.Sprintf("gazelle:%s_root", starlarkRepositoryLanguageName)
+	if moduleVersion.Name == bazelToolsName {
+		// special case: only generate docs for @bazel_tools if this is the
+		// bazel pseudomodule
+		rootDirective = fmt.Sprintf("gazelle:%s_root tools", starlarkRepositoryLanguageName)
+	}
+
+	r.SetAttr("build_directives", []string{rootDirective})
 
 	return r
 }

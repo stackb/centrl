@@ -64,8 +64,8 @@ func makeModuleRegistryRule(name string, subdirs []string, registryURL string, c
 	return r
 }
 
-// resolveModuleRegistryRule resolves the deps and bazel_versions attributes
-// for a module_registry rule by looking up module_metadata and bazel_version rules
+// resolveModuleRegistryRule resolves the deps and bazel_versions attributes for
+// a module_registry rule by looking up module_metadata and bazel_version rules
 func resolveModuleRegistryRule(r *rule.Rule, ix *resolve.RuleIndex) {
 	// Get the subdirs private attribute
 	subdirsRaw := r.PrivateAttr("subdirs")

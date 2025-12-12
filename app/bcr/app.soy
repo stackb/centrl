@@ -728,6 +728,18 @@ https://github.com/{$org}/{$repo}/blob/{$commitSha}/{$path}?plain=1{if $location
 {/if}
 {/template}
 
+{template githubRepoUrl kind="uri"}
+  {@param moduleVersion: ModuleVersion}
+{if $moduleVersion.getRepositoryMetadata()?.getType() == RepositoryType.GITHUB}
+{let $org: $moduleVersion.getRepositoryMetadata().getOrganization() /}
+{let $repo: $moduleVersion.getRepositoryMetadata().getName() /}
+{let $commitSha: $moduleVersion.getSource()?.getCommitSha() /}
+{if $commitSha}
+https://github.com/{$org}/{$repo}/tree/{$commitSha}
+{/if}
+{/if}
+{/template}
+
 {template githubRawUrl kind="uri"}
   {@param moduleVersion: ModuleVersion}
   {@param label: Label}
@@ -2267,9 +2279,7 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
   {@param? info: DocumentationInfo}
   {@param fileSymbols: list<[file: FileInfo, symbolGroups: list<[type: SymbolType, typeName: string, symbols: list<SymbolInfo>]>]>}
 <div>
-  {sectionHeader(title: 'About')}
-
-  <div class="f4 color-fg-muted mt-3">
+  <div class="f4 color-fg-muted">
   {if $info}
     {if $info.getSource() == DocumentationSource.PUBLISHED}
       Official published documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.
@@ -2297,10 +2307,13 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
         <span>View README</span>
       </a>
     {if $moduleVersion.getSource()?.getCommitSha()}
-        <a class="Link--muted d-flex flex-items-center mb-2" href="{githubSourceUrl(moduleVersion: $moduleVersion)}">
-          <span class="mr-2">{octiconMarkGithub16()}</span>
-          <span>View on GitHub</span>
-        </a>
+        {let $githubUrl: githubRepoUrl(moduleVersion: $moduleVersion) /}
+        {if $githubUrl}
+          <a href="{$githubUrl}" target="_blank" rel="noopener noreferrer" class="Link--muted d-flex flex-items-center" title="View on GitHub">
+            <span class="mr-2">{octiconMarkGithub16()}</span>
+            <span>View on GitHub</span>
+          </a>
+        {/if}
     {/if}
   </div>
 
