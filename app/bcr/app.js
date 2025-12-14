@@ -1,6 +1,5 @@
 goog.module("centrl.App");
 
-const AspectInfo = goog.require('proto.stardoc_output.AspectInfo');
 const AttributeInfo = goog.require('proto.stardoc_output.AttributeInfo');
 const AttributeType = goog.require('proto.stardoc_output.AttributeType');
 const ComponentEventType = goog.require('goog.ui.Component.EventType');
@@ -13,47 +12,39 @@ const FunctionParamInfo = goog.require('proto.stardoc_output.FunctionParamInfo')
 const FunctionParamRole = goog.require('proto.stardoc_output.FunctionParamRole');
 const Label = goog.require('proto.build.stack.starlark.v1beta1.Label');
 const Maintainer = goog.require('proto.build.stack.bazel.bzlmod.v1.Maintainer');
-const Message = goog.require('jspb.Message');
 const Module = goog.require('proto.build.stack.bazel.bzlmod.v1.Module');
 const ModuleDependency = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleDependency');
-const ModuleExtensionInfo = goog.require('proto.stardoc_output.ModuleExtensionInfo');
-const ModuleExtensionTagClassInfo = goog.require('proto.stardoc_output.ModuleExtensionTagClassInfo');
-const ModuleInfo = goog.require('proto.stardoc_output.ModuleInfo');
 const ModuleMetadata = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleMetadata');
 const ModuleVersion = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleVersion');
 const ProviderFieldInfo = goog.require('proto.stardoc_output.ProviderFieldInfo');
-const ProviderInfo = goog.require('proto.stardoc_output.ProviderInfo');
 const Registry = goog.require('proto.build.stack.bazel.bzlmod.v1.Registry');
 const RepositoryMetadata = goog.require('proto.build.stack.bazel.bzlmod.v1.RepositoryMetadata');
-const RepositoryRuleInfo = goog.require('proto.stardoc_output.RepositoryRuleInfo');
 const RepositoryType = goog.require('proto.build.stack.bazel.bzlmod.v1.RepositoryType');
-const RuleInfo = goog.require('proto.stardoc_output.RuleInfo');
-const Select = goog.require('stack.ui.Select');
-const StarlarkFunctionInfo = goog.require('proto.stardoc_output.StarlarkFunctionInfo');
 const SymbolInfo = goog.require('proto.build.stack.bazel.bzlmod.v1.SymbolInfo');
 const SymbolType = goog.require('proto.build.stack.bazel.bzlmod.v1.SymbolType');
 const Trie = goog.require('goog.structs.Trie');
 const arrays = goog.require('goog.array');
 const asserts = goog.require('goog.asserts');
 const dataset = goog.require('goog.dom.dataset');
-const date = goog.require('goog.date');
 const dom = goog.require('goog.dom');
 const events = goog.require('goog.events');
 const path = goog.require('goog.string.path');
 const relative = goog.require('goog.date.relative');
 const soy = goog.require('goog.soy');
-const strings = goog.require('goog.string');
 const style = goog.require('goog.style');
 const { App, Component, Route, RouteEvent, RouteEventType } = goog.require('stack.ui');
-const { Application, SearchProvider, Searchable, getApplication } = goog.require('centrl.common');
+const { Application, SearchProvider, getApplication } = goog.require('centrl.common');
+const { ContentComponent } = goog.require('centrl.ContentComponent');
+const { ContentSelect } = goog.require('centrl.ContentSelect');
 const { DocumentationSearchHandler } = goog.require('centrl.documentation_search');
 const { MVS } = goog.require('centrl.mvs');
 const { ModuleSearchHandler } = goog.require('centrl.module_search');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
-const { SafeHtml, htmlEscape, sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
+const { SafeHtml, sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
 const { SearchComponent } = goog.require('centrl.search');
-const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, loadInfoComponent, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, notFoundComponent, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
-const { copyToClipboardButton, moduleDependencyRow, moduleVersionsListComponent } = goog.require('soy.registry');
+const { SelectNav } = goog.require('centrl.SelectNav');
+const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, loadInfoComponent, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, settingsAppearanceComponent, settingsSelect, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
+const { copyToClipboardButton, moduleVersionsListComponent } = goog.require('soy.registry');
 const { setElementInnerHtml } = goog.require('google3.third_party.javascript.safevalues.dom.elements.element');
 
 
@@ -291,197 +282,6 @@ function getAttributeExampleValue(attr, defaultName = 'my_target') {
             return '{}';
         default:
             return '""';
-    }
-}
-
-
-/**
- * Base component that has a content element.
- */
-class ContentComponent extends Component {
-    /**
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(opt_domHelper) {
-        super(opt_domHelper);
-    }
-
-    /**
-     * @param {string} cssName
-     * @return {!HTMLElement}
-     */
-    getCssElement(cssName) {
-        return /** @type {!HTMLElement} */ (
-            dom.getRequiredElementByClass(cssName, this.getElementStrict())
-        );
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
-    }
-}
-
-
-/**
- * Base Select component that shows a not found page for unknown routes.
- * @abstract
- */
-class ContentSelect extends Select {
-    /**
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(opt_domHelper) {
-        super(opt_domHelper);
-    }
-
-    /**
-     * @param {string} cssName
-     * @return {!HTMLElement}
-     */
-    getCssElement(cssName) {
-        return /** @type {!HTMLElement} */ (
-            dom.getRequiredElementByClass(cssName, this.getElementStrict())
-        );
-    }
-
-    /**
-     * @override
-     * @return {Element} Element to contain child elements (null if none).
-     */
-    getContentElement() {
-        return this.getCssElement(goog.getCssName("content"));
-    }
-
-    /**
-     * @override
-     * @param {string} name
-     * @param {!Route} route
-     */
-    selectFail(name, route) {
-        let tab = this.getTab(TabName.NOT_FOUND);
-        if (tab) {
-            this.showTab(TabName.NOT_FOUND);
-            tab.go(route);
-        } else {
-            this.addTab(TabName.NOT_FOUND, new NotFoundComponent(this.dom_));
-            this.select(name, route);
-        }
-    }
-}
-
-/**
- * @abstract
- */
-class SelectNav extends ContentSelect {
-    /**
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(opt_domHelper) {
-        super(opt_domHelper);
-    }
-
-    /**
-     * @override
-     */
-    enterDocument() {
-        super.enterDocument();
-        this.getHandler().listen(
-            this,
-            [ComponentEventType.SHOW, ComponentEventType.HIDE],
-            this.handleShowHide,
-        );
-    }
-
-    /**
-     * @abstract
-     * @returns {string}
-     */
-    getDefaultTabName() { }
-
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(this.getDefaultTabName(), route.add(this.getDefaultTabName()));
-    }
-
-    /**
-     * @return {!HTMLElement}
-     */
-    getNavElement() {
-        return this.getCssElement(goog.getCssName("nav"));
-    }
-
-    /**
-     * @param {string} name
-     * @param {string} label
-     * @param {string} title
-     * @param {number|undefined} count
-     * @param {!Component} c
-     * @returns {!Component}
-     */
-    addNavTab(name, label, title, count, c) {
-        const rv = super.addTab(name, c);
-
-        const item = this.createMenuItem(name, label, title, count, c.getPathUrl());
-        const fragmentId = this.makeId(c.getId());
-        item.id = fragmentId;
-
-        dom.append(this.getNavElement(), item);
-        return rv;
-    }
-
-    /**
-     * @param {string} name
-     * @param {string} label
-     * @param {string} title
-     * @param {number|undefined} count
-     * @param {string} path
-     * @return {!Element}
-     */
-    createMenuItem(name, label, title, count, path) {
-        const a = soy.renderAsElement(navItem, {
-            label,
-            title,
-            count,
-        });
-        a.href = "/#/" + path;
-        dataset.set(a, "name", name);
-        return a;
-    }
-
-    /**
-     * @param {!events.Event} e
-     */
-    handleShowHide(e) {
-        const target = /** @type {!Component} */ (e.target);
-
-        // Check that the target is a child of us
-        const child = this.getChild(target.getId());
-        if (!child) {
-            return;
-        }
-
-        // Find the menu item element corresponding to the child
-        const fragmentId = this.makeId(target.getId());
-        const item = dom.getElement(fragmentId);
-        if (!item) {
-            return;
-        }
-
-        // Get the parent element and find the current active item.
-        const menu = dom.getParentElement(item);
-        const activeItems = dom.getElementsByClass("UnderlineNav-item", menu);
-        if (activeItems && activeItems.length) {
-            arrays.forEach(activeItems, (el) => dom.classlist.remove(el, "selected"));
-        }
-
-        dom.classlist.add(item, "selected");
     }
 }
 
@@ -4776,21 +4576,6 @@ class BzlFileSourceComponent extends Component {
     }
 }
 
-class NotFoundComponent extends Component {
-    /**
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(opt_domHelper) {
-        super(opt_domHelper);
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(notFoundComponent));
-    }
-}
 
 /**
  * Builds a mapping of modules from the registry.
@@ -5692,3 +5477,4 @@ class RegistryApp extends App {
     }
 }
 exports = RegistryApp;
+exports.TabName = TabName;
