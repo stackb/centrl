@@ -76,6 +76,7 @@ closure_js_template_library(
     name = "soy",
     srcs = [
         "app.soy",
+        "maintainers.soy",
         "octicons.soy",
         "registry.soy",
         "settings.soy",
@@ -129,6 +130,7 @@ closure_js_library(
         "contentselect.js",
         "documentation_search.js",
         "main.js",
+        "maintainers.js",
         "module_search.js",
         "mvs.js",
         "mvs_tree.js",

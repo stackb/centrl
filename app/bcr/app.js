@@ -11,7 +11,6 @@ const FileLoadTreeNode = goog.require('proto.build.stack.bazel.bzlmod.v1.FileLoa
 const FunctionParamInfo = goog.require('proto.stardoc_output.FunctionParamInfo');
 const FunctionParamRole = goog.require('proto.stardoc_output.FunctionParamRole');
 const Label = goog.require('proto.build.stack.starlark.v1beta1.Label');
-const Maintainer = goog.require('proto.build.stack.bazel.bzlmod.v1.Maintainer');
 const Module = goog.require('proto.build.stack.bazel.bzlmod.v1.Module');
 const ModuleDependency = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleDependency');
 const ModuleVersion = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleVersion');
@@ -37,15 +36,16 @@ const { ContentComponent } = goog.require('centrl.ContentComponent');
 const { ContentSelect } = goog.require('centrl.ContentSelect');
 const { DocumentationSearchHandler } = goog.require('centrl.documentation_search');
 const { MVS } = goog.require('centrl.mvs');
+const { MaintainersSelect } = goog.require('centrl.maintainers');
 const { ModuleSearchHandler } = goog.require('centrl.module_search');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
 const { SafeHtml, sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
 const { SearchComponent } = goog.require('centrl.search');
 const { SelectNav } = goog.require('centrl.SelectNav');
 const { SettingsSelect } = goog.require('centrl.settings');
-const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, loadInfoComponent, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
+const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, loadInfoComponent, macroInfoComponent, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
 const { copyToClipboardButton, moduleVersionsListComponent } = goog.require('soy.registry');
-const { createDocumentationMap, createMaintainersMap, createModuleMap, createModuleVersionMap, getLatestModuleVersion, getLatestModuleVersions, getLatestModuleVersionsByName, getModuleDirectDeps, getYankedMap, maintainerModuleVersions } = goog.require('centrl.registry');
+const { createDocumentationMap, createMaintainersMap, createModuleMap, createModuleVersionMap, getLatestModuleVersion, getLatestModuleVersions, getLatestModuleVersionsByName, getModuleDirectDeps, getYankedMap } = goog.require('centrl.registry');
 const { setElementInnerHtml } = goog.require('google3.third_party.javascript.safevalues.dom.elements.element');
 
 const HIGHLIGHT_SYNTAX = true;
@@ -84,13 +84,6 @@ const ModulesListTabName = {
     INCONSISTENT: "inconsistent",
     INCOMPLETE: "incomplete",
     YANKED: "yanked",
-};
-
-/**
- * @enum {string}
- */
-const MaintainersListTabName = {
-    ALL: "all",
 };
 
 /**
@@ -591,125 +584,6 @@ class DocsSelect extends ContentSelect {
         }
 
         super.selectFail(name, route);
-    }
-}
-
-
-class MaintainersSelect extends ContentSelect {
-    /**
-     * @param {!Registry} registry
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(registry, opt_domHelper) {
-        super(opt_domHelper);
-
-        /** @private @const @type {!Registry} */
-        this.registry_ = registry;
-
-        /** @private @const @type {!Map<string,!Maintainer>} */
-        this.maintainers_ = createMaintainersMap(registry);
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(maintainersSelect));
-    }
-
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(TabName.LIST, route.add(TabName.LIST));
-    }
-
-    /**
-     * @override
-     * @param {string} name
-     * @param {!Route} route
-     */
-    selectFail(name, route) {
-        if (name === TabName.LIST) {
-            this.addTab(
-                TabName.LIST,
-                new MaintainersMapSelectNav(this.registry_, this.maintainers_, this.dom_),
-            );
-            this.select(name, route);
-            return;
-        }
-
-        const maintainer = this.maintainers_.get(name);
-        if (maintainer) {
-            this.addTab(name, new MaintainerComponent(this.registry_, name, maintainer));
-            this.select(name, route);
-            return;
-        } else {
-            console.warn(`failed to get maintainer for ${name}`, this.maintainers_.keys());
-        }
-
-        super.selectFail(name, route);
-    }
-}
-
-
-class MaintainersMapSelectNav extends SelectNav {
-    /**
-     * @param {!Registry} registry
-     * @param {!Map<string,!Maintainer>} maintainers
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(registry, maintainers, opt_domHelper) {
-        super(opt_domHelper);
-
-        /** @private @const @type {!Registry} */
-        this.registry_ = registry;
-
-        /** @private @const @type {!Map<string,!Maintainer>} */
-        this.maintainers_ = maintainers;
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(maintainersMapSelectNav));
-    }
-
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(MaintainersListTabName.ALL, route.add(MaintainersListTabName.ALL));
-    }
-
-    /**
-     * @override
-     */
-    enterDocument() {
-        super.enterDocument();
-
-        this.enterAllTab();
-    }
-
-    enterAllTab() {
-        this.addNavTab(
-            MaintainersListTabName.ALL,
-            'All',
-            'List of all Maintainers',
-            this.maintainers_.size,
-            new MaintainersMapComponent(this.maintainers_, this.dom_),
-        );
-    }
-
-    /**
-     * @override
-     * @returns {string}
-     */
-    getDefaultTabName() {
-        return MaintainersListTabName.ALL;
     }
 }
 
@@ -1294,60 +1168,6 @@ class ModuleVersionsListComponent extends Component {
     createDom() {
         this.setElementInternal(soy.renderAsElement(moduleVersionsListComponent, {
             moduleVersions: this.moduleVersions_,
-        }));
-    }
-}
-
-class MaintainersMapComponent extends Component {
-    /**
-     * @param {!Map<string,!Maintainer>} maintainers
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(maintainers, opt_domHelper) {
-        super(opt_domHelper);
-
-        /** @private @const @type {!Map<string,!Maintainer>} */
-        this.maintainers_ = maintainers;
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(maintainersMapComponent, {
-            maintainers: this.maintainers_,
-        }));
-    }
-}
-
-class MaintainerComponent extends Component {
-    /**
-     * @param {!Registry} registry
-     * @param {string} name
-     * @param {!Maintainer} maintainer
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(registry, name, maintainer, opt_domHelper) {
-        super(opt_domHelper);
-
-        /** @private @const @type {!Registry} */
-        this.registry_ = registry;
-
-        /** @private @const @type {string} */
-        this.maintainerName_ = name;
-
-        /** @private @const @type {!Maintainer} */
-        this.maintainer_ = maintainer;
-    }
-
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(maintainerComponent, {
-            name: this.maintainerName_,
-            maintainer: this.maintainer_,
-            moduleVersions: maintainerModuleVersions(this.registry_, this.maintainer_),
         }));
     }
 }
