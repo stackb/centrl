@@ -79,6 +79,7 @@ closure_js_template_library(
         "octicons.soy",
         "registry.soy",
         "treeview.soy",
+        "uri.soy",
     ],
     deps = [
         "//build/stack/bazel/bzlmod/v1:bzpb_js",

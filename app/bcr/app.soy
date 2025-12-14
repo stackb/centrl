@@ -84,7 +84,6 @@ import {
   maintainerProfile,
   maintainersList,
   maintainersTable,
-  modulesUrl,
   moduleDependencyOverride,
   moduleDependencyRow,
   moduleDependencyTable,
@@ -93,15 +92,27 @@ import {
   moduleVersionAboutTable,
   moduleVersionBreadcrumb,
   moduleVersionButton,
-  moduleVersionDocsUrl,
   moduleVersionHeader,
   moduleVersionModuleBazel,
   moduleVersions,
   moduleVersionTable,
-  moduleVersionUrl,
   sectionDivider,
   sectionHeader
 } from 'app/bcr/registry.soy';
+import {
+  fileInfoUrl,
+  githubRawUrl,
+  githubRepoUrlFromModuleVersion,
+  githubSourceUrl,
+  labelUri,
+  loadLabelUrl,
+  moduleLabelDocsUri,
+  modulesUrl,
+  moduleVersionDocsUrl,
+  moduleVersionUrl,
+  renderLabel,
+  symbolInfoUrl
+} from 'app/bcr/uri.soy';
 
 {template registryApp}
 <div class="{css('app-main')}"></div>
@@ -752,66 +763,6 @@ import {
     <code class="text-small text-semibold">{$item.sym.getName()|truncate:32}</code>
   </a>
 </div>
-{/template}
-
-
-{template fileInfoUrl kind="uri"}
-  {@inject baseUrl: string}
-  {@param? label: Label}
-{let $pkg: $label?.getPkg() /}
-{let $name: $label?.getName() /}
-/#/{$baseUrl}/{if $pkg}{$pkg}/{/if}{$name}
-{/template}
-
-{template symbolInfoUrl kind="uri"}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
-{fileInfoUrl(label: $file.getLabel())}/{$sym.getName()}
-{/template}
-
-{template githubSourceUrl kind="uri"}
-  {@param moduleVersion: ModuleVersion}
-  {@param? label: Label}
-  {@param? location: SymbolLocation}
-{if $moduleVersion.getRepositoryMetadata()?.getType() == RepositoryType.GITHUB && $label}
-{let $org: $moduleVersion.getRepositoryMetadata().getOrganization() /}
-{let $repo: $moduleVersion.getRepositoryMetadata().getName() /}
-{let $pkg: $label.getPkg() /}
-{let $name: $label.getName() /}
-{let $path: $pkg ? $pkg + '/' + $name : $name /}
-{let $commitSha: $moduleVersion.getSource()?.getCommitSha() /}
-{if $commitSha}
-https://github.com/{$org}/{$repo}/blob/{$commitSha}/{$path}?plain=1{if $location && $location.getStart()}#L{$location.getStart().getLine()}{if $location.getEnd() && $location.getEnd().getLine() != $location.getStart().getLine()}-L{$location.getEnd().getLine()}{/if}{/if}
-{/if}
-{/if}
-{/template}
-
-{template githubRepoUrl kind="uri"}
-  {@param moduleVersion: ModuleVersion}
-{if $moduleVersion.getRepositoryMetadata()?.getType() == RepositoryType.GITHUB}
-{let $org: $moduleVersion.getRepositoryMetadata().getOrganization() /}
-{let $repo: $moduleVersion.getRepositoryMetadata().getName() /}
-{let $commitSha: $moduleVersion.getSource()?.getCommitSha() /}
-{if $commitSha}
-https://github.com/{$org}/{$repo}/tree/{$commitSha}
-{/if}
-{/if}
-{/template}
-
-{template githubRawUrl kind="uri"}
-  {@param moduleVersion: ModuleVersion}
-  {@param label: Label}
-{if $moduleVersion.getRepositoryMetadata()?.getType() == RepositoryType.GITHUB}
-{let $org: $moduleVersion.getRepositoryMetadata().getOrganization() /}
-{let $repo: $moduleVersion.getRepositoryMetadata().getName() /}
-{let $pkg: $label.getPkg() /}
-{let $name: $label.getName() /}
-{let $path: $pkg ? $pkg + '/' + $name : $name /}
-{let $commitSha: $moduleVersion.getSource()?.getCommitSha() /}
-{if $commitSha}
-https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
-{/if}
-{/if}
 {/template}
 
 
@@ -1499,17 +1450,6 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
 </div>
 {/template}
 
-{template loadLabelUrl kind="uri"}
-  {@param label: Label}
-{let $repo: $label.getRepo() /}
-{let $pkg: $label.getPkg() /}
-{let $name: $label.getName() /}
-{if $repo}
-  /#/modules/{$repo}/latest/docs/{if $pkg}{$pkg}/{/if}{$name}
-{else}
-  // {# Local file - no link #}
-{/if}
-{/template}
 
 {template functionInfoComponent}
   {@param moduleVersion: ModuleVersion}
@@ -2033,24 +1973,6 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
 {/switch}
 {/template}
 
-{template labelUri kind="uri"}
-  {@inject pathUrl: string}
-  {@param repo: string}
-  {@param pkg: string}
-  {@param name: string}
-/#/{$pathUrl}
-{if $repo.length > 1}/external/{$repo}{else}/@{/if}
-/package/
-{if $pkg}{$pkg}{else}:{/if}
-{if $name}
-    /
-    {if $name != '*'}
-        {$name}
-    {/if}
-{/if}
-{/template}
-
-
 {template labelNameLink}
   {@param label: string}
 {let $dblslash: $label.indexOf('//') /}
@@ -2059,26 +1981,6 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
 {let $pkg: $label.substring($dblslash+2, $colon) /}
 {let $name: $label.substring($colon+1) /}
 <a href="{labelUri(repo: $repo, pkg: $pkg, name: $name)}">{$name}</a>
-{/template}
-
-{template renderLabel kind="text"}
-  {@param label: Label}
-{let $repo: $label.getRepo() /}
-{let $pkg: $label.getPkg() /}
-{let $name: $label.getName() /}
-{if $repo}@{$repo}//{/if}{if $pkg}{$pkg}:{/if}{$name}
-{/template}
-
-{template moduleLabelDocsUri kind="uri"}
-  {@param label: Label}
-{let $repo: $label.getRepo() /}
-{let $pkg: $label.getPkg() /}
-{let $name: $label.getName() /}
-{if $repo}
-  {modulesUrl()}/{$repo}/latest/docs/{if $pkg}{$pkg}/{/if}{$name}
-{else}
-  {renderLabel(label: $label)}
-{/if}
 {/template}
 
 {template moduleBlankslateComponent}
@@ -2367,7 +2269,7 @@ https://raw.githubusercontent.com/{$org}/{$repo}/{$commitSha}/{$path}
         <span>View README</span>
       </a>
     {if $moduleVersion.getSource()?.getCommitSha()}
-        {let $githubUrl: githubRepoUrl(moduleVersion: $moduleVersion) /}
+        {let $githubUrl: githubRepoUrlFromModuleVersion(moduleVersion: $moduleVersion) /}
         {if $githubUrl}
           <a href="{$githubUrl}" target="_blank" rel="noopener noreferrer" class="Link--muted d-flex flex-items-center" title="View on GitHub">
             <span class="mr-2">{octiconMarkGithub16()}</span>
