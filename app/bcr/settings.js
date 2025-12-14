@@ -17,12 +17,14 @@ const LocalStorageKey = {
     COLOR_MODE: 'color-mode',
 };
 
+
 /**
  * @enum {string}
  */
 const TabName = {
     APPEARANCE: 'appearance',
 };
+
 
 /**
  * Settings page with navigation.
@@ -62,6 +64,7 @@ class SettingsSelect extends ContentSelect {
         this.select(TabName.APPEARANCE, route.add(TabName.APPEARANCE));
     }
 }
+
 
 /**
  * Theme/appearance settings component.
@@ -169,6 +172,4 @@ class SettingsAppearanceComponent extends Component {
         );
     }
 }
-
 exports.SettingsSelect = SettingsSelect;
-exports.SettingsAppearanceComponent = SettingsAppearanceComponent;
