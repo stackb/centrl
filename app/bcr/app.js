@@ -14,7 +14,6 @@ const Label = goog.require('proto.build.stack.starlark.v1beta1.Label');
 const Maintainer = goog.require('proto.build.stack.bazel.bzlmod.v1.Maintainer');
 const Module = goog.require('proto.build.stack.bazel.bzlmod.v1.Module');
 const ModuleDependency = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleDependency');
-const ModuleMetadata = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleMetadata');
 const ModuleVersion = goog.require('proto.build.stack.bazel.bzlmod.v1.ModuleVersion');
 const ProviderFieldInfo = goog.require('proto.stardoc_output.ProviderFieldInfo');
 const Registry = goog.require('proto.build.stack.bazel.bzlmod.v1.Registry');
@@ -44,10 +43,10 @@ const { SafeHtml, sanitizeHtml } = goog.require('google3.third_party.javascript.
 const { SearchComponent } = goog.require('centrl.search');
 const { SelectNav } = goog.require('centrl.SelectNav');
 const { SettingsSelect } = goog.require('centrl.settings');
-const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileErrorBlankslate, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, loadInfoComponent, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
+const { aspectInfoComponent, bodySelect, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, homeOverviewComponent, homeSelect, loadInfoComponent, macroInfoComponent, maintainerComponent, maintainersMapComponent, maintainersMapSelectNav, maintainersSelect, moduleBlankslateComponent, moduleExtensionInfoComponent, moduleSelect, moduleVersionBlankslateComponent, moduleVersionComponent, moduleVersionDependenciesComponent, moduleVersionDependentsComponent, moduleVersionList, moduleVersionSelectNav, moduleVersionsFilterSelect, modulesMapSelect, modulesMapSelectNav, navItem, providerInfoComponent, registryApp, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, symbolInfoComponent, symbolTypeName, toastSuccess, valueInfoComponent } = goog.require('soy.centrl.app');
 const { copyToClipboardButton, moduleVersionsListComponent } = goog.require('soy.registry');
+const { createDocumentationMap, createMaintainersMap, createModuleMap, createModuleVersionMap, getLatestModuleVersion, getLatestModuleVersions, getLatestModuleVersionsByName, getModuleDirectDeps, getYankedMap, maintainerModuleVersions } = goog.require('centrl.registry');
 const { setElementInnerHtml } = goog.require('google3.third_party.javascript.safevalues.dom.elements.element');
-
 
 const HIGHLIGHT_SYNTAX = true;
 const FORMAT_MARKDOWN = true;
@@ -4427,79 +4426,6 @@ class BzlFileSourceComponent extends Component {
 
 
 /**
- * Builds a mapping of modules from the registry.
- * 
- * @param {!Registry} registry
- * @returns {!Map<string,!Module>} set of modules by name
- */
-function createModuleMap(registry) {
-    const result = new Map();
-    registry.getModulesList().forEach(m => {
-        const latest = getLatestModuleVersion(m);
-        result.set(latest.getName(), m);
-    });
-    return result;
-}
-
-/**
- * Builds a mapping of maintainers from the registry.
- *
- * @param {!Registry} registry
- * @returns {!Map<string,!Maintainer>} set of modules by name
- */
-function createMaintainersMap(registry) {
-    const result = new Map();
-    registry.getModulesList().forEach(module => {
-        module.getMetadata().getMaintainersList().forEach(maintainer => {
-            if (maintainer.getGithub()) {
-                result.set("@" + maintainer.getGithub(), maintainer);
-            } else if (maintainer.getEmail()) {
-                result.set(maintainer.getEmail(), maintainer);
-            }
-        });
-    });
-    return result;
-}
-
-/**
- * Builds a mapping of module versions that have documentation.
- *
- * @param {!Registry} registry
- * @returns {!Map<string,!ModuleVersion>} map of module versions by "module@version" key
- */
-function createDocumentationMap(registry) {
-    const result = new Map();
-    registry.getModulesList().forEach(module => {
-        module.getVersionsList().forEach(version => {
-            const docs = version.getSource()?.getDocumentation();
-            if (docs) {
-                const key = `${module.getName()}@${version.getVersion()}`;
-                result.set(key, version);
-            }
-        });
-    });
-    return result;
-}
-
-/**
- * @param {!Registry} registry
- * @param {!Maintainer} maintainer
- * @returns {!Array<!ModuleVersion>} set of (latest) module versions that this maintainer maintains
- */
-function maintainerModuleVersions(registry, maintainer) {
-    const result = new Set();
-    registry.getModulesList().forEach(module => {
-        const metadata = module.getMetadata();
-        metadata.getMaintainersList().forEach(m => {
-            if (maintainer.getGithub() === m.getGithub() || maintainer.getEmail() === m.getEmail()) {
-                result.add(module.getVersionsList()[0]);
-            }
-        });
-    });
-    return Array.from(result);
-}
-
-/**
  * Builds a mapping of module versions from a module.
  *
  * @param {!Element} preEl The element to highlight, typically PRE
@@ -4624,120 +4550,6 @@ function getEffectiveColorMode(ownerDocument) {
 
 
 /**
- * @param {!Registry} registry
- * @param {!Module} module
- * @param {string} version
- * @returns {!Array<!ModuleDependency>}
- */
-/**
- * Build a reverse dependency index: "module@version" -> [dependent ModuleVersions]
- * This is computed once and cached for O(1) lookups
- * @param {!Registry} registry
- * @returns {!Map<string, !Array<!ModuleVersion>>}
- */
-function buildReverseDependencyIndex(registry) {
-    /** @type {!Map<string, !Array<!ModuleVersion>>} */
-    const index = new Map();
-
-    for (const m of registry.getModulesList()) {
-        for (const mv of m.getVersionsList()) {
-            for (const dep of mv.getDepsList()) {
-                const key = `${dep.getName()}@${dep.getVersion()}`;
-                if (!index.has(key)) {
-                    index.set(key, []);
-                }
-                const depList = index.get(key);
-                if (depList) {
-                    depList.push(mv);
-                }
-            }
-        }
-    }
-
-    return index;
-}
-
-// Cache the reverse dependency index globally (tied to registry commit)
-let cachedReverseDepsIndex = null;
-let cachedReverseDepsCommit = null;
-
-/**
- * Get modules that directly depend on a specific version of a module
- * Uses a cached reverse dependency index for O(1) lookups
- * @param {!Registry} registry
- * @param {!Module} module
- * @param {string} version
- * @returns {!Array<!ModuleVersion>}
- */
-function getModuleDirectDeps(registry, module, version) {
-    // Build/refresh index if needed
-    if (!cachedReverseDepsIndex || cachedReverseDepsCommit !== registry.getCommitSha()) {
-        cachedReverseDepsIndex = buildReverseDependencyIndex(registry);
-        cachedReverseDepsCommit = registry.getCommitSha();
-    }
-
-    const key = `${module.getName()}@${version}`;
-    const dependents = cachedReverseDepsIndex.get(key) || [];
-
-    // Return ModuleVersion objects directly (as expected by templates)
-    return dependents;
-}
-
-/**
- * Builds a mapping of module versions from a module.
- * 
- * @param {!Module} module
- * @returns {!Map<string,!ModuleVersion>} set of module versions by ID
- */
-function createModuleVersionMap(module) {
-    const result = new Map();
-    module.getVersionsList().forEach(mv => {
-        result.set(mv.getVersion(), mv);
-    });
-    return result;
-}
-
-/**
- * @param {!Registry} registry 
- * @returns {!Array<!ModuleVersion>}
- */
-function getLatestModuleVersions(registry) {
-    return registry.getModulesList().map(module => {
-        return module.getVersionsList()[0];
-    });
-}
-
-/**
- * @param {!Registry} registry
- * @returns {!Map<string,!ModuleVersion>}
- */
-function getLatestModuleVersionsByName(registry) {
-    const result = new Map();
-    for (const module of registry.getModulesList()) {
-        for (const moduleVersion of module.getVersionsList()) {
-            result.set(module.getName(), moduleVersion);
-            break;
-        }
-    }
-    return result;
-}
-
-/**
- * @param {!Registry} registry
- * @returns {!Map<string, !ModuleMetadata>}
- */
-function getModuleMetadataByName(registry) {
-    const result = new Map();
-    for (const module of registry.getModulesList()) {
-        const metadata = module.getMetadata();
-        if (metadata) {
-            result.set(module.getName(), metadata);
-        }
-    }
-    return result;
-}
-
-/**
  * Calculate a human-readable age summary from a number of days.
  * @param {number} totalDays
  * @returns {string} Age string like "1y 6m" or "6m 23d"
@@ -4810,31 +4622,6 @@ function getVersionDistances(registry) {
     return result;
 }
 
-/**
- * @param {!Module} module
- * @returns {!ModuleVersion}
- */
-function getLatestModuleVersion(module) {
-    const versions = module.getVersionsList();
-    return versions[0];
-}
-
-/**
- * Create a map from the yanked versions.  Regular map seems to play nicer with
- * soy templates than jspb.Map.
- * @param {?ModuleMetadata} metadata
- * @returns {!Map<string,string>}
- */
-function getYankedMap(metadata) {
-    const result = new Map();
-    if (metadata && metadata.getYankedVersionsMap()) {
-        for (const k of metadata.getYankedVersionsMap().keys()) {
-            const v = metadata.getYankedVersionsMap().get(k);
-            result.set(k, v);
-        }
-    }
-    return result;
-}
 
 /**
  * @param {string} text
@@ -4859,6 +4646,7 @@ function copyToClipboard(text) {
         document.getSelection().addRange(selected); // Restore the original selection
     }
 }
+
 
 /**
  * @typedef {{

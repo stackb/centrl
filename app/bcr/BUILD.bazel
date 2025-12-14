@@ -132,6 +132,7 @@ closure_js_library(
         "module_search.js",
         "mvs.js",
         "mvs_tree.js",
+        "registry.js",
         "search.js",
         "selectnav.js",
         "settings.js",
