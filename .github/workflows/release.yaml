@@ -23,22 +23,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: bazel-contrib/setup-bazel@0.15.0
-      - name: update submodule
-        run: git submodule update --init --remote data/bazel-central-registry
-      - name: cleanup submodule
-        run: rm -f data/bazel-central-registry/modules/rapidcheck/2023.12.14/BUILD.bazel data/bazel-central-registry/BUILD
-      - name: gazelle central_registry
+      - name: init/update submodule
+        run: make bcr_init bcr_update
+      - name: setup
         run: >-
           bazelisk
           --bazelrc=.github/workflows/ci.bazelrc
           --bazelrc=.bazelrc
           run
-          central_registry
-      - name: build release
+          //:bcr
+      - name: deploy
         run: >-
           bazelisk
           --bazelrc=.github/workflows/ci.bazelrc
           --bazelrc=.bazelrc
-          build
-          //app/bcr:release
+          run
           --//app/bcr:release_type=production
+          //app/bcr:deploy
