@@ -70,19 +70,21 @@ func run(args []string) error {
 		return fmt.Errorf("failed to process assets: %v", err)
 	}
 
-	asset, err := processRegistryFile(cfg.RegistryFile)
+	registryAssets, err := processRegistryFile(cfg.RegistryFile)
 	if err != nil {
 		return fmt.Errorf("failed to process registry file: %v", err)
 	}
-	assets = append(assets, *asset)
-	log.Printf("Processed registry file: %s -> %s", asset.OriginalName, asset.HashedName)
+	for _, asset := range registryAssets {
+		assets = append(assets, asset)
+		log.Printf("Processed registry file: %s -> %s", asset.OriginalName, asset.HashedName)
+	}
 
-	asset, err = processDocumentationRegistryFile(cfg.DocumentationRegistryFile)
+	docAsset, err := processDocumentationRegistryFile(cfg.DocumentationRegistryFile)
 	if err != nil {
 		return fmt.Errorf("failed to process registry file: %v", err)
 	}
-	assets = append(assets, *asset)
-	log.Printf("Processed documentation registry file: %s -> %s", asset.OriginalName, asset.HashedName)
+	assets = append(assets, *docAsset)
+	log.Printf("Processed documentation registry file: %s -> %s", docAsset.OriginalName, docAsset.HashedName)
 
 	// Read and update index.html
 	indexContent, err := updateIndexHtml(cfg.IndexHtmlFile, assets)
@@ -105,7 +107,7 @@ func run(args []string) error {
 	return nil
 }
 
-func processRegistryFile(registryPath string) (*HashedAsset, error) {
+func processRegistryFile(registryPath string) ([]HashedAsset, error) {
 	// Read the registry file
 	content, err := os.ReadFile(registryPath)
 	if err != nil {
@@ -121,6 +123,7 @@ func processRegistryFile(registryPath string) (*HashedAsset, error) {
 	if err := gzipWriter.Close(); err != nil {
 		return nil, fmt.Errorf("failed to close gzip writer: %v", err)
 	}
+	gzipContent := gzipBuf.Bytes()
 
 	b64Content, err := base64GzipEncode(content)
 	if err != nil {
@@ -131,14 +134,25 @@ func processRegistryFile(registryPath string) (*HashedAsset, error) {
 	jsContent := fmt.Appendf(nil, "const REGISTRY_DATA = \"%s\";\n", b64Content)
 
 	// Generate filename: registry.pb.gz.b64.js
-	originalName := "registry.pb.gz.b64.js"
-	hashedName := hashFilename(originalName, jsContent)
+	jsOriginalName := "registry.pb.gz.b64.js"
+	jsHashedName := hashFilename(jsOriginalName, jsContent)
 
-	return &HashedAsset{
-		OriginalPath: registryPath,
-		OriginalName: originalName,
-		HashedName:   hashedName,
-		Content:      jsContent,
+	// Also include the raw gzipped registry.pb.gz (no hashing - keep predictable name)
+	gzOriginalName := "registry.pb.gz"
+
+	return []HashedAsset{
+		{
+			OriginalPath: registryPath,
+			OriginalName: jsOriginalName,
+			HashedName:   jsHashedName,
+			Content:      jsContent,
+		},
+		{
+			OriginalPath: registryPath,
+			OriginalName: gzOriginalName,
+			HashedName:   gzOriginalName, // No hashing - keep original name
+			Content:      gzipContent,
+		},
 	}, nil
 }
 

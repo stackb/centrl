@@ -254,7 +254,6 @@ release_archive(
     name = "release",
     srcs = [
         "favicon.png",
-        "registry_pb",
         ":robots_txt",
         ":sitemap_xml",
     ] + select({
