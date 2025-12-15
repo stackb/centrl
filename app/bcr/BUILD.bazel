@@ -16,6 +16,7 @@ string_flag(
     name = "release_type",
     build_setting_default = "debug",
     values = [
+        "dummy",  # points to //data/dummy:modules - when submodule may not be initialized but still want to build //app/bcr:release
         "debug",
         "production",
     ],
@@ -43,6 +44,13 @@ config_setting(
     name = "is_debug_release",
     flag_values = {
         ":release_type": "debug",
+    },
+)
+
+config_setting(
+    name = "is_dummy_release",
+    flag_values = {
+        ":release_type": "dummy",
     },
 )
 
@@ -212,7 +220,10 @@ closure_js_binary(
 [
     filegroup(
         name = output_group,
-        srcs = ["//data/bazel-central-registry/modules"],
+        srcs = select({
+            ":is_dummy_release": ["//data/dummy:modules"],
+            "//conditions:default": ["//data/bazel-central-registry/modules"],
+        }),
         output_group = output_group,
     )
     for output_group in [
@@ -250,10 +261,6 @@ release_archive(
         ":is_debug_release": ["bcr.js.map"],
         "//conditions:default": [],
     }),
-    # documentation_registry_file = select({
-    #     "//app/bcr:is_docs_release": ":documentation_registry_pb",
-    #     "//conditions:default": None,
-    # }),
     hashed_srcs = [
         ":bcr.css",
         ":bcr.js",
