@@ -17,6 +17,7 @@ const arrays = goog.require('goog.array');
 const dom = goog.require('goog.dom');
 const path = goog.require('goog.string.path');
 const soy = goog.require('goog.soy');
+const { getApplication } = goog.require('centrl.common');
 const { Component, Route } = goog.require('stack.ui');
 const { ContentSelect } = goog.require('centrl.ContentSelect');
 const { SafeHtml, sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
@@ -118,7 +119,18 @@ class DocsSelect extends ContentSelect {
             return;
         }
 
-        super.selectFail(name, route);
+        // seek to rewrite paths like `/docs/bazel_lib/3.0.1` to
+        // `/modules/bazel_lib/3.0.1/docs`
+        const rest = route.unmatchedPath();
+        if (rest.length === 2) {
+            rest.unshift("modules");
+            rest.push("docs");
+            route.done(this);
+            getApplication(this).setLocation(rest);
+        } else {
+            super.selectFail(name, route);
+        }
+
     }
 }
 exports.DocsSelect = DocsSelect;
