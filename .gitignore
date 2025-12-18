@@ -6,3 +6,8 @@
 /*.log
 /resources.json
 /repository-metadata.json
+
+
+# Added by cargo
+
+/target

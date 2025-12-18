@@ -1,0 +1,30 @@
+name = "centrl-api"
+main = "build/worker/index.js"
+compatibility_date = "2024-12-01"
+
+# Workers Paid plan required for wasm
+# account_id = "df53dccd72b4a61d2f8b1323256bc71c"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+[build.upload]
+format = "modules"
+dir = "build/worker"
+main = "./index.mjs"
+
+[[build.upload.rules]]
+globs = ["**/*.wasm"]
+type = "CompiledWasm"
+
+[env.production]
+name = "centrl-api"
+routes = [
+  { pattern = "centrl.io/api/*", zone_name = "centrl.io" }
+]
+
+[env.staging]
+name = "centrl-api-staging"
+routes = [
+  { pattern = "staging.centrl.io/api/*", zone_name = "centrl.io" }
+]

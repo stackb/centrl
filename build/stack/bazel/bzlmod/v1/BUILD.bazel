@@ -48,3 +48,17 @@ closure_jspb_library(
         "//build/stack/starlark/v1beta1:v1beta1_proto_js",
     ],
 )
+
+proto_compile(
+    name = "bzpb_rs",
+    outputs = [
+        "build.stack.bazel.bzlmod.v1.rs",
+        "build.stack.bazel.bzlmod.v1.serde.rs",
+    ],
+    plugins = [
+        "//bazel_tools/rust:protoc-gen-prost",
+        "//bazel_tools/rust:protoc-gen-prost-serde",
+    ],
+    proto = "bzpb_proto",
+    verbose = False,
+)
