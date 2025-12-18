@@ -8,6 +8,7 @@ import {
     octiconCode16,
     octiconContainer16,
     octiconContainer24,
+    octiconCopy16,
     octiconDotFill16,
     octiconFileAdded16,
     octiconFileDiff16,
@@ -19,7 +20,6 @@ import {
     octiconMail16,
     octiconMarkGithub16,
     octiconMarkGithub24,
-    octiconPaperclip16,
     octiconSparkleFill16,
     octiconSquareFill16,
     octiconSquareFill24,
@@ -98,7 +98,7 @@ bazel_dep(name = "{$name}", version = "{$version}")
 {template copyToClipboardButton}
   {@param content: string}
 <button class="btn btn-octicon" aria-label="Copy to clipboard" data-clippy='{$content}'>
-    {octiconPaperclip16()}
+    {octiconCopy16()}
 </button>
 {/template}
 
