@@ -147,6 +147,20 @@ closure_js_library(
     ],
 )
 
+closure_js_test(
+    name = "registry_test",
+    srcs = ["registry_test.js"],
+    compilation_level = "ADVANCED",
+    entry_points = ["goog:centrl.registryTest"],
+    deps = [
+        ":registry",
+        "//build/stack/bazel/bzlmod/v1:bzpb_js",
+        "@stackb_rules_closure//closure/goog/testing:asserts",
+        "@stackb_rules_closure//closure/goog/testing:jsunit",
+        "@stackb_rules_closure//closure/goog/testing:testsuite",
+    ],
+)
+
 closure_js_library(
     name = "app",
     srcs = [
@@ -211,20 +225,6 @@ closure_js_library(
         "@stackb_rules_closure//google3/third_party/javascript/safevalues/dom/elements",
         "@stackb_ui_js//js/ui:core",
         "@stackb_ui_js//js/ui:select",
-    ],
-)
-
-closure_js_test(
-    name = "registry_test",
-    srcs = ["registry_test.js"],
-    compilation_level = "SIMPLE",
-    entry_points = ["goog:centrl.registryTest"],
-    deps = [
-        ":registry",
-        "//build/stack/bazel/bzlmod/v1:bzpb_js",
-        "@stackb_rules_closure//closure/goog/testing:asserts",
-        "@stackb_rules_closure//closure/goog/testing:jsunit",
-        "@stackb_rules_closure//closure/goog/testing:testsuite",
     ],
 )
 

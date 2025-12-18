@@ -13,10 +13,6 @@ const { calculateAgeSummary, getVersionDistances } = goog.require('centrl.regist
 testSuite({
     teardown: function () { },
 
-    testAddition: function () {
-        assertEquals(2, 1 + 1);
-    },
-
     testCalculateAgeSummary: function () {
         // Test edge cases
         assertEquals("0d", calculateAgeSummary(0));
