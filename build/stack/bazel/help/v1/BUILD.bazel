@@ -1,0 +1,17 @@
+load("@build_stack_rules_proto//rules:proto_compiled_sources.bzl", "proto_compiled_sources")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "bhpb_proto",
+    srcs = ["help.proto"],
+    visibility = ["//visibility:public"],
+)
+
+proto_compiled_sources(
+    name = "bhpb_go_compiled_sources",
+    srcs = ["help.pb.go"],
+    output_mappings = ["help.pb.go=github.com/stackb/centrl/build/stack/bazel/help/v1/help.pb.go"],
+    plugins = ["@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go"],
+    proto = "bhpb_proto",
+    visibility = ["//visibility:public"],
+)

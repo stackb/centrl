@@ -45,9 +45,7 @@ closure_jspb_library(
     srcs = [":bzpb_js_proto"],
     internal_descriptors = [":bzpb_proto"],
     visibility = ["//visibility:public"],
-    deps = [
-        "//build/stack/starlark/v1beta1:v1beta1_proto_js",
-    ],
+    deps = ["//build/stack/starlark/v1beta1:v1beta1_proto_js"],
 )
 
 proto_compile(
@@ -74,7 +72,5 @@ proto_rust_library(
     srcs = [":bzpb_proto_rs"],
     pkg = "build.stack.bazel.registry.v1",
     visibility = ["//visibility:public"],
-    deps = [
-        "//build/stack/starlark/v1beta1:v1beta1_rs",
-    ],
+    deps = ["//build/stack/starlark/v1beta1:v1beta1_rs"],
 )

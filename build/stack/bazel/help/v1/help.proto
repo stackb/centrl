@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package build.stack.bazel.help.v1;
+
+option go_package = "github.com/stackb/centrl/build/stack/bazel/help/v1;bhpb";
+
+// BazelOption represents a Bazel command-line flag.
+message BazelOption {
+  // Flag name (e.g., 'compilation_mode', 'jobs')
+  string name = 1;
+  // Data type (e.g., 'string', 'int', 'boolean')
+  string type = 2;
+  // Default value
+  string default = 3;
+  // Help text description lines
+  repeated string description = 4;
+  // Whether the flag can be repeated
+  bool repeatable = 5;
+  // Whether the flag is a boolean toggle
+  bool toggle = 6;
+  // Short flag name (e.g., '-c' for '--compilation_mode')
+  string short = 7;
+  // Tag metadata
+  repeated string tag = 8;
+  // Bazel versions where this flag is available
+  repeated string bazel_version = 9;
+  // Categories this flag belongs to
+  repeated string category = 10;
+}
+
+// BazelHelpCategory represents a category of Bazel flags.
+message BazelHelpCategory {
+  // Category title (e.g., 'Options for selecting the output format')
+  string title = 1;
+  // Flags in this category
+  repeated BazelOption option = 2;
+}
+
+// BazelHelpCommand represents help output for a Bazel command.
+message BazelHelpCommand {
+    // Command name (e.g., 'build', 'test', 'run')
+    string command = 1;
+    // Flag categories for this command
+    repeated BazelHelpCategory category = 2;
+    // Usage lines
+    repeated string usage = 3;
+}
+
+// BazelHelpParseMode indicates the parser state when parsing Bazel help output.
+enum BazelHelpParseMode {
+  // Parsing usage statement before categories
+  USAGE = 0;
+  // Parsing within a category
+  CATEGORY = 1;
+  // Parsing within a flag definition
+  FLAG = 2;
+}
+
+// BazelHelpVersion represents help output for a Bazel version.
+message BazelHelpVersion {
+    // Bazel version
+    string version = 1;
+    // Commands in this version
+    repeated BazelHelpCommand command = 2;
+}
+
+// BazelHelpRegistry is a collection of Bazel help data across versions.
+message BazelHelpRegistry {
+    repeated BazelHelpVersion version = 1;
+}
