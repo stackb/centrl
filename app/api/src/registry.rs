@@ -41,14 +41,3 @@ async fn load_registry(env: &Env) -> Result<Registry> {
     Registry::decode(&body_bytes[..])
         .map_err(|e| Error::RustError(format!("Failed to decode registry: {}", e)))
 }
-
-/// Simple gzip decompression
-fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>> {
-    use std::io::Read;
-    let mut decoder = flate2::read::GzDecoder::new(data);
-    let mut decompressed = Vec::new();
-    decoder
-        .read_to_end(&mut decompressed)
-        .map_err(|e| Error::RustError(format!("Failed to decompress: {}", e)))?;
-    Ok(decompressed)
-}
