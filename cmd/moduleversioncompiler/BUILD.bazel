@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/stackb/centrl/cmd/moduleversioncompiler",
     visibility = ["//visibility:public"],
     deps = [
+        "//build/stack/bazel/documentation/v1:documentation",
         "//build/stack/bazel/registry/v1:registry",
         "//pkg/attestationsjson",
         "//pkg/modulebazel",

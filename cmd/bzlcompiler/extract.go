@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"time"
 
-	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	docpb "github.com/stackb/centrl/build/stack/bazel/documentation/v1"
 	slpb "github.com/stackb/centrl/build/stack/starlark/v1beta1"
 	"github.com/stackb/centrl/pkg/stardoc"
 )
 
-func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtract []string) (*bzpb.DocumentationInfo, error) {
-	result := &bzpb.DocumentationInfo{
-		Source: bzpb.DocumentationSource_BEST_EFFORT,
+func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtract []string) (*docpb.DocumentationInfo, error) {
+	result := &docpb.DocumentationInfo{
+		Source: docpb.DocumentationSource_BEST_EFFORT,
 	}
 
 	var errors int
@@ -29,7 +29,7 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 		// }
 		// cfg.Logger.Panicf("extracting %s: %+v", filePath, bzlFile.Label)
 
-		file := &bzpb.FileInfo{Label: bzlFile.Label}
+		file := &docpb.FileInfo{Label: bzlFile.Label}
 
 		module, err := extractModule(cfg, bzlFile)
 		if err != nil {

@@ -1,17 +1,17 @@
 goog.module("centrl.documentation");
 
-const DocumentationInfo = goog.require('proto.build.stack.bazel.registry.v1.DocumentationInfo');
-const DocumentationSource = goog.require('proto.build.stack.bazel.registry.v1.DocumentationSource');
-const FileInfo = goog.require('proto.build.stack.bazel.registry.v1.FileInfo');
-const FileLoadTree = goog.require('proto.build.stack.bazel.registry.v1.FileLoadTree');
-const FileLoadTreeNode = goog.require('proto.build.stack.bazel.registry.v1.FileLoadTreeNode');
+const DocumentationInfo = goog.require('proto.build.stack.bazel.documentation.v1.DocumentationInfo');
+const DocumentationSource = goog.require('proto.build.stack.bazel.documentation.v1.DocumentationSource');
+const FileInfo = goog.require('proto.build.stack.bazel.documentation.v1.FileInfo');
+const FileLoadTree = goog.require('proto.build.stack.bazel.documentation.v1.FileLoadTree');
+const FileLoadTreeNode = goog.require('proto.build.stack.bazel.documentation.v1.FileLoadTreeNode');
 const Label = goog.require('proto.build.stack.starlark.v1beta1.Label');
 const Module = goog.require('proto.build.stack.bazel.registry.v1.Module');
 const ModuleVersion = goog.require('proto.build.stack.bazel.registry.v1.ModuleVersion');
 const Registry = goog.require('proto.build.stack.bazel.registry.v1.Registry');
 const RepositoryType = goog.require('proto.build.stack.bazel.registry.v1.RepositoryType');
-const SymbolInfo = goog.require('proto.build.stack.bazel.registry.v1.SymbolInfo');
-const SymbolType = goog.require('proto.build.stack.bazel.registry.v1.SymbolType');
+const SymbolInfo = goog.require('proto.build.stack.bazel.documentation.v1.SymbolInfo');
+const SymbolType = goog.require('proto.build.stack.bazel.documentation.v1.SymbolType');
 const Trie = goog.require('goog.structs.Trie');
 const arrays = goog.require('goog.array');
 const dom = goog.require('goog.dom');

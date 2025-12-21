@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	docpb "github.com/stackb/centrl/build/stack/bazel/documentation/v1"
 	"github.com/stackb/centrl/pkg/protoutil"
 	"github.com/stackb/centrl/pkg/stardoc"
 	sdpb "github.com/stackb/centrl/stardoc_output"
@@ -35,8 +35,8 @@ func run(args []string) error {
 		return fmt.Errorf("failed to parse args: %w", err)
 	}
 
-	result := &bzpb.DocumentationInfo{
-		Source: bzpb.DocumentationSource_PUBLISHED,
+	result := &docpb.DocumentationInfo{
+		Source: docpb.DocumentationSource_PUBLISHED,
 	}
 
 	for _, file := range cfg.Files {

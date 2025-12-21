@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	docpb "github.com/stackb/centrl/build/stack/bazel/documentation/v1"
 	"github.com/stackb/centrl/pkg/protoutil"
 )
 
@@ -34,10 +34,10 @@ func run(args []string) error {
 		return fmt.Errorf("failed to parse args: %w", err)
 	}
 
-	result := &bzpb.DocumentationRegistry{}
+	result := &docpb.DocumentationRegistry{}
 
 	for _, file := range cfg.inputFiles {
-		var doc bzpb.DocumentationInfo
+		var doc docpb.DocumentationInfo
 		if err := protoutil.ReadFile(file.path, &doc); err != nil {
 			return fmt.Errorf("reading %s: %v", file, err)
 		}

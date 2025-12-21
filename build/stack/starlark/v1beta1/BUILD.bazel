@@ -49,15 +49,15 @@ proto_compiled_sources(
 )
 
 proto_compile(
-    name = "v1beta1_proto_js_proto",
+    name = "v1beta1_js_proto",
     outputs = ["v1beta1.js"],
     plugins = ["@stackb_rules_closure//closure/protobuf:protoc-gen-js"],
     proto = "v1beta1_proto",
 )
 
 closure_jspb_library(
-    name = "v1beta1_proto_js",
-    srcs = [":v1beta1_proto_js_proto"],
+    name = "v1beta1_js",
+    srcs = [":v1beta1_js_proto"],
     internal_descriptors = [":v1beta1_proto"],
     visibility = ["//visibility:public"],
     deps = ["//stardoc_output:stardoc_output_js"],
@@ -79,7 +79,6 @@ proto_compile(
         "//bazel_tools/rust:protoc-gen-prost-serde",
     ],
     proto = "v1beta1_proto",
-    verbose = False,
 )
 
 proto_rust_library(
@@ -87,7 +86,5 @@ proto_rust_library(
     srcs = [":v1beta1_proto_rs"],
     pkg = "build.stack.starlark.v1beta1",
     visibility = ["//visibility:public"],
-    deps = [
-        "//stardoc_output:stardoc_output_rs",
-    ],
+    deps = ["//stardoc_output:stardoc_output_rs"],
 )

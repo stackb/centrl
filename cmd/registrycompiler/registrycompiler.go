@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	docpb "github.com/stackb/centrl/build/stack/bazel/documentation/v1"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
 	"github.com/stackb/centrl/pkg/gh"
 	"github.com/stackb/centrl/pkg/paramsfile"
@@ -76,7 +77,7 @@ func run(args []string) error {
 	}
 
 	if cfg.DocumentationRegistryFile != "" {
-		var docRegistry bzpb.DocumentationRegistry
+		var docRegistry docpb.DocumentationRegistry
 		if err := protoutil.ReadFile(cfg.DocumentationRegistryFile, &docRegistry); err != nil {
 			return fmt.Errorf("reading %s: %v", cfg.DocumentationRegistryFile, err)
 		}

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	docpb "github.com/stackb/centrl/build/stack/bazel/documentation/v1"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
 	"github.com/stackb/centrl/pkg/attestationsjson"
 	"github.com/stackb/centrl/pkg/modulebazel"
@@ -98,7 +99,7 @@ func run(args []string) error {
 			}
 		}
 		if cfg.DocumentationInfoFile != "" {
-			var docs bzpb.DocumentationInfo
+			var docs docpb.DocumentationInfo
 			if err := protoutil.ReadFile(cfg.DocumentationInfoFile, &docs); err != nil {
 				return fmt.Errorf("failed to read docs: %v", err)
 			}
