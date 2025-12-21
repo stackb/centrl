@@ -1,20 +1,12 @@
 import init, { fetch as wasmFetch } from './api.js';
-
-// Import WASM module - in Cloudflare Workers this is a WebAssembly.Module
-import wasmModule from './api_bg.wasm';
+import wasm from './api_bg.wasm';
 
 // Initialize WASM on first request
-let wasmInitialized = false;
-let wasmInitPromise = null;
-
-async function ensureWasmInit() {
-  if (!wasmInitialized) {
-    if (!wasmInitPromise) {
-      // Pass the WebAssembly.Module to init
-      wasmInitPromise = init(wasmModule);
-    }
-    await wasmInitPromise;
-    wasmInitialized = true;
+let initialized = false;
+async function ensureInit() {
+  if (!initialized) {
+    await init(wasm);
+    initialized = true;
   }
 }
 
@@ -25,7 +17,7 @@ export default {
 
       // Route /api/* requests to the WASM worker
       if (url.pathname.startsWith('/api/')) {
-        await ensureWasmInit();
+        await ensureInit();
         return await wasmFetch(request, env, ctx);
       }
 
