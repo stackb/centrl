@@ -5,9 +5,9 @@ import {
   SymbolLocation
 } from 'build/stack/starlark/v1beta1/starlark.proto';
 import {
-  FileInfo,
-  SymbolInfo
-} from 'build/stack/bazel/documentation/v1/documentation.proto';
+  File,
+  Symbol
+} from 'build/stack/bazel/symbol/v1/symbol.proto';
 import {
   Maintainer,
   ModuleVersion,
@@ -142,8 +142,8 @@ https://github.com/bazelbuild/bazel-central-registry/pull/{$pr}
 
 
 {template symbolInfoUrl kind="uri"}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
 {fileInfoUrl(label: $file.getLabel())}/{$sym.getName()}
 {/template}
 

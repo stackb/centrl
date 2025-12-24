@@ -10,7 +10,7 @@ proto_library(
     srcs = ["bcr.proto"],
     visibility = ["//visibility:public"],
     deps = [
-        "//build/stack/bazel/documentation/v1:docpb_proto",
+        "//build/stack/bazel/symbol/v1:sympb_proto",
         "//build/stack/starlark/v1beta1:v1beta1_proto",
     ],
 )
@@ -30,7 +30,7 @@ go_library(
     importpath = "github.com/stackb/centrl/build/stack/bazel/registry/v1",
     visibility = ["//visibility:public"],
     deps = [
-        "//build/stack/bazel/documentation/v1:documentation",
+        "//build/stack/bazel/symbol/v1:symbol",
         "//build/stack/starlark/v1beta1",
         "@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
         "@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
@@ -50,7 +50,7 @@ closure_jspb_library(
     internal_descriptors = [":bzpb_proto"],
     visibility = ["//visibility:public"],
     deps = [
-        "//build/stack/bazel/documentation/v1:docpb_js",
+        "//build/stack/bazel/symbol/v1:sympb_js",
         "//build/stack/starlark/v1beta1:v1beta1_js",
     ],
 )
@@ -59,7 +59,7 @@ proto_compile(
     name = "bzpb_proto_rs",
     options = {
         "//bazel_tools/rust:protoc-gen-prost": [
-            "extern_path=.build.stack.bazel.documentation.v1=::docpb_rs::build::stack::bazel::documentation::v1",
+            "extern_path=.build.stack.bazel.symbol.v1=::sympb_rs::build::stack::bazel::symbol::v1",
             "extern_path=.build.stack.bazel.help.v1=::help_rs::build::stack::bazel::help::v1",
             "extern_path=.build.stack.starlark.v1beta1=::v1beta1_rs::build::stack::starlark::v1beta1",
         ],
@@ -81,7 +81,7 @@ proto_rust_library(
     pkg = "build.stack.bazel.registry.v1",
     visibility = ["//visibility:public"],
     deps = [
-        "//build/stack/bazel/documentation/v1:docpb_rs",
+        "//build/stack/bazel/symbol/v1:sympb_rs",
         "//build/stack/starlark/v1beta1:v1beta1_rs",
     ],
 )

@@ -100,11 +100,11 @@ def _compile_documentation_registry(ctx, doc_results):
         args.add("--input_file=%s=%s" % (result.mv.id, result.output.path))
 
     ctx.actions.run(
-        executable = ctx.executable._documentationregistrycompiler,
+        executable = ctx.executable._moduleregistrysymbolscompiler,
         arguments = [args],
         inputs = inputs,
         outputs = [output],
-        mnemonic = "CompileDocumentationRegistry",
+        mnemonic = "CompileModuleRegistrySymbols",
     )
 
     return output
@@ -472,8 +472,8 @@ module_registry = rule(
             executable = True,
             cfg = "exec",
         ),
-        "_documentationregistrycompiler": attr.label(
-            default = "//cmd/documentationregistrycompiler",
+        "_moduleregistrysymbolscompiler": attr.label(
+            default = "//cmd/moduleregistrysymbolscompiler",
             executable = True,
             cfg = "exec",
         ),

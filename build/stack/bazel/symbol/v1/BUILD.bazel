@@ -6,25 +6,25 @@ load("@stackb_rules_closure//closure/protobuf:defs.bzl", "closure_jspb_library")
 load("//bazel_tools/rust:proto_rust_library.bzl", "proto_rust_library")
 
 proto_library(
-    name = "docpb_proto",
-    srcs = ["documentation.proto"],
+    name = "sympb_proto",
+    srcs = ["symbol.proto"],
     visibility = ["//visibility:public"],
     deps = ["//build/stack/starlark/v1beta1:v1beta1_proto"],
 )
 
 proto_compiled_sources(
-    name = "docpb_go_compiled_sources",
-    srcs = ["documentation.pb.go"],
-    output_mappings = ["documentation.pb.go=github.com/stackb/centrl/build/stack/bazel/documentation/v1/documentation.pb.go"],
+    name = "sympb_go_compiled_sources",
+    srcs = ["symbol.pb.go"],
+    output_mappings = ["symbol.pb.go=github.com/stackb/centrl/build/stack/bazel/symbol/v1/symbol.pb.go"],
     plugins = ["@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go"],
-    proto = "docpb_proto",
+    proto = "sympb_proto",
     visibility = ["//visibility:public"],
 )
 
 go_library(
-    name = "documentation",
-    srcs = ["documentation.pb.go"],
-    importpath = "github.com/stackb/centrl/build/stack/bazel/documentation/v1",
+    name = "symbol",
+    srcs = ["symbol.pb.go"],
+    importpath = "github.com/stackb/centrl/build/stack/bazel/symbol/v1",
     visibility = ["//visibility:public"],
     deps = [
         "//build/stack/starlark/v1beta1",
@@ -34,43 +34,42 @@ go_library(
 )
 
 proto_compile(
-    name = "docpb_js_proto",
-    outputs = ["docpb.js"],
+    name = "sympb_js_proto",
+    outputs = ["sympb.js"],
     plugins = ["@stackb_rules_closure//closure/protobuf:protoc-gen-js"],
-    proto = "docpb_proto",
+    proto = "sympb_proto",
 )
 
 closure_jspb_library(
-    name = "docpb_js",
-    srcs = [":docpb_js_proto"],
-    internal_descriptors = [":docpb_proto"],
+    name = "sympb_js",
+    srcs = [":sympb_js_proto"],
+    internal_descriptors = [":sympb_proto"],
     visibility = ["//visibility:public"],
     deps = ["//build/stack/starlark/v1beta1:v1beta1_js"],
 )
 
 proto_compile(
-    name = "docpb_proto_rs",
+    name = "sympb_proto_rs",
     options = {
         "//bazel_tools/rust:protoc-gen-prost": [
             "extern_path=.build.stack.starlark.v1beta1=::v1beta1_rs::build::stack::starlark::v1beta1",
         ],
     },
     outputs = [
-        "build.stack.bazel.documentation.v1.rs",
-        "build.stack.bazel.documentation.v1.serde.rs",
+        "build.stack.bazel.symbol.v1.rs",
+        "build.stack.bazel.symbol.v1.serde.rs",
     ],
     plugins = [
         "//bazel_tools/rust:protoc-gen-prost",
         "//bazel_tools/rust:protoc-gen-prost-serde",
     ],
-    proto = "docpb_proto",
-    verbose = False,
+    proto = "sympb_proto",
 )
 
 proto_rust_library(
-    name = "docpb_rs",
-    srcs = [":docpb_proto_rs"],
-    pkg = "build.stack.bazel.documentation.v1",
+    name = "sympb_rs",
+    srcs = [":sympb_proto_rs"],
+    pkg = "build.stack.bazel.symbol.v1",
     visibility = ["//visibility:public"],
     deps = ["//build/stack/starlark/v1beta1:v1beta1_rs"],
 )

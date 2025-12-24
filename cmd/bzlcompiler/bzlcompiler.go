@@ -165,7 +165,7 @@ func runBatch(cfg *config) error {
 		listFiles(cfg.Logger, filepath.Join(workDir, "external"))
 	}
 
-	result, err := extractDocumentationInfo(cfg, bzlFilesByPath, cfg.FilesToExtract)
+	result, err := extractModuleVersionSymbols(cfg, bzlFilesByPath, cfg.FilesToExtract)
 	if err != nil {
 		return fail(fmt.Errorf("failed to extract module info: %v", err))
 	}

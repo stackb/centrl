@@ -2,13 +2,13 @@ goog.module("centrl.starlark");
 
 const AttributeInfo = goog.require('proto.stardoc_output.AttributeInfo');
 const AttributeType = goog.require('proto.stardoc_output.AttributeType');
-const FileInfo = goog.require('proto.build.stack.bazel.documentation.v1.FileInfo');
+const File = goog.require('proto.build.stack.bazel.symbol.v1.File');
 const FunctionParamInfo = goog.require('proto.stardoc_output.FunctionParamInfo');
 const FunctionParamRole = goog.require('proto.stardoc_output.FunctionParamRole');
 const Label = goog.require('proto.build.stack.starlark.v1beta1.Label');
 const ModuleVersion = goog.require('proto.build.stack.bazel.registry.v1.ModuleVersion');
 const ProviderFieldInfo = goog.require('proto.stardoc_output.ProviderFieldInfo');
-const SymbolInfo = goog.require('proto.build.stack.bazel.documentation.v1.SymbolInfo');
+const Symbol = goog.require('proto.build.stack.bazel.symbol.v1.Symbol');
 
 
 /**
@@ -170,8 +170,8 @@ class StarlarkCallBuilder {
  * Generate a Starlark example for the provider
  * 
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateProviderExample(moduleVersion, file, sym) {
@@ -206,8 +206,8 @@ exports.generateProviderExample = generateProviderExample;
  * Generate a Starlark example for the repository rule
  *
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateRepositoryRuleExample(moduleVersion, file, sym) {
@@ -235,8 +235,8 @@ exports.generateRepositoryRuleExample = generateRepositoryRuleExample;
 /**
  * Generate a Starlark example for the aspect
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateAspectExample(moduleVersion, file, sym) {
@@ -264,7 +264,7 @@ exports.generateAspectExample = generateAspectExample;
  * Generate a load statement for the current symbol
  *
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
+ * @param {!File} file
  * @param {string} symbolName - The name of the symbol to load
  * @returns {string}
  */
@@ -287,8 +287,8 @@ function generateLoadStatement(moduleVersion, file, symbolName) {
  * Generate a Starlark example for the rule
  * 
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateRuleExample(moduleVersion, file, sym) {
@@ -317,8 +317,8 @@ exports.generateRuleExample = generateRuleExample;
  * Generate a Starlark example for the function
  * 
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateFunctionExample(moduleVersion, file, sym) {
@@ -389,8 +389,8 @@ exports.generateFunctionExample = generateFunctionExample;
  * Generate a Starlark example for the macro
  *
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateMacroExample(moduleVersion, file, sym) {
@@ -419,8 +419,8 @@ exports.generateMacroExample = generateMacroExample;
  * Generate a Starlark example for the rule macro
  * 
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateRuleMacroExample(moduleVersion, file, sym) {
@@ -452,8 +452,8 @@ exports.generateRuleMacroExample = generateRuleMacroExample;
  * Generate a Starlark example for the module extension
  * 
  * @param {!ModuleVersion} moduleVersion
- * @param {!FileInfo} file
- * @param {!SymbolInfo} sym
+ * @param {!File} file
+ * @param {!Symbol} sym
  * @returns {string}
  */
 function generateModuleExtensionExample(moduleVersion, file, sym) {

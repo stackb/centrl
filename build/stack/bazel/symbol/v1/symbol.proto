@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package build.stack.bazel.documentation.v1;
+package build.stack.bazel.symbol.v1;
 
-option go_package = "github.com/stackb/centrl/build/stack/bazel/documentation/v1;docpb";
+option go_package = "github.com/stackb/centrl/build/stack/bazel/symbol/v1;sympb";
 
 import "build/stack/starlark/v1beta1/starlark.proto";
 
@@ -22,7 +22,7 @@ enum SymbolType {
 }
 
 // Information about a Starlark symbol exported from a .bzl file
-message SymbolInfo {
+message Symbol {
     // Symbol type (rule, function, provider, etc.)
     SymbolType type = 1;
     // Symbol name
@@ -44,12 +44,12 @@ message SymbolInfo {
     }
 }
 
-// Documentation for a single .bzl file
-message FileInfo {
+// Symbols for a single .bzl file
+message File {
     // File label (e.g., "//lib/private:copy_file.bzl")
     build.stack.starlark.v1beta1.Label label = 1;
     // Symbols exported by this file
-    repeated SymbolInfo symbol = 2;
+    repeated Symbol symbol = 2;
     // File description from module docstring
     string description = 3;
     // Error message if symbol extraction failed
@@ -57,34 +57,34 @@ message FileInfo {
 }
 
 // Source of documentation for a module
-enum DocumentationSource {
-    DOCUMENTATION_SOURCE_UNKNOWN = 0;
+enum SymbolSource {
+    SYMBOL_SOURCE_UNKNOWN = 0;
     PUBLISHED = 1;        // From published docs.json
     BEST_EFFORT = 2;      // Generated from source analysis
 }
 
 // Complete documentation for a module version
-message DocumentationInfo {
+message ModuleVersionSymbols {
     // Module name
     string module_name = 1;
     // Module version
     string version = 2;
     // Documented .bzl files
-    repeated FileInfo file = 3;
-    // Documentation source type
-    DocumentationSource source = 4;
+    repeated File file = 3;
+    // source type
+    SymbolSource source = 4;
 }
 
-// Registry of all module documentation
-message DocumentationRegistry {
+// Registry of all symbols for a module registry
+message ModuleRegistrySymbols {
     // Documentation for all module versions
-    repeated DocumentationInfo documentation = 1;
+    repeated ModuleVersionSymbols module_version = 1;
 }
 
 // Node in the file load dependency graph
 message FileLoadTreeNode {
     // File at this node
-    FileInfo file = 1;
+    File file = 1;
     // Files loaded by this file
     repeated FileLoadTreeNode children = 2;
     // Whether children were pruned to prevent cycles

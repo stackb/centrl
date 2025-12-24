@@ -7,7 +7,7 @@
 package bzpb
 
 import (
-	v1 "github.com/stackb/centrl/build/stack/bazel/documentation/v1"
+	v1 "github.com/stackb/centrl/build/stack/bazel/symbol/v1"
 	_ "github.com/stackb/centrl/build/stack/starlark/v1beta1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -797,23 +797,23 @@ func (x *ResourceStatusSet) GetStatus() []*ResourceStatus {
 }
 
 type ModuleSource struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Integrity     string                 `protobuf:"bytes,2,opt,name=integrity,proto3" json:"integrity,omitempty"`
-	StripPrefix   string                 `protobuf:"bytes,3,opt,name=strip_prefix,json=stripPrefix,proto3" json:"strip_prefix,omitempty"`
-	PatchStrip    int32                  `protobuf:"varint,4,opt,name=patch_strip,json=patchStrip,proto3" json:"patch_strip,omitempty"`
-	Patches       map[string]string      `protobuf:"bytes,5,rep,name=patches,proto3" json:"patches,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Overlay       map[string]string      `protobuf:"bytes,6,rep,name=overlay,proto3" json:"overlay,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	DocsUrl       string                 `protobuf:"bytes,7,opt,name=docs_url,json=docsUrl,proto3" json:"docs_url,omitempty"`
-	MirrorUrls    []string               `protobuf:"bytes,8,rep,name=mirror_urls,json=mirrorUrls,proto3" json:"mirror_urls,omitempty"`
-	ArchiveType   string                 `protobuf:"bytes,9,opt,name=archive_type,json=archiveType,proto3" json:"archive_type,omitempty"`
-	Type          string                 `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`
-	Remote        string                 `protobuf:"bytes,11,opt,name=remote,proto3" json:"remote,omitempty"`
-	Commit        string                 `protobuf:"bytes,12,opt,name=commit,proto3" json:"commit,omitempty"`
-	Documentation *v1.DocumentationInfo  `protobuf:"bytes,13,opt,name=documentation,proto3" json:"documentation,omitempty"`
-	DocsUrlStatus *ResourceStatus        `protobuf:"bytes,14,opt,name=docs_url_status,json=docsUrlStatus,proto3" json:"docs_url_status,omitempty"`
-	UrlStatus     *ResourceStatus        `protobuf:"bytes,15,opt,name=url_status,json=urlStatus,proto3" json:"url_status,omitempty"`
-	CommitSha     string                 `protobuf:"bytes,16,opt,name=commit_sha,json=commitSha,proto3" json:"commit_sha,omitempty"`
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Url           string                   `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	Integrity     string                   `protobuf:"bytes,2,opt,name=integrity,proto3" json:"integrity,omitempty"`
+	StripPrefix   string                   `protobuf:"bytes,3,opt,name=strip_prefix,json=stripPrefix,proto3" json:"strip_prefix,omitempty"`
+	PatchStrip    int32                    `protobuf:"varint,4,opt,name=patch_strip,json=patchStrip,proto3" json:"patch_strip,omitempty"`
+	Patches       map[string]string        `protobuf:"bytes,5,rep,name=patches,proto3" json:"patches,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Overlay       map[string]string        `protobuf:"bytes,6,rep,name=overlay,proto3" json:"overlay,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	DocsUrl       string                   `protobuf:"bytes,7,opt,name=docs_url,json=docsUrl,proto3" json:"docs_url,omitempty"`
+	MirrorUrls    []string                 `protobuf:"bytes,8,rep,name=mirror_urls,json=mirrorUrls,proto3" json:"mirror_urls,omitempty"`
+	ArchiveType   string                   `protobuf:"bytes,9,opt,name=archive_type,json=archiveType,proto3" json:"archive_type,omitempty"`
+	Type          string                   `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`
+	Remote        string                   `protobuf:"bytes,11,opt,name=remote,proto3" json:"remote,omitempty"`
+	Commit        string                   `protobuf:"bytes,12,opt,name=commit,proto3" json:"commit,omitempty"`
+	Documentation *v1.ModuleVersionSymbols `protobuf:"bytes,13,opt,name=documentation,proto3" json:"documentation,omitempty"`
+	DocsUrlStatus *ResourceStatus          `protobuf:"bytes,14,opt,name=docs_url_status,json=docsUrlStatus,proto3" json:"docs_url_status,omitempty"`
+	UrlStatus     *ResourceStatus          `protobuf:"bytes,15,opt,name=url_status,json=urlStatus,proto3" json:"url_status,omitempty"`
+	CommitSha     string                   `protobuf:"bytes,16,opt,name=commit_sha,json=commitSha,proto3" json:"commit_sha,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -932,7 +932,7 @@ func (x *ModuleSource) GetCommit() string {
 	return ""
 }
 
-func (x *ModuleSource) GetDocumentation() *v1.DocumentationInfo {
+func (x *ModuleSource) GetDocumentation() *v1.ModuleVersionSymbols {
 	if x != nil {
 		return x.Documentation
 	}
@@ -2170,7 +2170,7 @@ var File_build_stack_bazel_registry_v1_bcr_proto protoreflect.FileDescriptor
 
 const file_build_stack_bazel_registry_v1_bcr_proto_rawDesc = "" +
 	"\n" +
-	"'build/stack/bazel/registry/v1/bcr.proto\x12\x1dbuild.stack.bazel.registry.v1\x1a6build/stack/bazel/documentation/v1/documentation.proto\x1a+build/stack/starlark/v1beta1/starlark.proto\"\x94\x02\n" +
+	"'build/stack/bazel/registry/v1/bcr.proto\x12\x1dbuild.stack.bazel.registry.v1\x1a(build/stack/bazel/symbol/v1/symbol.proto\x1a+build/stack/starlark/v1beta1/starlark.proto\"\x94\x02\n" +
 	"\bRegistry\x12?\n" +
 	"\amodules\x18\x01 \x03(\v2%.build.stack.bazel.registry.v1.ModuleR\amodules\x12%\n" +
 	"\x0erepository_url\x18\x02 \x01(\tR\rrepositoryUrl\x12!\n" +
@@ -2237,7 +2237,7 @@ const file_build_stack_bazel_registry_v1_bcr_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\x05R\x04code\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"Z\n" +
 	"\x11ResourceStatusSet\x12E\n" +
-	"\x06status\x18\x01 \x03(\v2-.build.stack.bazel.registry.v1.ResourceStatusR\x06status\"\xe6\x06\n" +
+	"\x06status\x18\x01 \x03(\v2-.build.stack.bazel.registry.v1.ResourceStatusR\x06status\"\xe2\x06\n" +
 	"\fModuleSource\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x1c\n" +
 	"\tintegrity\x18\x02 \x01(\tR\tintegrity\x12!\n" +
@@ -2253,8 +2253,8 @@ const file_build_stack_bazel_registry_v1_bcr_proto_rawDesc = "" +
 	"\x04type\x18\n" +
 	" \x01(\tR\x04type\x12\x16\n" +
 	"\x06remote\x18\v \x01(\tR\x06remote\x12\x16\n" +
-	"\x06commit\x18\f \x01(\tR\x06commit\x12[\n" +
-	"\rdocumentation\x18\r \x01(\v25.build.stack.bazel.documentation.v1.DocumentationInfoR\rdocumentation\x12U\n" +
+	"\x06commit\x18\f \x01(\tR\x06commit\x12W\n" +
+	"\rdocumentation\x18\r \x01(\v21.build.stack.bazel.symbol.v1.ModuleVersionSymbolsR\rdocumentation\x12U\n" +
 	"\x0fdocs_url_status\x18\x0e \x01(\v2-.build.stack.bazel.registry.v1.ResourceStatusR\rdocsUrlStatus\x12L\n" +
 	"\n" +
 	"url_status\x18\x0f \x01(\v2-.build.stack.bazel.registry.v1.ResourceStatusR\turlStatus\x12\x1d\n" +
@@ -2437,7 +2437,7 @@ var file_build_stack_bazel_registry_v1_bcr_proto_goTypes = []any{
 	(*Presubmit_PresubmitTask)(nil),   // 33: build.stack.bazel.registry.v1.Presubmit.PresubmitTask
 	nil,                               // 34: build.stack.bazel.registry.v1.Presubmit.TasksEntry
 	nil,                               // 35: build.stack.bazel.registry.v1.Presubmit.BcrTestModule.TasksEntry
-	(*v1.DocumentationInfo)(nil),      // 36: build.stack.bazel.documentation.v1.DocumentationInfo
+	(*v1.ModuleVersionSymbols)(nil),   // 36: build.stack.bazel.symbol.v1.ModuleVersionSymbols
 }
 var file_build_stack_bazel_registry_v1_bcr_proto_depIdxs = []int32{
 	2,  // 0: build.stack.bazel.registry.v1.Registry.modules:type_name -> build.stack.bazel.registry.v1.Module
@@ -2456,7 +2456,7 @@ var file_build_stack_bazel_registry_v1_bcr_proto_depIdxs = []int32{
 	10, // 13: build.stack.bazel.registry.v1.ResourceStatusSet.status:type_name -> build.stack.bazel.registry.v1.ResourceStatus
 	27, // 14: build.stack.bazel.registry.v1.ModuleSource.patches:type_name -> build.stack.bazel.registry.v1.ModuleSource.PatchesEntry
 	28, // 15: build.stack.bazel.registry.v1.ModuleSource.overlay:type_name -> build.stack.bazel.registry.v1.ModuleSource.OverlayEntry
-	36, // 16: build.stack.bazel.registry.v1.ModuleSource.documentation:type_name -> build.stack.bazel.documentation.v1.DocumentationInfo
+	36, // 16: build.stack.bazel.registry.v1.ModuleSource.documentation:type_name -> build.stack.bazel.symbol.v1.ModuleVersionSymbols
 	10, // 17: build.stack.bazel.registry.v1.ModuleSource.docs_url_status:type_name -> build.stack.bazel.registry.v1.ResourceStatus
 	10, // 18: build.stack.bazel.registry.v1.ModuleSource.url_status:type_name -> build.stack.bazel.registry.v1.ResourceStatus
 	30, // 19: build.stack.bazel.registry.v1.Attestations.attestations:type_name -> build.stack.bazel.registry.v1.Attestations.AttestationsEntry

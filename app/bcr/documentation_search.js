@@ -15,12 +15,12 @@ const soy = goog.require("goog.soy");
 const { Application, DefaultSearchHandlerName, SearchProvider } = goog.require("centrl.common");
 const { Searchable } = goog.requireType("centrl.common");
 const { symbolSearchRow } = goog.require('soy.centrl.app');
-const FileInfo = goog.require("proto.build.stack.bazel.documentation.v1.FileInfo");
+const File = goog.require("proto.build.stack.bazel.symbol.v1.File");
 const Registry = goog.require("proto.build.stack.bazel.registry.v1.Registry");
-const SymbolInfo = goog.require("proto.build.stack.bazel.documentation.v1.SymbolInfo");
-const SymbolType = goog.require('proto.build.stack.bazel.documentation.v1.SymbolType');
+const Symbol = goog.require("proto.build.stack.bazel.symbol.v1.Symbol");
+const SymbolType = goog.require('proto.build.stack.bazel.symbol.v1.SymbolType');
 
-/** @typedef {{file: !FileInfo, sym: !SymbolInfo, moduleVersion: string}} */
+/** @typedef {{file: !File, sym: !Symbol, moduleVersion: string}} */
 let FileSymbol;
 
 
@@ -254,7 +254,7 @@ class SymbolRowRenderer {
 /**
  * Returns true if the file should be included in public documentation.
  * Filters out files in /private/ or /internal/ directories.
- * @param {!FileInfo} file
+ * @param {!File} file
  * @return {boolean}
  */
 function isPublicFile(file) {

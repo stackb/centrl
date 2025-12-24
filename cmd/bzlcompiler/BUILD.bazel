@@ -17,8 +17,8 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//blaze/worker",
-        "//build/stack/bazel/documentation/v1:documentation",
         "//build/stack/bazel/registry/v1:registry",
+        "//build/stack/bazel/symbol/v1:symbol",
         "//build/stack/starlark/v1beta1",
         "//pkg/paramsfile",
         "//pkg/protoutil",

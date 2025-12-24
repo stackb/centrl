@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/stackb/centrl/cmd/registrycompiler",
     visibility = ["//visibility:public"],
     deps = [
-        "//build/stack/bazel/documentation/v1:documentation",
         "//build/stack/bazel/registry/v1:registry",
+        "//build/stack/bazel/symbol/v1:symbol",
         "//pkg/gh",
         "//pkg/paramsfile",
         "//pkg/protoutil",

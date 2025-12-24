@@ -4,7 +4,7 @@ package build.stack.bazel.registry.v1;
 
 option go_package = "github.com/stackb/centrl/build/stack/bazel/registry/v1;bzpb";
 
-import "build/stack/bazel/documentation/v1/documentation.proto";
+import "build/stack/bazel/symbol/v1/symbol.proto";
 import "build/stack/starlark/v1beta1/starlark.proto";
 
 // Registry represents a Bazel module registry and all its modules.
@@ -162,7 +162,7 @@ message ModuleSource {
     // Git commit hash (for git_repository type)
     string commit = 12;
     // Optional Stardoc-derived documentation
-    build.stack.bazel.documentation.v1.DocumentationInfo documentation = 13;
+    build.stack.bazel.symbol.v1.ModuleVersionSymbols documentation = 13;
     // HTTP status of docs_url
     ResourceStatus docs_url_status = 14;
     // HTTP status of source URL

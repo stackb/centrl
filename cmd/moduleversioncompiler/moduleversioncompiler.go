@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	docpb "github.com/stackb/centrl/build/stack/bazel/documentation/v1"
 	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	sympb "github.com/stackb/centrl/build/stack/bazel/symbol/v1"
 	"github.com/stackb/centrl/pkg/attestationsjson"
 	"github.com/stackb/centrl/pkg/modulebazel"
 	"github.com/stackb/centrl/pkg/paramsfile"
@@ -21,22 +21,22 @@ import (
 const toolName = "moduleversioncompiler"
 
 type Config struct {
-	OutputFile            string
-	ModuleBazelFile       string
-	SourceJsonFile        string
-	AttestationsJsonFile  string
-	PresubmitYmlFile      string
-	DocumentationInfoFile string
-	CommitSha1            string
-	CommitDate            string
-	CommitMessage         string
-	UnresolvedDeps        string
-	UrlStatusCode         int
-	UrlStatusMessage      string
-	DocsUrlStatusCode     int
-	DocsUrlStatusMessage  string
-	SourceCommitSha       string
-	IsLatestVersion       bool
+	OutputFile               string
+	ModuleBazelFile          string
+	SourceJsonFile           string
+	AttestationsJsonFile     string
+	PresubmitYmlFile         string
+	ModuleVersionSymbolsFile string
+	CommitSha1               string
+	CommitDate               string
+	CommitMessage            string
+	UnresolvedDeps           string
+	UrlStatusCode            int
+	UrlStatusMessage         string
+	DocsUrlStatusCode        int
+	DocsUrlStatusMessage     string
+	SourceCommitSha          string
+	IsLatestVersion          bool
 }
 
 func main() {
@@ -98,9 +98,9 @@ func run(args []string) error {
 				Message: cfg.DocsUrlStatusMessage,
 			}
 		}
-		if cfg.DocumentationInfoFile != "" {
-			var docs docpb.DocumentationInfo
-			if err := protoutil.ReadFile(cfg.DocumentationInfoFile, &docs); err != nil {
+		if cfg.ModuleVersionSymbolsFile != "" {
+			var docs sympb.ModuleVersionSymbols
+			if err := protoutil.ReadFile(cfg.ModuleVersionSymbolsFile, &docs); err != nil {
 				return fmt.Errorf("failed to read docs: %v", err)
 			}
 			module.Source.Documentation = &docs
@@ -158,7 +158,7 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
 	fs.StringVar(&cfg.ModuleBazelFile, "module_bazel_file", "", "the MODULE.bazel file to read (required)")
 	fs.StringVar(&cfg.SourceJsonFile, "source_json_file", "", "the source.json file to read (optional)")
-	fs.StringVar(&cfg.DocumentationInfoFile, "documentation_info_file", "", "the (optional) DocumentationInfo proto file to read")
+	fs.StringVar(&cfg.ModuleVersionSymbolsFile, "documentation_info_file", "", "the (optional) ModuleVersionSymbols proto file to read")
 	fs.StringVar(&cfg.PresubmitYmlFile, "presubmit_yml_file", "", "the presubmit.yml file to read (optional)")
 	fs.StringVar(&cfg.AttestationsJsonFile, "attestations_json_file", "", "the attestations.json file to read (optional)")
 	fs.StringVar(&cfg.CommitSha1, "commit_sha1", "", "the git commit SHA-1 hash (optional)")

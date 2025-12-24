@@ -13,7 +13,7 @@ const { Component, Route } = goog.require('stack.ui');
 const { getApplication } = goog.require('centrl.common');
 const { ContentComponent } = goog.require('centrl.ContentComponent');
 const { ContentSelect } = goog.require('centrl.ContentSelect');
-const { DocumentationInfoSelect, DocumentationReadmeComponent } = goog.require('centrl.documentation');
+const { ModuleVersionSymbolsSelect, DocumentationReadmeComponent } = goog.require('centrl.documentation');
 const { PresubmitSelect } = goog.require('centrl.presubmit');
 const { MvsDependencyTree } = goog.require('centrl.mvs_tree');
 const { SelectNav } = goog.require('centrl.SelectNav');
@@ -332,7 +332,7 @@ class ModuleVersionSelectNav extends SelectNav {
             'Documentation',
             'Generated Stardoc Documentation',
             undefined,
-            new DocumentationInfoSelect(this.module_, this.moduleVersion_, docs || null),
+            new ModuleVersionSymbolsSelect(this.module_, this.moduleVersion_, docs || null),
         );
 
         const presubmit = this.moduleVersion_.getPresubmit();

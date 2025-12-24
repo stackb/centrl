@@ -57,14 +57,14 @@ import {
   Value
 } from 'build/stack/starlark/v1beta1/starlark.proto';
 import {
-  DocumentationInfo,
-  DocumentationSource,
-  FileInfo,
+  ModuleVersionSymbols,
+  SymbolSource,
+  File,
   FileLoadTree,
   FileLoadTreeNode,
-  SymbolInfo,
+  Symbol,
   SymbolType
-} from 'build/stack/bazel/documentation/v1/documentation.proto';
+} from 'build/stack/bazel/symbol/v1/symbol.proto';
 import {
   Maintainer,
   Module,
@@ -375,7 +375,7 @@ import {
 
 
 {template docsMapComponent}
-  {@param docsMap: map<string,DocumentationInfo>}
+  {@param docsMap: map<string,ModuleVersionSymbols>}
 <div>
     {call docsList}
         {param docsMap: $docsMap /}
@@ -661,8 +661,8 @@ import {
 {template documentationInfoSelect}
   {@param module: Module}
   {@param moduleVersion: ModuleVersion}
-  {@param fileSymbols: list<[file: FileInfo, symbolGroups: list<[type: SymbolType, typeName: string, symbols: list<SymbolInfo>]>]>}
-  {@param? info: DocumentationInfo}
+  {@param fileSymbols: list<[file: File, symbolGroups: list<[type: SymbolType, typeName: string, symbols: list<Symbol>]>]>}
+  {@param? info: ModuleVersionSymbols}
 <div>
   <div class="PageLayout PageLayout--panePos-start PageLayout--hasPaneDivider PageLayout--responsive-stackRegions" style2="--Layout-template-columns: unset">
     <div class="PageLayout-wrapper">
@@ -681,7 +681,7 @@ import {
 
 
 {template symbolItem}
-  {@param item: [file: FileInfo, sym: SymbolInfo]}
+  {@param item: [file: File, sym: Symbol]}
 <div class="SideNav-item d-flex flex-items-center rounded" style="border: none; box-shadow: none; padding: 0">
   <a href="{symbolInfoUrl(file: $item.file, sym: $item.sym)}" class="btn btn-sm btn-octicon">
     {let $color: symbolColor(type: $item.sym.getType()) /}
@@ -695,13 +695,13 @@ import {
 {template documentationInfoListComponent}
   {@inject baseUrl: string}
   {@param moduleVersion: ModuleVersion}
-  {@param docs: DocumentationInfo}
+  {@param docs: ModuleVersionSymbols}
   {@param fileSymbols: list<[
-    file: FileInfo,
+    file: File,
     symbolGroups: list<[
       type: SymbolType,
       typeName: string,
-      symbols: list<SymbolInfo>
+      symbols: list<Symbol>
     ]>
   ]>}
 <div class="Box Box--condensed">
@@ -740,17 +740,17 @@ import {
 
 {template fileInfoListComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param rules: list<SymbolInfo>}
-  {@param funcs: list<SymbolInfo>}
-  {@param providers: list<SymbolInfo>}
-  {@param aspects: list<SymbolInfo>}
-  {@param moduleExtensions: list<SymbolInfo>}
-  {@param repositoryRules: list<SymbolInfo>}
-  {@param macros: list<SymbolInfo>}
-  {@param ruleMacros: list<SymbolInfo>}
-  {@param loads: list<SymbolInfo>}
-  {@param values: list<SymbolInfo>}
+  {@param file: File}
+  {@param rules: list<Symbol>}
+  {@param funcs: list<Symbol>}
+  {@param providers: list<Symbol>}
+  {@param aspects: list<Symbol>}
+  {@param moduleExtensions: list<Symbol>}
+  {@param repositoryRules: list<Symbol>}
+  {@param macros: list<Symbol>}
+  {@param ruleMacros: list<Symbol>}
+  {@param loads: list<Symbol>}
+  {@param values: list<Symbol>}
 <div style="min-width: 0">
   <div class="Subhead mb-2" style="border-bottom: none;">
     <div class="Subhead-heading d-flex flex-items-center">
@@ -960,11 +960,11 @@ import {
 
 {template fileSymbolTree}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
+  {@param file: File}
   {@param symbolGroups: list<[
       type: SymbolType,
       typeName: string,
-      symbols: list<SymbolInfo>
+      symbols: list<Symbol>
   ]>}
   {@param showDocstrings: bool}
 
@@ -985,10 +985,10 @@ import {
 {/template}
 
 {template fileSymbolTreeGroup visibility="private"}
-  {@param file: FileInfo}
+  {@param file: File}
   {@param type: SymbolType}
   {@param typeName: string}
-  {@param symbols: list<SymbolInfo>}
+  {@param symbols: list<Symbol>}
   {@param isLastGroup: bool}
   {@param showDocstrings: bool}
   <div class="treeview-item" role="treeitem">
@@ -1085,8 +1085,8 @@ import {
 {/template}
 
 {template symbolListBox}
-  {@param file: FileInfo}
-  {@param symbols: list<SymbolInfo>}
+  {@param file: File}
+  {@param symbols: list<Symbol>}
   {@param title: string}
 <div class="Box Box--condensed mb-3">
   <div class="Box-header">
@@ -1099,8 +1099,8 @@ import {
 {/template}
 
 {template symbolListItem}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
 <div class="Box-row d-flex flex-items-center">
   <div class="flex-shrink-0 mr-2">
     {let $color: symbolColor(type: $sym.getType()) /}
@@ -1116,8 +1116,8 @@ import {
 
 {template symbolInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
 <div style="min-width: 0">
   {symbolInfoHeader(moduleVersion: $moduleVersion, file: $file, sym: $sym)}
 
@@ -1134,8 +1134,8 @@ import {
 
 {template symbolInfoHeader}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? originKey: OriginKey}
   {@param? location: SymbolLocation}
 <div class="Subhead mb-2" style="border-bottom: none;">
@@ -1192,8 +1192,8 @@ import {
 
 {template ruleInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1219,8 +1219,8 @@ import {
 
 {template macroInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1246,8 +1246,8 @@ import {
 
 {template ruleMacroInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1292,8 +1292,8 @@ import {
 
 {template valueInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
 <div style="min-width: 0">
   {call symbolInfoHeader}
     {param moduleVersion: $moduleVersion /}
@@ -1325,8 +1325,8 @@ import {
 
 {template loadInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
 <div style="min-width: 0">
   {call symbolInfoHeader}
     {param moduleVersion: $moduleVersion /}
@@ -1379,8 +1379,8 @@ import {
 
 {template functionInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1431,8 +1431,8 @@ import {
 
 {template providerInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1458,8 +1458,8 @@ import {
 
 {template repositoryRuleInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1485,8 +1485,8 @@ import {
 
 {template aspectInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1512,8 +1512,8 @@ import {
 
 {template moduleExtensionInfoComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
-  {@param sym: SymbolInfo}
+  {@param file: File}
+  {@param sym: Symbol}
   {@param? exampleCode: string}
 <div style="min-width: 0">
   {call symbolInfoHeader}
@@ -1834,7 +1834,7 @@ import {
 
 {template symbolSection}
   {@param title: string}
-  {@param items: list<[file: FileInfo, sym: SymbolInfo]>}
+  {@param items: list<[file: File, sym: Symbol]>}
   {if length($items) > 0}
     <div id="doc-{$items[0].sym.getType()}" class="text-semibold mt-2 mb-1">{$title}</div>
     {for $item in $items}
@@ -1976,7 +1976,7 @@ import {
 
 {template bzlFileSourceComponent}
   {@param moduleVersion: ModuleVersion}
-  {@param file: FileInfo}
+  {@param file: File}
   {@param loading: bool}
   {@param? error: string}
   {@param? content: string}
@@ -2022,7 +2022,7 @@ import {
 
 
 {template fileErrorBlankslate}
-  {@param file: FileInfo}
+  {@param file: File}
 <div class="blankslate-container">
   <div class="blankslate">
     <div class="blankslate-heading">
@@ -2086,7 +2086,7 @@ import {
 
 
 {template symbolSearchRow kind="html<div>"}
-  {@param sym: SymbolInfo}
+  {@param sym: Symbol}
   {@param? label: Label}
   {@param? description: string}
   <div class="d-flex flex-items-center">
@@ -2119,16 +2119,16 @@ import {
 {template documentationAboutSection}
   {@param module: Module}
   {@param moduleVersion: ModuleVersion}
-  {@param? info: DocumentationInfo}
-  {@param fileSymbols: list<[file: FileInfo, symbolGroups: list<[type: SymbolType, typeName: string, symbols: list<SymbolInfo>]>]>}
+  {@param? info: ModuleVersionSymbols}
+  {@param fileSymbols: list<[file: File, symbolGroups: list<[type: SymbolType, typeName: string, symbols: list<Symbol>]>]>}
 <div>
   <div class="f4 color-fg-muted">
   {if $info}
     <span class="mr-1">{documentationSourceOcticon(source: $info.getSource())}</span>
 
-    {if $info.getSource() == DocumentationSource.PUBLISHED}
+    {if $info.getSource() == SymbolSource.PUBLISHED}
       Official published documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.
-    {elseif $info.getSource() == DocumentationSource.BEST_EFFORT}
+    {elseif $info.getSource() == SymbolSource.BEST_EFFORT}
       Auto-generated documentation using best-effort extraction method.
     {else}
       Documentation for <strong>{$info.getModuleName()}</strong> version <strong>{$info.getVersion()}</strong>.
