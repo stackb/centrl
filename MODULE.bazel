@@ -1,7 +1,7 @@
-"bazel modules file"
+"bazel module file for the bcr-frontend app(s)"
 
 module(
-    name = "stackb_centrl",
+    name = "bcr-frontend",
     version = "0.0.0",
     compatibility_level = 1,
 )
