@@ -8,8 +8,7 @@ const Keyboard = goog.require("stack.ui.Keyboard");
 const Select = goog.require("stack.ui.Select");
 const dom = goog.require("goog.dom");
 const { Component } = goog.require("stack.ui");
-const { MVS } = goog.require('centrl.mvs');
-
+const { MVS } = goog.require("centrl.mvs");
 
 /**
  * Interface that defines the minimum API methods we need on the root object.
@@ -17,33 +16,33 @@ const { MVS } = goog.require('centrl.mvs');
  * @interface
  */
 class Application {
-    /**
-     * Returns a set of named flags.  This is a way to pass in compile-time global
-     * constants into goog.modules.
-     * @returns {!Map<string,string>}
-     */
-    getOptions() { }
+	/**
+	 * Returns a set of named flags.  This is a way to pass in compile-time global
+	 * constants into goog.modules.
+	 * @returns {!Map<string,string>}
+	 */
+	getOptions() {}
 
-    /**
-     * Returns the cached mvs data.
-     * @returns {!MVS}
-     */
-    getMvs() { }
+	/**
+	 * Returns the cached mvs data.
+	 * @returns {!MVS}
+	 */
+	getMvs() {}
 
-    /**
-     * @param {!Array<string>} path
-     */
-    setLocation(path) { }
+	/**
+	 * @param {!Array<string>} path
+	 */
+	setLocation(path) {}
 
-    /**
-     * @returns {!Keyboard}
-     */
-    getKbd() { }
+	/**
+	 * @returns {!Keyboard}
+	 */
+	getKbd() {}
 
-    /**
-     * @param {string} msg
-     */
-    notifyError(msg) { }
+	/**
+	 * @param {string} msg
+	 */
+	notifyError(msg) {}
 }
 exports.Application = Application;
 
@@ -52,7 +51,7 @@ exports.Application = Application;
  * @return {!Application}
  */
 function getApplication(component) {
-    return /** @type {!Application} */ (component.getApp());
+	return /** @type {!Application} */ (component.getApp());
 }
 exports.getApplication = getApplication;
 
@@ -75,28 +74,28 @@ exports.SearchProvider = SearchProvider;
  * @interface
  */
 class Searchable {
-    /**
-     * Get the metadata about this search input.
-     * @return {!SearchProvider}
-     */
-    getSearchProvider() { }
+	/**
+	 * Get the metadata about this search input.
+	 * @return {!SearchProvider}
+	 */
+	getSearchProvider() {}
 }
 exports.Searchable = Searchable;
 
 /**
  * An abstract base for class that has inputhandler/autocomplete capability.
  * Used as a base class to facilitate 'instanceof' comparison.
- * 
+ *
  * @abstract
  * @implements {Searchable}
  */
 class SearchableSelect extends Select {
-    /**
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(opt_domHelper) {
-        super(opt_domHelper);
-    }
+	/**
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(opt_domHelper) {
+		super(opt_domHelper);
+	}
 }
 exports.SearchableSelect = SearchableSelect;
 

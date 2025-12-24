@@ -3,7 +3,7 @@
 def _executable(ctx, biome):
     ctx.actions.write(
         ctx.outputs.executable,
-        "{biome} format app/bcr/*.js".format(
+        "{biome} format --write $BUILD_WORKSPACE_DIRECTORY/app/**/*.js".format(
             biome = biome.short_path,
         ),
         is_executable = True,

@@ -1,6 +1,6 @@
 goog.module("centrl.format");
 
-const relative = goog.require('goog.date.relative');
+const relative = goog.require("goog.date.relative");
 
 /**
  * Format a duration in human-readable relative format ("2 hours ago")
@@ -9,13 +9,12 @@ const relative = goog.require('goog.date.relative');
  * @returns {string}
  */
 function formatRelativePast(value) {
-    if (!value) {
-        return "";
-    }
-    return relative.getPastDateString(new Date(value));
+	if (!value) {
+		return "";
+	}
+	return relative.getPastDateString(new Date(value));
 }
 exports.formatRelativePast = formatRelativePast;
-
 
 /**
  * Format date as YYYY-MM-DD
@@ -23,13 +22,13 @@ exports.formatRelativePast = formatRelativePast;
  * @return {string}
  */
 function formatDate(value) {
-    if (!value) {
-        return "";
-    }
-    const d = new Date(value);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+	if (!value) {
+		return "";
+	}
+	const d = new Date(value);
+	const year = d.getFullYear();
+	const month = String(d.getMonth() + 1).padStart(2, "0");
+	const day = String(d.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 }
 exports.formatDate = formatDate;

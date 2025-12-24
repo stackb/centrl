@@ -1,35 +1,84 @@
 goog.module("centrl.documentation");
 
-const ModuleVersionSymbols = goog.require('proto.build.stack.bazel.symbol.v1.ModuleVersionSymbols');
-const SymbolSource = goog.require('proto.build.stack.bazel.symbol.v1.SymbolSource');
-const File = goog.require('proto.build.stack.bazel.symbol.v1.File');
-const FileLoadTree = goog.require('proto.build.stack.bazel.symbol.v1.FileLoadTree');
-const FileLoadTreeNode = goog.require('proto.build.stack.bazel.symbol.v1.FileLoadTreeNode');
-const Label = goog.require('proto.build.stack.starlark.v1beta1.Label');
-const Module = goog.require('proto.build.stack.bazel.registry.v1.Module');
-const ModuleVersion = goog.require('proto.build.stack.bazel.registry.v1.ModuleVersion');
-const Registry = goog.require('proto.build.stack.bazel.registry.v1.Registry');
-const RepositoryType = goog.require('proto.build.stack.bazel.registry.v1.RepositoryType');
-const Symbol = goog.require('proto.build.stack.bazel.symbol.v1.Symbol');
-const SymbolType = goog.require('proto.build.stack.bazel.symbol.v1.SymbolType');
-const Trie = goog.require('goog.structs.Trie');
-const arrays = goog.require('goog.array');
-const dom = goog.require('goog.dom');
-const path = goog.require('goog.string.path');
-const soy = goog.require('goog.soy');
-const { getApplication } = goog.require('centrl.common');
-const { Component, Route } = goog.require('stack.ui');
-const { ContentSelect } = goog.require('centrl.ContentSelect');
-const { GitHubSourceFileComponent } = goog.require('centrl.githubsourcefile');
-const { MarkdownComponent, formatMarkdownAll } = goog.require('centrl.markdown');
-const { SelectNav } = goog.require('centrl.SelectNav');
-const { aspectInfoComponent, bzlFileSourceComponent, docsMapComponent, docsMapSelectNav, docsSelect, documentationInfoListComponent, documentationInfoSelect, documentationReadmeComponent, fileInfoListComponent, fileInfoSelect, fileInfoTreeComponent, functionInfoComponent, loadInfoComponent, macroInfoComponent, moduleExtensionInfoComponent, providerInfoComponent, repositoryRuleInfoComponent, ruleInfoComponent, ruleMacroInfoComponent, symbolInfoComponent, symbolTypeName, valueInfoComponent } = goog.require('soy.centrl.app');
-const { createDocumentationMap, getLatestModuleVersion } = goog.require('centrl.registry');
-const { highlightAll } = goog.require('centrl.syntax');
-const { generateAspectExample, generateFunctionExample, generateMacroExample, generateModuleExtensionExample, generateProviderExample, generateRepositoryRuleExample, generateRuleExample, generateRuleMacroExample } = goog.require('centrl.starlark');
-const { setElementInnerHtml } = goog.require('google3.third_party.javascript.safevalues.dom.elements.element');
-const { sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues.index');
-
+const ModuleVersionSymbols = goog.require(
+	"proto.build.stack.bazel.symbol.v1.ModuleVersionSymbols",
+);
+const SymbolSource = goog.require(
+	"proto.build.stack.bazel.symbol.v1.SymbolSource",
+);
+const File = goog.require("proto.build.stack.bazel.symbol.v1.File");
+const FileLoadTree = goog.require(
+	"proto.build.stack.bazel.symbol.v1.FileLoadTree",
+);
+const FileLoadTreeNode = goog.require(
+	"proto.build.stack.bazel.symbol.v1.FileLoadTreeNode",
+);
+const Label = goog.require("proto.build.stack.starlark.v1beta1.Label");
+const Module = goog.require("proto.build.stack.bazel.registry.v1.Module");
+const ModuleVersion = goog.require(
+	"proto.build.stack.bazel.registry.v1.ModuleVersion",
+);
+const Registry = goog.require("proto.build.stack.bazel.registry.v1.Registry");
+const RepositoryType = goog.require(
+	"proto.build.stack.bazel.registry.v1.RepositoryType",
+);
+const Symbol = goog.require("proto.build.stack.bazel.symbol.v1.Symbol");
+const SymbolType = goog.require("proto.build.stack.bazel.symbol.v1.SymbolType");
+const Trie = goog.require("goog.structs.Trie");
+const arrays = goog.require("goog.array");
+const dom = goog.require("goog.dom");
+const path = goog.require("goog.string.path");
+const soy = goog.require("goog.soy");
+const { getApplication } = goog.require("centrl.common");
+const { Component, Route } = goog.require("stack.ui");
+const { ContentSelect } = goog.require("centrl.ContentSelect");
+const { GitHubSourceFileComponent } = goog.require("centrl.githubsourcefile");
+const { MarkdownComponent, formatMarkdownAll } =
+	goog.require("centrl.markdown");
+const { SelectNav } = goog.require("centrl.SelectNav");
+const {
+	aspectInfoComponent,
+	bzlFileSourceComponent,
+	docsMapComponent,
+	docsMapSelectNav,
+	docsSelect,
+	documentationInfoListComponent,
+	documentationInfoSelect,
+	documentationReadmeComponent,
+	fileInfoListComponent,
+	fileInfoSelect,
+	fileInfoTreeComponent,
+	functionInfoComponent,
+	loadInfoComponent,
+	macroInfoComponent,
+	moduleExtensionInfoComponent,
+	providerInfoComponent,
+	repositoryRuleInfoComponent,
+	ruleInfoComponent,
+	ruleMacroInfoComponent,
+	symbolInfoComponent,
+	symbolTypeName,
+	valueInfoComponent,
+} = goog.require("soy.centrl.app");
+const { createDocumentationMap, getLatestModuleVersion } =
+	goog.require("centrl.registry");
+const { highlightAll } = goog.require("centrl.syntax");
+const {
+	generateAspectExample,
+	generateFunctionExample,
+	generateMacroExample,
+	generateModuleExtensionExample,
+	generateProviderExample,
+	generateRepositoryRuleExample,
+	generateRuleExample,
+	generateRuleMacroExample,
+} = goog.require("centrl.starlark");
+const { setElementInnerHtml } = goog.require(
+	"google3.third_party.javascript.safevalues.dom.elements.element",
+);
+const { sanitizeHtml } = goog.require(
+	"google3.third_party.javascript.safevalues.index",
+);
 
 /**
  * @typedef {{
@@ -40,7 +89,6 @@ const { sanitizeHtml } = goog.require('google3.third_party.javascript.safevalues
  */
 var SymbolGroup;
 
-
 /**
  * @typedef {{
  * file: !File,
@@ -48,7 +96,6 @@ var SymbolGroup;
  * }}
  */
 var FileSymbolGroupList;
-
 
 /**
  * @typedef {{
@@ -58,1398 +105,1649 @@ var FileSymbolGroupList;
  */
 let FileSymbol;
 
-
 /**
  * @enum {string}
  */
 const TabName = {
-    AUTOGENERATED: "autogenerated",
-    LIST: "list",
-    PUBLISHED: "published",
-    README: "readme",
-    SOURCE: "source",
-    TREE: "tree",
+	AUTOGENERATED: "autogenerated",
+	LIST: "list",
+	PUBLISHED: "published",
+	README: "readme",
+	SOURCE: "source",
+	TREE: "tree",
 };
 
-
-
 class DocsSelect extends ContentSelect {
-    /**
-     * @param {!Registry} registry
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(registry, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!Registry} registry
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(registry, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const @type {!Registry} */
-        this.registry_ = registry;
+		/** @private @const @type {!Registry} */
+		this.registry_ = registry;
 
-        /** @private @const @type {!Map<string,!ModuleVersion>} */
-        this.docsMap_ = createDocumentationMap(registry);
-    }
+		/** @private @const @type {!Map<string,!ModuleVersion>} */
+		this.docsMap_ = createDocumentationMap(registry);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(docsSelect));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(soy.renderAsElement(docsSelect));
+	}
 
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(TabName.LIST, route.add(TabName.LIST));
-    }
+	/**
+	 * @override
+	 * @param {!Route} route
+	 */
+	goHere(route) {
+		this.select(TabName.LIST, route.add(TabName.LIST));
+	}
 
-    /**
-     * @override
-     * @param {string} name
-     * @param {!Route} route
-     */
-    selectFail(name, route) {
-        if (name === TabName.LIST) {
-            this.addTab(
-                TabName.LIST,
-                new DocsMapSelectNav(this.registry_, this.docsMap_, this.dom_),
-            );
-            this.select(name, route);
-            return;
-        }
+	/**
+	 * @override
+	 * @param {string} name
+	 * @param {!Route} route
+	 */
+	selectFail(name, route) {
+		if (name === TabName.LIST) {
+			this.addTab(
+				TabName.LIST,
+				new DocsMapSelectNav(this.registry_, this.docsMap_, this.dom_),
+			);
+			this.select(name, route);
+			return;
+		}
 
-        // seek to rewrite paths like `/docs/bazel_lib/3.0.1` to
-        // `/modules/bazel_lib/3.0.1/docs`
-        const rest = route.unmatchedPath();
-        if (rest.length === 2) {
-            rest.unshift("modules");
-            rest.push("docs");
-            route.done(this);
-            getApplication(this).setLocation(rest);
-        } else {
-            super.selectFail(name, route);
-        }
-
-    }
+		// seek to rewrite paths like `/docs/bazel_lib/3.0.1` to
+		// `/modules/bazel_lib/3.0.1/docs`
+		const rest = route.unmatchedPath();
+		if (rest.length === 2) {
+			rest.unshift("modules");
+			rest.push("docs");
+			route.done(this);
+			getApplication(this).setLocation(rest);
+		} else {
+			super.selectFail(name, route);
+		}
+	}
 }
 exports.DocsSelect = DocsSelect;
 
-
 class DocsMapSelectNav extends SelectNav {
-    /**
-     * @param {!Registry} registry
-     * @param {!Map<string,!ModuleVersion>} docsMap
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(registry, docsMap, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!Registry} registry
+	 * @param {!Map<string,!ModuleVersion>} docsMap
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(registry, docsMap, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const @type {!Registry} */
-        this.registry_ = registry;
+		/** @private @const @type {!Registry} */
+		this.registry_ = registry;
 
-        /** @private @const @type {!Map<string,!ModuleVersion>} */
-        this.docsMap_ = docsMap;
-    }
+		/** @private @const @type {!Map<string,!ModuleVersion>} */
+		this.docsMap_ = docsMap;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(docsMapSelectNav));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(soy.renderAsElement(docsMapSelectNav));
+	}
 
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(TabName.PUBLISHED, route.add(TabName.PUBLISHED));
-    }
+	/**
+	 * @override
+	 * @param {!Route} route
+	 */
+	goHere(route) {
+		this.select(TabName.PUBLISHED, route.add(TabName.PUBLISHED));
+	}
 
-    /**
-     * @override
-     */
-    enterDocument() {
-        super.enterDocument();
+	/**
+	 * @override
+	 */
+	enterDocument() {
+		super.enterDocument();
 
-        this.enterPublishedTab();
-        this.enterAutogeneratedTab();
-    }
+		this.enterPublishedTab();
+		this.enterAutogeneratedTab();
+	}
 
-    enterPublishedTab() {
-        const published = this.getPublishedDocs();
-        this.addNavTab(
-            TabName.PUBLISHED,
-            'Published',
-            'Documentation from published latest module versions',
-            published.size,
-            new DocsMapComponent(published, this.dom_),
-        );
-    }
+	enterPublishedTab() {
+		const published = this.getPublishedDocs();
+		this.addNavTab(
+			TabName.PUBLISHED,
+			"Published",
+			"Documentation from published latest module versions",
+			published.size,
+			new DocsMapComponent(published, this.dom_),
+		);
+	}
 
-    enterAutogeneratedTab() {
-        const autogenerated = this.getAutogeneratedDocs();
-        this.addNavTab(
-            TabName.AUTOGENERATED,
-            'Auto-generated',
-            'Documentation generated from all module versions',
-            autogenerated.size,
-            new DocsMapComponent(autogenerated, this.dom_),
-        );
-    }
+	enterAutogeneratedTab() {
+		const autogenerated = this.getAutogeneratedDocs();
+		this.addNavTab(
+			TabName.AUTOGENERATED,
+			"Auto-generated",
+			"Documentation generated from all module versions",
+			autogenerated.size,
+			new DocsMapComponent(autogenerated, this.dom_),
+		);
+	}
 
-    /**
-     * @returns {!Map<string,!ModuleVersionSymbols>}
-     */
-    getPublishedDocs() {
-        const result = new Map();
-        this.docsMap_.forEach((moduleVersion, key) => {
-            const docs = moduleVersion.getSource()?.getDocumentation();
-            // Published docs only, and only latest versions
-            if (docs && docs.getSource() === SymbolSource.PUBLISHED && moduleVersion.getIsLatestVersion()) {
-                result.set(key, docs);
-            }
-        });
-        return result;
-    }
+	/**
+	 * @returns {!Map<string,!ModuleVersionSymbols>}
+	 */
+	getPublishedDocs() {
+		const result = new Map();
+		this.docsMap_.forEach((moduleVersion, key) => {
+			const docs = moduleVersion.getSource()?.getDocumentation();
+			// Published docs only, and only latest versions
+			if (
+				docs &&
+				docs.getSource() === SymbolSource.PUBLISHED &&
+				moduleVersion.getIsLatestVersion()
+			) {
+				result.set(key, docs);
+			}
+		});
+		return result;
+	}
 
-    /**
-     * @returns {!Map<string,!ModuleVersionSymbols>}
-     */
-    getAutogeneratedDocs() {
-        const result = new Map();
-        this.docsMap_.forEach((moduleVersion, key) => {
-            const docs = moduleVersion.getSource()?.getDocumentation();
-            if (docs && docs.getSource() === SymbolSource.BEST_EFFORT) {
-                result.set(key, docs);
-            }
-        });
-        return result;
-    }
+	/**
+	 * @returns {!Map<string,!ModuleVersionSymbols>}
+	 */
+	getAutogeneratedDocs() {
+		const result = new Map();
+		this.docsMap_.forEach((moduleVersion, key) => {
+			const docs = moduleVersion.getSource()?.getDocumentation();
+			if (docs && docs.getSource() === SymbolSource.BEST_EFFORT) {
+				result.set(key, docs);
+			}
+		});
+		return result;
+	}
 
-    /**
-     * @override
-     * @returns {string}
-     */
-    getDefaultTabName() {
-        return TabName.PUBLISHED;
-    }
+	/**
+	 * @override
+	 * @returns {string}
+	 */
+	getDefaultTabName() {
+		return TabName.PUBLISHED;
+	}
 }
-
 
 class DocsMapComponent extends Component {
-    /**
-     * @param {!Map<string,!ModuleVersionSymbols>} docsMap
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(docsMap, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!Map<string,!ModuleVersionSymbols>} docsMap
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(docsMap, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const @type {!Map<string,!ModuleVersionSymbols>} */
-        this.docsMap_ = docsMap;
-    }
+		/** @private @const @type {!Map<string,!ModuleVersionSymbols>} */
+		this.docsMap_ = docsMap;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(docsMapComponent, {
-            docsMap: this.docsMap_,
-        }));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(
+			soy.renderAsElement(docsMapComponent, {
+				docsMap: this.docsMap_,
+			}),
+		);
+	}
 }
 
-
 class ModuleVersionSymbolsSelect extends ContentSelect {
-    /**
-     * @param {!Module} module
-     * @param {!ModuleVersion} moduleVersion
-     * @param {?ModuleVersionSymbols} docs
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(module, moduleVersion, docs, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!Module} module
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {?ModuleVersionSymbols} docs
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(module, moduleVersion, docs, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const @type {!Module} */
-        this.module_ = module;
+		/** @private @const @type {!Module} */
+		this.module_ = module;
 
-        /** @private @const */
-        this.moduleVersion_ = moduleVersion;
+		/** @private @const */
+		this.moduleVersion_ = moduleVersion;
 
-        /** @private @const @type {?ModuleVersionSymbols} */
-        this.docs_ = docs;
+		/** @private @const @type {?ModuleVersionSymbols} */
+		this.docs_ = docs;
 
-        /** @const @private @type {!Trie<!File>}*/
-        this.fileTrie_ = new Trie();
+		/** @const @private @type {!Trie<!File>}*/
+		this.fileTrie_ = new Trie();
 
-        if (docs) {
-            for (const file of docs.getFileList()) {
-                this.addFile(file);
-            }
-        }
-    }
+		if (docs) {
+			for (const file of docs.getFileList()) {
+				this.addFile(file);
+			}
+		}
+	}
 
-    /**
-     * @param {!File} file
-     */
-    addFile(file) {
-        this.fileTrie_.add(this.getFilePrefix(file), file);
-    }
+	/**
+	 * @param {!File} file
+	 */
+	addFile(file) {
+		this.fileTrie_.add(this.getFilePrefix(file), file);
+	}
 
-    /**
-     * @param {!File} file
-     * @returns {string}
-     */
-    getFilePrefix(file) {
-        return `${file.getLabel().getPkg() ? file.getLabel().getPkg() + '/' : ''}${file.getLabel().getName()}`;
-    }
+	/**
+	 * @param {!File} file
+	 * @returns {string}
+	 */
+	getFilePrefix(file) {
+		return `${file.getLabel().getPkg() ? file.getLabel().getPkg() + "/" : ""}${file.getLabel().getName()}`;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        /** @type {!Array<FileSymbolGroupList>} */
-        let fileSymbols = [];
+	/**
+	 * @override
+	 */
+	createDom() {
+		/** @type {!Array<FileSymbolGroupList>} */
+		let fileSymbols = [];
 
-        if (this.docs_) {
-            fileSymbols = buildFileSymbolGroups(this.docs_);
-        }
+		if (this.docs_) {
+			fileSymbols = buildFileSymbolGroups(this.docs_);
+		}
 
-        this.setElementInternal(soy.renderAsElement(documentationInfoSelect, {
-            module: this.module_,
-            moduleVersion: this.moduleVersion_,
-            fileSymbols,
-            info: this.docs_ || undefined,
-        }, {
-            baseUrl: this.getPathUrl(),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				documentationInfoSelect,
+				{
+					module: this.module_,
+					moduleVersion: this.moduleVersion_,
+					fileSymbols,
+					info: this.docs_ || undefined,
+				},
+				{
+					baseUrl: this.getPathUrl(),
+				},
+			),
+		);
+	}
 
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(TabName.README, route.add(TabName.README));
-    }
+	/**
+	 * @override
+	 * @param {!Route} route
+	 */
+	goHere(route) {
+		this.select(TabName.README, route.add(TabName.README));
+	}
 
-    /**
-     * @override
-     * @param {string} name
-     * @param {!Route} route
-     */
-    selectFail(name, route) {
-        if (name === TabName.README) {
-            this.addTab(name, new DocumentationReadmeComponent(this.module_, this.moduleVersion_, this.dom_));
-            this.select(name, route);
-            return;
-        }
+	/**
+	 * @override
+	 * @param {string} name
+	 * @param {!Route} route
+	 */
+	selectFail(name, route) {
+		if (name === TabName.README) {
+			this.addTab(
+				name,
+				new DocumentationReadmeComponent(
+					this.module_,
+					this.moduleVersion_,
+					this.dom_,
+				),
+			);
+			this.select(name, route);
+			return;
+		}
 
-        if (this.docs_) {
-            if (name === TabName.LIST) {
-                this.addTab(name, new ModuleVersionSymbolsListComponent(this.moduleVersion_, this.docs_, this.dom_));
-                this.select(name, route);
-                return;
-            }
-            if (name === TabName.TREE) {
-                this.addTab(name, new ModuleVersionSymbolsTreeComponent(this.moduleVersion_, this.docs_, this.dom_));
-                this.select(name, route);
-                return;
-            }
+		if (this.docs_) {
+			if (name === TabName.LIST) {
+				this.addTab(
+					name,
+					new ModuleVersionSymbolsListComponent(
+						this.moduleVersion_,
+						this.docs_,
+						this.dom_,
+					),
+				);
+				this.select(name, route);
+				return;
+			}
+			if (name === TabName.TREE) {
+				this.addTab(
+					name,
+					new ModuleVersionSymbolsTreeComponent(
+						this.moduleVersion_,
+						this.docs_,
+						this.dom_,
+					),
+				);
+				this.select(name, route);
+				return;
+			}
 
-            // try to find the longest matching prefix by popping path elements off
-            // the remaining part of the route URL.
-            const unmatched = route.unmatchedPath();
-            while (unmatched.length) {
-                const prefix = unmatched.join("/");
-                const file = this.fileTrie_.get(prefix);
-                if (file) {
-                    let tab = this.getTab(prefix);
-                    if (!tab) {
-                        tab = this.addTab(prefix, new FileSelect(this.module_, this.moduleVersion_, file, this.dom_));
-                    }
-                    this.showTab(prefix);
-                    tab.go(route.advance(unmatched.length - 1));
-                    return;
-                }
-                unmatched.pop();
-            }
-        }
+			// try to find the longest matching prefix by popping path elements off
+			// the remaining part of the route URL.
+			const unmatched = route.unmatchedPath();
+			while (unmatched.length) {
+				const prefix = unmatched.join("/");
+				const file = this.fileTrie_.get(prefix);
+				if (file) {
+					let tab = this.getTab(prefix);
+					if (!tab) {
+						tab = this.addTab(
+							prefix,
+							new FileSelect(
+								this.module_,
+								this.moduleVersion_,
+								file,
+								this.dom_,
+							),
+						);
+					}
+					this.showTab(prefix);
+					tab.go(route.advance(unmatched.length - 1));
+					return;
+				}
+				unmatched.pop();
+			}
+		}
 
-        super.selectFail(name, route);
-    }
+		super.selectFail(name, route);
+	}
 }
 exports.ModuleVersionSymbolsSelect = ModuleVersionSymbolsSelect;
 
-
 class FileSelect extends ContentSelect {
-    /**
-     * @param {!Module} module
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(module, moduleVersion, file, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!Module} module
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(module, moduleVersion, file, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const */
-        this.module_ = module;
+		/** @private @const */
+		this.module_ = module;
 
-        /** @private @const */
-        this.moduleVersion_ = moduleVersion;
+		/** @private @const */
+		this.moduleVersion_ = moduleVersion;
 
-        /** @private @const */
-        this.file_ = file;
-    }
+		/** @private @const */
+		this.file_ = file;
+	}
 
-    /**
-     * @returns {!File}
-     */
-    getFile() {
-        return this.file_;
-    }
+	/**
+	 * @returns {!File}
+	 */
+	getFile() {
+		return this.file_;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(fileInfoSelect, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-        }, {
-            baseUrl: this.getPathUrl(),
-        }));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(
+			soy.renderAsElement(
+				fileInfoSelect,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+				},
+				{
+					baseUrl: this.getPathUrl(),
+				},
+			),
+		);
+	}
 
-    /** @override */
-    enterDocument() {
-        super.enterDocument();
+	/** @override */
+	enterDocument() {
+		super.enterDocument();
 
-        formatMarkdownAll(this.getElementStrict());
-    }
+		formatMarkdownAll(this.getElementStrict());
+	}
 
-    /**
-     * @override
-     * @param {!Route} route
-     */
-    goHere(route) {
-        this.select(TabName.SOURCE, route.add(TabName.SOURCE));
-    }
+	/**
+	 * @override
+	 * @param {!Route} route
+	 */
+	goHere(route) {
+		this.select(TabName.SOURCE, route.add(TabName.SOURCE));
+	}
 
-    /**
-     * @override
-     * @param {string} name
-     * @param {!Route} route
-     */
-    selectFail(name, route) {
-        if (name === TabName.LIST) {
-            this.addTab(name, new FileListComponent(this.module_, this.moduleVersion_, this.file_, this.dom_));
-            this.select(name, route);
-            return;
-        }
+	/**
+	 * @override
+	 * @param {string} name
+	 * @param {!Route} route
+	 */
+	selectFail(name, route) {
+		if (name === TabName.LIST) {
+			this.addTab(
+				name,
+				new FileListComponent(
+					this.module_,
+					this.moduleVersion_,
+					this.file_,
+					this.dom_,
+				),
+			);
+			this.select(name, route);
+			return;
+		}
 
-        if (name === TabName.SOURCE) {
-            this.addTab(name, new BzlFileSourceComponent(this.module_, this.moduleVersion_, this.file_, this.dom_));
-            this.select(name, route);
-            return;
-        }
+		if (name === TabName.SOURCE) {
+			this.addTab(
+				name,
+				new BzlFileSourceComponent(
+					this.module_,
+					this.moduleVersion_,
+					this.file_,
+					this.dom_,
+				),
+			);
+			this.select(name, route);
+			return;
+		}
 
-        for (const sym of this.file_.getSymbolList()) {
-            if (name !== sym.getName()) {
-                continue;
-            }
-            this.addTab(name, this.createSymbolComponent(sym));
-            this.select(name, route);
-            return;
-        }
+		for (const sym of this.file_.getSymbolList()) {
+			if (name !== sym.getName()) {
+				continue;
+			}
+			this.addTab(name, this.createSymbolComponent(sym));
+			this.select(name, route);
+			return;
+		}
 
-        super.selectFail(name, route);
-    }
+		super.selectFail(name, route);
+	}
 
-    /**
-     * @param {!Symbol} sym
-     * @returns {!SymbolComponent}
-     */
-    createSymbolComponent(sym) {
-        switch (sym.getType()) {
-            case SymbolType.SYMBOL_TYPE_RULE:
-                return new RuleInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_FUNCTION:
-                return new FunctionInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_PROVIDER:
-                return new ProviderInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_ASPECT:
-                return new AspectInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_MODULE_EXTENSION:
-                return new ModuleExtensionInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_REPOSITORY_RULE:
-                return new RepositoryRuleInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_MACRO:
-                return new MacroInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_RULE_MACRO:
-                return new RuleMacroInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_VALUE:
-                return new ValueInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            case SymbolType.SYMBOL_TYPE_LOAD_STMT:
-                return new LoadInfoComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-            default:
-                return new SymbolComponent(this.moduleVersion_, this.file_, sym, this.dom_);
-        }
-    }
+	/**
+	 * @param {!Symbol} sym
+	 * @returns {!SymbolComponent}
+	 */
+	createSymbolComponent(sym) {
+		switch (sym.getType()) {
+			case SymbolType.SYMBOL_TYPE_RULE:
+				return new RuleInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_FUNCTION:
+				return new FunctionInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_PROVIDER:
+				return new ProviderInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_ASPECT:
+				return new AspectInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_MODULE_EXTENSION:
+				return new ModuleExtensionInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_REPOSITORY_RULE:
+				return new RepositoryRuleInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_MACRO:
+				return new MacroInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_RULE_MACRO:
+				return new RuleMacroInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_VALUE:
+				return new ValueInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			case SymbolType.SYMBOL_TYPE_LOAD_STMT:
+				return new LoadInfoComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+			default:
+				return new SymbolComponent(
+					this.moduleVersion_,
+					this.file_,
+					sym,
+					this.dom_,
+				);
+		}
+	}
 }
-
 
 class SymbolComponent extends MarkdownComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @protected @const */
-        this.moduleVersion_ = moduleVersion;
+		/** @protected @const */
+		this.moduleVersion_ = moduleVersion;
 
-        /** @protected @const */
-        this.file_ = file;
+		/** @protected @const */
+		this.file_ = file;
 
-        /** @protected @const */
-        this.sym_ = sym;
-    }
+		/** @protected @const */
+		this.sym_ = sym;
+	}
 
-    /**
-     * @returns {!Symbol}
-     */
-    getSymbol() {
-        return this.sym_;
-    }
+	/**
+	 * @returns {!Symbol}
+	 */
+	getSymbol() {
+		return this.sym_;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(symbolInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(
+			soy.renderAsElement(
+				symbolInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 
-    /**
-     * @returns {string}
-     */
-    getDocsBaseUrl() {
-        return path.join('modules', this.moduleVersion_.getName(), this.moduleVersion_.getVersion(), 'docs');
-    }
+	/**
+	 * @returns {string}
+	 */
+	getDocsBaseUrl() {
+		return path.join(
+			"modules",
+			this.moduleVersion_.getName(),
+			this.moduleVersion_.getVersion(),
+			"docs",
+		);
+	}
 
-    /** @override */
-    enterDocument() {
-        super.enterDocument();
+	/** @override */
+	enterDocument() {
+		super.enterDocument();
 
-        highlightAll(this.getElementStrict());
-    }
+		highlightAll(this.getElementStrict());
+	}
 }
-
 
 class RuleInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateRuleExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateRuleExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(ruleInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
-
+		this.setElementInternal(
+			soy.renderAsElement(
+				ruleInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class FunctionInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateFunctionExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateFunctionExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(functionInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
-
+		this.setElementInternal(
+			soy.renderAsElement(
+				functionInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class ProviderInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateProviderExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateProviderExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(providerInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				providerInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class RepositoryRuleInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateRepositoryRuleExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateRepositoryRuleExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(repositoryRuleInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				repositoryRuleInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class AspectInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateAspectExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateAspectExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(aspectInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				aspectInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class MacroInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateMacroExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateMacroExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(macroInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				macroInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class RuleMacroInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateRuleMacroExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateRuleMacroExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(ruleMacroInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				ruleMacroInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class ValueInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(valueInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(
+			soy.renderAsElement(
+				valueInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class LoadInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(loadInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(
+			soy.renderAsElement(
+				loadInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class ModuleExtensionInfoComponent extends SymbolComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {!Symbol} sym
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, file, sym, opt_domHelper) {
-        super(moduleVersion, file, sym, opt_domHelper);
-    }
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {!Symbol} sym
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, file, sym, opt_domHelper) {
+		super(moduleVersion, file, sym, opt_domHelper);
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const exampleCode = generateModuleExtensionExample(this.moduleVersion_, this.file_, this.sym_);
+	/**
+	 * @override
+	 */
+	createDom() {
+		const exampleCode = generateModuleExtensionExample(
+			this.moduleVersion_,
+			this.file_,
+			this.sym_,
+		);
 
-        this.setElementInternal(soy.renderAsElement(moduleExtensionInfoComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            sym: this.sym_,
-            exampleCode,
-        }, {
-            baseUrl: this.getDocsBaseUrl(),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				moduleExtensionInfoComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					sym: this.sym_,
+					exampleCode,
+				},
+				{
+					baseUrl: this.getDocsBaseUrl(),
+				},
+			),
+		);
+	}
 }
-
 
 class ModuleVersionSymbolsListComponent extends MarkdownComponent {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!ModuleVersionSymbols} docs
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, docs, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!ModuleVersionSymbols} docs
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, docs, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const */
-        this.moduleVersion_ = moduleVersion;
+		/** @private @const */
+		this.moduleVersion_ = moduleVersion;
 
-        /** @private @const */
-        this.docs_ = docs;
-    }
+		/** @private @const */
+		this.docs_ = docs;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        const fileSymbols = buildFileSymbolGroups(this.docs_);
-        this.setElementInternal(soy.renderAsElement(documentationInfoListComponent, {
-            moduleVersion: this.moduleVersion_,
-            docs: this.docs_,
-            fileSymbols,
-        }, {
-            baseUrl: path.dirname(this.getPathUrl()),
-        }));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		const fileSymbols = buildFileSymbolGroups(this.docs_);
+		this.setElementInternal(
+			soy.renderAsElement(
+				documentationInfoListComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					docs: this.docs_,
+					fileSymbols,
+				},
+				{
+					baseUrl: path.dirname(this.getPathUrl()),
+				},
+			),
+		);
+	}
 }
-
 
 class ModuleVersionSymbolsTreeComponent extends Component {
-    /**
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!ModuleVersionSymbols} docs
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(moduleVersion, docs, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!ModuleVersionSymbols} docs
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(moduleVersion, docs, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const */
-        this.moduleVersion_ = moduleVersion;
+		/** @private @const */
+		this.moduleVersion_ = moduleVersion;
 
-        /** @private @const */
-        this.docs_ = docs;
-    }
+		/** @private @const */
+		this.docs_ = docs;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        // Build a tree structure from the files based on load dependencies
-        const tree = this.buildFileTree_();
+	/**
+	 * @override
+	 */
+	createDom() {
+		// Build a tree structure from the files based on load dependencies
+		const tree = this.buildFileTree_();
 
-        this.setElementInternal(soy.renderAsElement(fileInfoTreeComponent, {
-            moduleVersion: this.moduleVersion_,
-            tree: tree,
-        }, {
-            baseUrl: path.dirname(this.getPathUrl()),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				fileInfoTreeComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					tree: tree,
+				},
+				{
+					baseUrl: path.dirname(this.getPathUrl()),
+				},
+			),
+		);
+	}
 
-    /**
-     * Build a tree structure from files based on load dependencies.
-     * @return {!FileLoadTree} Tree structure with root files and their dependencies
-     * @private
-     */
-    buildFileTree_() {
-        const files = this.docs_.getFileList().filter(isPublicFile);
-        // const files = this.docs_.getFileList();
+	/**
+	 * Build a tree structure from files based on load dependencies.
+	 * @return {!FileLoadTree} Tree structure with root files and their dependencies
+	 * @private
+	 */
+	buildFileTree_() {
+		const files = this.docs_.getFileList().filter(isPublicFile);
+		// const files = this.docs_.getFileList();
 
-        // Create a map of file label to File for quick lookup
-        /** @type {!Map<string, !File>} */
-        const fileMap = new Map();
-        for (const file of files) {
-            const label = file.getLabel();
-            if (label) {
-                const key = this.getLabelKey_(label);
-                fileMap.set(key, file);
-            }
-        }
+		// Create a map of file label to File for quick lookup
+		/** @type {!Map<string, !File>} */
+		const fileMap = new Map();
+		for (const file of files) {
+			const label = file.getLabel();
+			if (label) {
+				const key = this.getLabelKey_(label);
+				fileMap.set(key, file);
+			}
+		}
 
-        // Build adjacency list for load dependencies (within module only)
-        /** @type {!Map<string, !Array<string>>} */
-        const dependencies = new Map();
-        /** @type {!Map<string, !Array<string>>} */
-        const dependents = new Map();
+		// Build adjacency list for load dependencies (within module only)
+		/** @type {!Map<string, !Array<string>>} */
+		const dependencies = new Map();
+		/** @type {!Map<string, !Array<string>>} */
+		const dependents = new Map();
 
-        for (const file of files) {
-            const fileKey = this.getLabelKey_(file.getLabel());
-            dependencies.set(fileKey, []);
+		for (const file of files) {
+			const fileKey = this.getLabelKey_(file.getLabel());
+			dependencies.set(fileKey, []);
 
-            // Find load statements in the symbol list
-            for (const sym of file.getSymbolList()) {
-                if (sym.getType() === SymbolType.SYMBOL_TYPE_LOAD_STMT) {
-                    const load = sym.getLoad();
-                    if (!load) continue;
-                    const loadLabel = load.getLabel();
-                    // Only include loads from the same package (within module)
-                    if (loadLabel && this.isInternalLoad_(file.getLabel(), loadLabel)) {
-                        const loadKey = this.getLabelKey_(loadLabel);
-                        console.log('Processing load:', {
-                            file: fileKey,
-                            loadKey: loadKey,
-                            hasFile: fileMap.has(loadKey),
-                            availableFiles: Array.from(fileMap.keys())
-                        });
-                        if (fileMap.has(loadKey)) {
-                            dependencies.get(fileKey).push(loadKey);
+			// Find load statements in the symbol list
+			for (const sym of file.getSymbolList()) {
+				if (sym.getType() === SymbolType.SYMBOL_TYPE_LOAD_STMT) {
+					const load = sym.getLoad();
+					if (!load) continue;
+					const loadLabel = load.getLabel();
+					// Only include loads from the same package (within module)
+					if (loadLabel && this.isInternalLoad_(file.getLabel(), loadLabel)) {
+						const loadKey = this.getLabelKey_(loadLabel);
+						console.log("Processing load:", {
+							file: fileKey,
+							loadKey: loadKey,
+							hasFile: fileMap.has(loadKey),
+							availableFiles: Array.from(fileMap.keys()),
+						});
+						if (fileMap.has(loadKey)) {
+							dependencies.get(fileKey).push(loadKey);
 
-                            if (!dependents.has(loadKey)) {
-                                dependents.set(loadKey, []);
-                            }
-                            dependents.get(loadKey).push(fileKey);
-                        }
-                    }
-                }
-            }
-        }
+							if (!dependents.has(loadKey)) {
+								dependents.set(loadKey, []);
+							}
+							dependents.get(loadKey).push(fileKey);
+						}
+					}
+				}
+			}
+		}
 
-        // Find root files (files that are not loaded by any other file in the module)
-        /** @type {!Array<!FileLoadTreeNode>} */
-        const rootNodes = [];
-        for (const file of files) {
-            const fileKey = this.getLabelKey_(file.getLabel());
-            if (!dependents.has(fileKey) || dependents.get(fileKey).length === 0) {
-                const node = this.buildTreeNode_(file, fileKey, dependencies, fileMap, new Set());
-                rootNodes.push(node);
-            }
-        }
+		// Find root files (files that are not loaded by any other file in the module)
+		/** @type {!Array<!FileLoadTreeNode>} */
+		const rootNodes = [];
+		for (const file of files) {
+			const fileKey = this.getLabelKey_(file.getLabel());
+			if (!dependents.has(fileKey) || dependents.get(fileKey).length === 0) {
+				const node = this.buildTreeNode_(
+					file,
+					fileKey,
+					dependencies,
+					fileMap,
+					new Set(),
+				);
+				rootNodes.push(node);
+			}
+		}
 
-        const tree = new FileLoadTree();
-        tree.setRootsList(rootNodes);
-        return tree;
-    }
+		const tree = new FileLoadTree();
+		tree.setRootsList(rootNodes);
+		return tree;
+	}
 
-    /**
-     * Recursively build a file tree node.
-     * @param {!File} file
-     * @param {string} fileKey
-     * @param {!Map<string, !Array<string>>} dependencies
-     * @param {!Map<string, !File>} fileMap
-     * @param {!Set<string>} visited
-     * @return {!FileLoadTreeNode}
-     * @private
-     */
-    buildTreeNode_(file, fileKey, dependencies, fileMap, visited) {
-        const node = new FileLoadTreeNode();
-        node.setFile(file);
+	/**
+	 * Recursively build a file tree node.
+	 * @param {!File} file
+	 * @param {string} fileKey
+	 * @param {!Map<string, !Array<string>>} dependencies
+	 * @param {!Map<string, !File>} fileMap
+	 * @param {!Set<string>} visited
+	 * @return {!FileLoadTreeNode}
+	 * @private
+	 */
+	buildTreeNode_(file, fileKey, dependencies, fileMap, visited) {
+		const node = new FileLoadTreeNode();
+		node.setFile(file);
 
-        if (visited.has(fileKey)) {
-            node.setPruned(true);
-            return node;
-        }
+		if (visited.has(fileKey)) {
+			node.setPruned(true);
+			return node;
+		}
 
-        visited.add(fileKey);
-        /** @type {!Array<!FileLoadTreeNode>} */
-        const children = [];
-        const deps = dependencies.get(fileKey) || [];
+		visited.add(fileKey);
+		/** @type {!Array<!FileLoadTreeNode>} */
+		const children = [];
+		const deps = dependencies.get(fileKey) || [];
 
-        for (const depKey of deps) {
-            const childFile = fileMap.get(depKey);
-            if (childFile) {
-                const childNode = this.buildTreeNode_(childFile, depKey, dependencies, fileMap, new Set(visited));
-                children.push(childNode);
-            }
-        }
+		for (const depKey of deps) {
+			const childFile = fileMap.get(depKey);
+			if (childFile) {
+				const childNode = this.buildTreeNode_(
+					childFile,
+					depKey,
+					dependencies,
+					fileMap,
+					new Set(visited),
+				);
+				children.push(childNode);
+			}
+		}
 
-        node.setChildrenList(children);
-        return node;
-    }
+		node.setChildrenList(children);
+		return node;
+	}
 
-    /**
-     * Get a normalized key for a label.
-     * @param {?Label} label
-     * @return {string}
-     * @private
-     */
-    getLabelKey_(label) {
-        if (!label) return '';
-        const pkg = label.getPkg() || '';
-        const name = label.getName() || '';
-        return pkg ? `${pkg}/${name}` : name;
-    }
+	/**
+	 * Get a normalized key for a label.
+	 * @param {?Label} label
+	 * @return {string}
+	 * @private
+	 */
+	getLabelKey_(label) {
+		if (!label) return "";
+		const pkg = label.getPkg() || "";
+		const name = label.getName() || "";
+		return pkg ? `${pkg}/${name}` : name;
+	}
 
-    /**
-     * Check if a load is internal to the module (same repo, no external deps).
-     * @param {?Label} fileLabel
-     * @param {?Label} loadLabel
-     * @return {boolean}
-     * @private
-     */
-    isInternalLoad_(fileLabel, loadLabel) {
-        if (!loadLabel) return false;
-        if (fileLabel.getRepo() !== loadLabel.getRepo()) {
-            return false;
-        }
-        // Internal loads should have the same package structure
-        return true;
-    }
+	/**
+	 * Check if a load is internal to the module (same repo, no external deps).
+	 * @param {?Label} fileLabel
+	 * @param {?Label} loadLabel
+	 * @return {boolean}
+	 * @private
+	 */
+	isInternalLoad_(fileLabel, loadLabel) {
+		if (!loadLabel) return false;
+		if (fileLabel.getRepo() !== loadLabel.getRepo()) {
+			return false;
+		}
+		// Internal loads should have the same package structure
+		return true;
+	}
 }
-
 
 class FileListComponent extends MarkdownComponent {
-    /**
-     * @param {!Module} module
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(module, moduleVersion, file, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!Module} module
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(module, moduleVersion, file, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const */
-        this.module_ = module;
+		/** @private @const */
+		this.module_ = module;
 
-        /** @private @const */
-        this.moduleVersion_ = moduleVersion;
+		/** @private @const */
+		this.moduleVersion_ = moduleVersion;
 
-        /** @private @const */
-        this.file_ = file;
-    }
+		/** @private @const */
+		this.file_ = file;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        // Construct symbol lists by type
-        const rules = [];
-        const funcs = [];
-        const providers = [];
-        const aspects = [];
-        const moduleExtensions = [];
-        const repositoryRules = [];
-        const macros = [];
-        const ruleMacros = [];
-        const loads = [];
-        const values = [];
+	/**
+	 * @override
+	 */
+	createDom() {
+		// Construct symbol lists by type
+		const rules = [];
+		const funcs = [];
+		const providers = [];
+		const aspects = [];
+		const moduleExtensions = [];
+		const repositoryRules = [];
+		const macros = [];
+		const ruleMacros = [];
+		const loads = [];
+		const values = [];
 
-        for (const sym of this.file_.getSymbolList()) {
-            switch (sym.getType()) {
-                case SymbolType.SYMBOL_TYPE_RULE:
-                    rules.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_FUNCTION:
-                    funcs.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_PROVIDER:
-                    providers.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_ASPECT:
-                    aspects.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_MODULE_EXTENSION:
-                    moduleExtensions.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_REPOSITORY_RULE:
-                    repositoryRules.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_MACRO:
-                    macros.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_RULE_MACRO:
-                    ruleMacros.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_LOAD_STMT:
-                    loads.push(sym);
-                    break;
-                case SymbolType.SYMBOL_TYPE_VALUE:
-                    values.push(sym);
-                    break;
-            }
-        }
+		for (const sym of this.file_.getSymbolList()) {
+			switch (sym.getType()) {
+				case SymbolType.SYMBOL_TYPE_RULE:
+					rules.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_FUNCTION:
+					funcs.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_PROVIDER:
+					providers.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_ASPECT:
+					aspects.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_MODULE_EXTENSION:
+					moduleExtensions.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_REPOSITORY_RULE:
+					repositoryRules.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_MACRO:
+					macros.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_RULE_MACRO:
+					ruleMacros.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_LOAD_STMT:
+					loads.push(sym);
+					break;
+				case SymbolType.SYMBOL_TYPE_VALUE:
+					values.push(sym);
+					break;
+			}
+		}
 
-        this.setElementInternal(soy.renderAsElement(fileInfoListComponent, {
-            moduleVersion: this.moduleVersion_,
-            file: this.file_,
-            rules: rules,
-            funcs: funcs,
-            providers: providers,
-            aspects: aspects,
-            moduleExtensions: moduleExtensions,
-            repositoryRules: repositoryRules,
-            macros: macros,
-            ruleMacros: ruleMacros,
-            loads: loads,
-            values: values,
-        }, {
-            baseUrl: path.join('modules', this.moduleVersion_.getName(), this.moduleVersion_.getVersion(), 'docs'),
-        }));
-    }
+		this.setElementInternal(
+			soy.renderAsElement(
+				fileInfoListComponent,
+				{
+					moduleVersion: this.moduleVersion_,
+					file: this.file_,
+					rules: rules,
+					funcs: funcs,
+					providers: providers,
+					aspects: aspects,
+					moduleExtensions: moduleExtensions,
+					repositoryRules: repositoryRules,
+					macros: macros,
+					ruleMacros: ruleMacros,
+					loads: loads,
+					values: values,
+				},
+				{
+					baseUrl: path.join(
+						"modules",
+						this.moduleVersion_.getName(),
+						this.moduleVersion_.getVersion(),
+						"docs",
+					),
+				},
+			),
+		);
+	}
 
-    /** @override */
-    enterDocument() {
-        super.enterDocument();
+	/** @override */
+	enterDocument() {
+		super.enterDocument();
 
-        highlightAll(this.getElementStrict());
-    }
+		highlightAll(this.getElementStrict());
+	}
 }
 
-
 class DocumentationReadmeComponent extends MarkdownComponent {
-    /**
-     * @param {!Module} module
-     * @param {!ModuleVersion} moduleVersion
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(module, moduleVersion, opt_domHelper) {
-        super(opt_domHelper);
+	/**
+	 * @param {!Module} module
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(module, moduleVersion, opt_domHelper) {
+		super(opt_domHelper);
 
-        /** @private @const @type {!Module} */
-        this.module_ = module;
+		/** @private @const @type {!Module} */
+		this.module_ = module;
 
-        /** @private @const @type {!ModuleVersion} */
-        this.moduleVersion_ = moduleVersion;
+		/** @private @const @type {!ModuleVersion} */
+		this.moduleVersion_ = moduleVersion;
 
-        /** @private @type {boolean} */
-        this.loading_ = true;
+		/** @private @type {boolean} */
+		this.loading_ = true;
 
-        /** @private @type {?string} */
-        this.readmeContent_ = null;
+		/** @private @type {?string} */
+		this.readmeContent_ = null;
 
-        /** @private @type {?string} */
-        this.error_ = null;
+		/** @private @type {?string} */
+		this.error_ = null;
 
-        /** @private @type {?string} */
-        this.readmeFilename_ = null;
-    }
+		/** @private @type {?string} */
+		this.readmeFilename_ = null;
+	}
 
-    /**
-     * @override
-     */
-    createDom() {
-        this.setElementInternal(soy.renderAsElement(documentationReadmeComponent, {
-            moduleVersion: this.moduleVersion_,
-            loading: this.loading_,
-            error: this.error_ || undefined,
-            content: this.readmeContent_ || undefined,
-        }));
-    }
+	/**
+	 * @override
+	 */
+	createDom() {
+		this.setElementInternal(
+			soy.renderAsElement(documentationReadmeComponent, {
+				moduleVersion: this.moduleVersion_,
+				loading: this.loading_,
+				error: this.error_ || undefined,
+				content: this.readmeContent_ || undefined,
+			}),
+		);
+	}
 
-    /**
-     * @override
-     */
-    enterDocument() {
-        super.enterDocument();
+	/**
+	 * @override
+	 */
+	enterDocument() {
+		super.enterDocument();
 
-        this.fetchReadme_();
-    }
+		this.fetchReadme_();
+	}
 
-    /**
-     * Fetch README.md from GitHub for the specific commit
-     * @private
-     */
-    fetchReadme_() {
-        const metadata = this.moduleVersion_.getRepositoryMetadata();
+	/**
+	 * Fetch README.md from GitHub for the specific commit
+	 * @private
+	 */
+	fetchReadme_() {
+		const metadata = this.moduleVersion_.getRepositoryMetadata();
 
-        // Only fetch if it's a GitHub repo
-        if (!metadata || metadata.getType() !== RepositoryType.GITHUB) {
-            this.error_ = 'README is only available for GitHub repositories';
-            this.loading_ = false;
-            this.updateDom_();
-            return;
-        }
+		// Only fetch if it's a GitHub repo
+		if (!metadata || metadata.getType() !== RepositoryType.GITHUB) {
+			this.error_ = "README is only available for GitHub repositories";
+			this.loading_ = false;
+			this.updateDom_();
+			return;
+		}
 
-        // Get commit SHA from current version, or fall back to latest version, or use HEAD
-        let commitSha = this.moduleVersion_.getSource()?.getCommitSha();
-        if (!commitSha) {
-            // Use the latest version's commit SHA
-            const latestVersion = getLatestModuleVersion(this.module_);
-            commitSha = latestVersion?.getSource()?.getCommitSha();
-            if (!commitSha) {
-                // Fall back to HEAD which resolves to the default branch
-                commitSha = 'HEAD';
-            }
-        }
+		// Get commit SHA from current version, or fall back to latest version, or use HEAD
+		let commitSha = this.moduleVersion_.getSource()?.getCommitSha();
+		if (!commitSha) {
+			// Use the latest version's commit SHA
+			const latestVersion = getLatestModuleVersion(this.module_);
+			commitSha = latestVersion?.getSource()?.getCommitSha();
+			if (!commitSha) {
+				// Fall back to HEAD which resolves to the default branch
+				commitSha = "HEAD";
+			}
+		}
 
-        const org = metadata.getOrganization();
-        const repo = metadata.getName();
+		const org = metadata.getOrganization();
+		const repo = metadata.getName();
 
-        // Try common README filename variations (order matters - try most common first)
-        const readmeFilenames = ['README.md', 'readme.md', 'Readme.md', 'README.rst', 'readme.rst', 'README.markdown', 'README'];
+		// Try common README filename variations (order matters - try most common first)
+		const readmeFilenames = [
+			"README.md",
+			"readme.md",
+			"Readme.md",
+			"README.rst",
+			"readme.rst",
+			"README.markdown",
+			"README",
+		];
 
-        this.tryFetchReadme_(org, repo, commitSha, readmeFilenames, 0);
-    }
+		this.tryFetchReadme_(org, repo, commitSha, readmeFilenames, 0);
+	}
 
-    /**
-     * Try fetching README with different filename variations
-     * @param {string} org
-     * @param {string} repo
-     * @param {string} commitSha
-     * @param {!Array<string>} filenames
-     * @param {number} index
-     * @private
-     */
-    tryFetchReadme_(org, repo, commitSha, filenames, index) {
-        if (index >= filenames.length) {
-            this.error_ = 'README not found';
-            this.loading_ = false;
-            this.updateDom_();
-            return;
-        }
+	/**
+	 * Try fetching README with different filename variations
+	 * @param {string} org
+	 * @param {string} repo
+	 * @param {string} commitSha
+	 * @param {!Array<string>} filenames
+	 * @param {number} index
+	 * @private
+	 */
+	tryFetchReadme_(org, repo, commitSha, filenames, index) {
+		if (index >= filenames.length) {
+			this.error_ = "README not found";
+			this.loading_ = false;
+			this.updateDom_();
+			return;
+		}
 
-        const filename = filenames[index];
-        const readmeUrl = `https://raw.githubusercontent.com/${org}/${repo}/${commitSha}/${filename}`;
+		const filename = filenames[index];
+		const readmeUrl = `https://raw.githubusercontent.com/${org}/${repo}/${commitSha}/${filename}`;
 
-        // Create an AbortController for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+		// Create an AbortController for timeout
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        fetch(readmeUrl, { signal: controller.signal })
-            .then(response => {
-                clearTimeout(timeoutId);
-                if (!response.ok) {
-                    // Try next filename
-                    this.tryFetchReadme_(org, repo, commitSha, filenames, index + 1);
-                    return null;
-                }
-                return response.text();
-            })
-            .then(
-                /**
-                 * Success callback
-                 * @param {?string} content
-                 */
-                (content) => {
-                    if (content !== null) {
-                        this.readmeContent_ = content;
-                        this.readmeFilename_ = filename;
-                        this.loading_ = false;
-                        this.updateDom_();
-                    }
-                }
-            )
-            .catch(err => {
-                clearTimeout(timeoutId);
-                if (err instanceof Error && err.name === 'AbortError') {
-                    this.error_ = 'README fetch timed out after 10 seconds';
-                    this.loading_ = false;
-                    this.updateDom_();
-                } else {
-                    // Try next filename on error
-                    this.tryFetchReadme_(org, repo, commitSha, filenames, index + 1);
-                }
-            });
-    }
+		fetch(readmeUrl, { signal: controller.signal })
+			.then((response) => {
+				clearTimeout(timeoutId);
+				if (!response.ok) {
+					// Try next filename
+					this.tryFetchReadme_(org, repo, commitSha, filenames, index + 1);
+					return null;
+				}
+				return response.text();
+			})
+			.then(
+				/**
+				 * Success callback
+				 * @param {?string} content
+				 */
+				(content) => {
+					if (content !== null) {
+						this.readmeContent_ = content;
+						this.readmeFilename_ = filename;
+						this.loading_ = false;
+						this.updateDom_();
+					}
+				},
+			)
+			.catch((err) => {
+				clearTimeout(timeoutId);
+				if (err instanceof Error && err.name === "AbortError") {
+					this.error_ = "README fetch timed out after 10 seconds";
+					this.loading_ = false;
+					this.updateDom_();
+				} else {
+					// Try next filename on error
+					this.tryFetchReadme_(org, repo, commitSha, filenames, index + 1);
+				}
+			});
+	}
 
-    /**
-     * Update the DOM with new content
-     * @private
-     */
-    updateDom_() {
-        const newElement = soy.renderAsElement(documentationReadmeComponent, {
-            moduleVersion: this.moduleVersion_,
-            loading: this.loading_,
-            error: this.error_ || undefined,
-            content: this.readmeContent_ || undefined,
-        });
+	/**
+	 * Update the DOM with new content
+	 * @private
+	 */
+	updateDom_() {
+		const newElement = soy.renderAsElement(documentationReadmeComponent, {
+			moduleVersion: this.moduleVersion_,
+			loading: this.loading_,
+			error: this.error_ || undefined,
+			content: this.readmeContent_ || undefined,
+		});
 
-        if (this.getElement()) {
-            dom.replaceNode(newElement, this.getElement());
-            this.setElementInternal(newElement);
+		if (this.getElement()) {
+			dom.replaceNode(newElement, this.getElement());
+			this.setElementInternal(newElement);
 
-            // Format content based on file type
-            const isRst = this.readmeFilename_ && this.readmeFilename_.toLowerCase().endsWith('.rst');
-            if (isRst) {
-                this.formatRst_();
-            } else {
-                // Re-format markdown after update
-                formatMarkdownAll(this.getElementStrict());
-            }
+			// Format content based on file type
+			const isRst =
+				this.readmeFilename_ &&
+				this.readmeFilename_.toLowerCase().endsWith(".rst");
+			if (isRst) {
+				this.formatRst_();
+			} else {
+				// Re-format markdown after update
+				formatMarkdownAll(this.getElementStrict());
+			}
 
-            // Rewrite relative links to point to GitHub
-            this.rewriteReadmeLinks_();
-        }
-    }
+			// Rewrite relative links to point to GitHub
+			this.rewriteReadmeLinks_();
+		}
+	}
 
-    /**
-     * Format RST content
-     * @private
-     */
-    formatRst_() {
-        const rootEl = this.getElementStrict();
-        const divEls = dom.findElements(rootEl, el => dom.classlist.contains(el, goog.getCssName('marked')));
+	/**
+	 * Format RST content
+	 * @private
+	 */
+	formatRst_() {
+		const rootEl = this.getElementStrict();
+		const divEls = dom.findElements(rootEl, (el) =>
+			dom.classlist.contains(el, goog.getCssName("marked")),
+		);
 
-        arrays.forEach(divEls, (el) => {
-            const rstContent = el.textContent;
+		arrays.forEach(divEls, (el) => {
+			const rstContent = el.textContent;
 
-            // For now, render as preformatted text with a note
-            // TODO: Add proper RST parser (e.g., restructured npm package)
-            const html = `
+			// For now, render as preformatted text with a note
+			// TODO: Add proper RST parser (e.g., restructured npm package)
+			const html = `
                 <pre style="background: #f6f8fa; border-radius: 6px; overflow-x: auto;">${this.escapeHtml_(rstContent)}</pre>
             `;
 
-            setElementInnerHtml(el, sanitizeHtml(html));
-        });
-    }
+			setElementInnerHtml(el, sanitizeHtml(html));
+		});
+	}
 
-    /**
-     * Escape HTML special characters
-     * @param {string} text
-     * @return {string}
-     * @private
-     */
-    escapeHtml_(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+	/**
+	 * Escape HTML special characters
+	 * @param {string} text
+	 * @return {string}
+	 * @private
+	 */
+	escapeHtml_(text) {
+		const div = document.createElement("div");
+		div.textContent = text;
+		return div.innerHTML;
+	}
 
-    /**
-     * Rewrite relative links in the README to point to GitHub
-     * @private
-     */
-    rewriteReadmeLinks_() {
-        const metadata = this.moduleVersion_.getRepositoryMetadata();
-        if (!metadata || metadata.getType() !== RepositoryType.GITHUB) {
-            return;
-        }
+	/**
+	 * Rewrite relative links in the README to point to GitHub
+	 * @private
+	 */
+	rewriteReadmeLinks_() {
+		const metadata = this.moduleVersion_.getRepositoryMetadata();
+		if (!metadata || metadata.getType() !== RepositoryType.GITHUB) {
+			return;
+		}
 
-        // Get commit SHA
-        let commitSha = this.moduleVersion_.getSource()?.getCommitSha();
-        if (!commitSha) {
-            const latestVersion = getLatestModuleVersion(this.module_);
-            commitSha = latestVersion?.getSource()?.getCommitSha();
-            if (!commitSha) {
-                return;
-            }
-        }
+		// Get commit SHA
+		let commitSha = this.moduleVersion_.getSource()?.getCommitSha();
+		if (!commitSha) {
+			const latestVersion = getLatestModuleVersion(this.module_);
+			commitSha = latestVersion?.getSource()?.getCommitSha();
+			if (!commitSha) {
+				return;
+			}
+		}
 
-        const org = metadata.getOrganization();
-        const repo = metadata.getName();
-        const githubBase = `https://github.com/${org}/${repo}`;
-        const githubBlobBase = `${githubBase}/blob/${commitSha}`;
-        const githubRawBase = `https://raw.githubusercontent.com/${org}/${repo}/${commitSha}`;
+		const org = metadata.getOrganization();
+		const repo = metadata.getName();
+		const githubBase = `https://github.com/${org}/${repo}`;
+		const githubBlobBase = `${githubBase}/blob/${commitSha}`;
+		const githubRawBase = `https://raw.githubusercontent.com/${org}/${repo}/${commitSha}`;
 
-        const rootEl = this.getElement();
-        if (!rootEl) return;
+		const rootEl = this.getElement();
+		if (!rootEl) return;
 
-        // Rewrite links
-        const links = rootEl.querySelectorAll('a[href]');
-        for (const link of links) {
-            const href = link.getAttribute('href');
-            if (!href) continue;
+		// Rewrite links
+		const links = rootEl.querySelectorAll("a[href]");
+		for (const link of links) {
+			const href = link.getAttribute("href");
+			if (!href) continue;
 
-            // Skip absolute URLs
-            if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//')) {
-                continue;
-            }
+			// Skip absolute URLs
+			if (
+				href.startsWith("http://") ||
+				href.startsWith("https://") ||
+				href.startsWith("//")
+			) {
+				continue;
+			}
 
-            // Skip anchors and mailto
-            if (href.startsWith('#') || href.startsWith('mailto:')) {
-                continue;
-            }
+			// Skip anchors and mailto
+			if (href.startsWith("#") || href.startsWith("mailto:")) {
+				continue;
+			}
 
-            // Rewrite relative URLs to GitHub blob URLs
-            const newHref = `${githubBlobBase}/${href.replace(/^\.\//, '')}`;
-            link.setAttribute('href', newHref);
-            link.setAttribute('target', '_blank');
-            link.setAttribute('rel', 'noopener noreferrer');
-        }
+			// Rewrite relative URLs to GitHub blob URLs
+			const newHref = `${githubBlobBase}/${href.replace(/^\.\//, "")}`;
+			link.setAttribute("href", newHref);
+			link.setAttribute("target", "_blank");
+			link.setAttribute("rel", "noopener noreferrer");
+		}
 
-        // Rewrite image sources
-        const images = rootEl.querySelectorAll('img[src]');
-        for (const img of images) {
-            const src = img.getAttribute('src');
-            if (!src) continue;
+		// Rewrite image sources
+		const images = rootEl.querySelectorAll("img[src]");
+		for (const img of images) {
+			const src = img.getAttribute("src");
+			if (!src) continue;
 
-            // Skip absolute URLs
-            if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('//')) {
-                continue;
-            }
+			// Skip absolute URLs
+			if (
+				src.startsWith("http://") ||
+				src.startsWith("https://") ||
+				src.startsWith("//")
+			) {
+				continue;
+			}
 
-            // Rewrite relative URLs to GitHub raw URLs
-            const newSrc = `${githubRawBase}/${src.replace(/^\.\//, '')}`;
-            img.setAttribute('src', newSrc);
-        }
-    }
+			// Rewrite relative URLs to GitHub raw URLs
+			const newSrc = `${githubRawBase}/${src.replace(/^\.\//, "")}`;
+			img.setAttribute("src", newSrc);
+		}
+	}
 }
 exports.DocumentationReadmeComponent = DocumentationReadmeComponent;
 
-
 class BzlFileSourceComponent extends GitHubSourceFileComponent {
-    /**
-     * @param {!Module} module
-     * @param {!ModuleVersion} moduleVersion
-     * @param {!File} file
-     * @param {?dom.DomHelper=} opt_domHelper
-     */
-    constructor(module, moduleVersion, file, opt_domHelper) {
-        // Extract file path from the label
-        const label = file.getLabel();
-        const pkg = label?.getPkg();
-        const name = label?.getName();
-        const filePath = pkg ? `${pkg}/${name}` : name || '';
+	/**
+	 * @param {!Module} module
+	 * @param {!ModuleVersion} moduleVersion
+	 * @param {!File} file
+	 * @param {?dom.DomHelper=} opt_domHelper
+	 */
+	constructor(module, moduleVersion, file, opt_domHelper) {
+		// Extract file path from the label
+		const label = file.getLabel();
+		const pkg = label?.getPkg();
+		const name = label?.getName();
+		const filePath = pkg ? `${pkg}/${name}` : name || "";
 
-        // Call parent constructor with the reusable component logic
-        super(
-            module,
-            moduleVersion,
-            filePath,
-            bzlFileSourceComponent,
-            { file },  // Pass file as additional template data
-            opt_domHelper
-        );
-    }
+		// Call parent constructor with the reusable component logic
+		super(
+			module,
+			moduleVersion,
+			filePath,
+			bzlFileSourceComponent,
+			{ file }, // Pass file as additional template data
+			opt_domHelper,
+		);
+	}
 }
-
 
 /**
  * Build symbol groups for a file, organized by type.
@@ -1457,35 +1755,34 @@ class BzlFileSourceComponent extends GitHubSourceFileComponent {
  * @return {!Array<SymbolGroup>}
  */
 function buildSymbolGroupsForFile(file) {
-    /** @type {!Array<SymbolGroup>} */
-    const symbolGroups = [];
+	/** @type {!Array<SymbolGroup>} */
+	const symbolGroups = [];
 
-    /** @type {!Map<SymbolType,SymbolGroup>} */
-    const symbolsByType = new Map();
+	/** @type {!Map<SymbolType,SymbolGroup>} */
+	const symbolsByType = new Map();
 
-    // Group symbols by type
-    for (const sym of file.getSymbolList()) {
-        const type = sym.getType();
-        let group = symbolsByType.get(type);
-        if (!group) {
-            const typeName = soy.renderAsText(symbolTypeName, { type });
-            group = { type, typeName, symbols: [] };
-            symbolsByType.set(type, group);
-        }
-        group.symbols.push(sym);
-    }
+	// Group symbols by type
+	for (const sym of file.getSymbolList()) {
+		const type = sym.getType();
+		let group = symbolsByType.get(type);
+		if (!group) {
+			const typeName = soy.renderAsText(symbolTypeName, { type });
+			group = { type, typeName, symbols: [] };
+			symbolsByType.set(type, group);
+		}
+		group.symbols.push(sym);
+	}
 
-    // Build groups array with only non-empty groups
-    for (const group of symbolsByType.values()) {
-        if (group.symbols.length > 0) {
-            group.typeName += 's';
-            symbolGroups.push(group);
-        }
-    }
+	// Build groups array with only non-empty groups
+	for (const group of symbolsByType.values()) {
+		if (group.symbols.length > 0) {
+			group.typeName += "s";
+			symbolGroups.push(group);
+		}
+	}
 
-    return symbolGroups;
+	return symbolGroups;
 }
-
 
 /**
  * Build file symbol groups for all public files in documentation.
@@ -1493,38 +1790,37 @@ function buildSymbolGroupsForFile(file) {
  * @return {!Array<FileSymbolGroupList>}
  */
 function buildFileSymbolGroups(docs) {
-    const files = docs.getFileList().filter(isPublicFile);
+	const files = docs.getFileList().filter(isPublicFile);
 
-    // Build symbol groups for each file
-    /** @type {!Array<FileSymbolGroupList>} */
-    const fileSymbols = files.map(file => ({
-        file,
-        symbolGroups: buildSymbolGroupsForFile(file),
-    }));
+	// Build symbol groups for each file
+	/** @type {!Array<FileSymbolGroupList>} */
+	const fileSymbols = files.map((file) => ({
+		file,
+		symbolGroups: buildSymbolGroupsForFile(file),
+	}));
 
-    fileSymbols.sort(
-        /**
-         * @param {FileSymbolGroupList} a
-         * @param {FileSymbolGroupList} b
-         * @returns {number}
-         */
-        (a, b) => {
-            const aHasError = a.file.getError() ? 1 : 0;
-            const bHasError = b.file.getError() ? 1 : 0;
+	fileSymbols.sort(
+		/**
+		 * @param {FileSymbolGroupList} a
+		 * @param {FileSymbolGroupList} b
+		 * @returns {number}
+		 */
+		(a, b) => {
+			const aHasError = a.file.getError() ? 1 : 0;
+			const bHasError = b.file.getError() ? 1 : 0;
 
-            // Files with errors go to the end
-            if (aHasError !== bHasError) {
-                return aHasError - bHasError;
-            }
+			// Files with errors go to the end
+			if (aHasError !== bHasError) {
+				return aHasError - bHasError;
+			}
 
-            // Otherwise, stable sort (return 0 to maintain original order)
-            return 0;
-        }
-    );
+			// Otherwise, stable sort (return 0 to maintain original order)
+			return 0;
+		},
+	);
 
-    return fileSymbols;
+	return fileSymbols;
 }
-
 
 /**
  * Sorts file-symbol pairs by symbol name alphabetically.
@@ -1533,9 +1829,8 @@ function buildFileSymbolGroups(docs) {
  * @return {number}
  */
 function bySymbolName(a, b) {
-    return a.sym.getName().localeCompare(b.sym.getName());
+	return a.sym.getName().localeCompare(b.sym.getName());
 }
-
 
 /**
  * Returns true if the file should be included in public documentation.
@@ -1544,30 +1839,28 @@ function bySymbolName(a, b) {
  * @return {boolean}
  */
 function isPublicFile(file) {
-    const label = file.getLabel();
-    if (!label) {
-        return true;
-    }
-    const pkg = label.getPkg() || '';
-    const name = label.getName() || '';
-    const path = pkg ? `${pkg}/${name}` : name;
+	const label = file.getLabel();
+	if (!label) {
+		return true;
+	}
+	const pkg = label.getPkg() || "";
+	const name = label.getName() || "";
+	const path = pkg ? `${pkg}/${name}` : name;
 
-    return !(
-        path.includes('private/')
-        || path.includes('internal/')
-        || path.includes('thirdparty/')
-        || path.includes('third_party/')
-        || path.includes('examples/')
-        || path.includes('example/')
-        || path.includes('tests/')
-        || path.includes('vendor/')
-        || path.includes('test/')
-    );
+	return !(
+		path.includes("private/") ||
+		path.includes("internal/") ||
+		path.includes("thirdparty/") ||
+		path.includes("third_party/") ||
+		path.includes("examples/") ||
+		path.includes("example/") ||
+		path.includes("tests/") ||
+		path.includes("vendor/") ||
+		path.includes("test/")
+	);
 }
 
-
 /**
- * 
- * @param {!Element} rootEl The root element to search from 
+ *
+ * @param {!Element} rootEl The root element to search from
  */
-
