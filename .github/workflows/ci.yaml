@@ -18,6 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: bazel-contrib/setup-bazel@0.15.0
+      - name: format check
+        run: |
+          bazelisk run //:format
+          if ! git diff --exit-code; then
+            echo "Error: Formatting changes detected. Please run 'bazel run //:format' and commit the changes."
+            exit 1
+          fi
       - name: bazel build
         run: >-
           bazelisk

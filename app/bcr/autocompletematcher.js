@@ -61,9 +61,9 @@ class AutoCompleteMatcher {
 			return [];
 		}
 
-		let matcher = new RegExp(strings.regExpEscape(token), "i");
-		let heap = new Heap((a, b) => b.key - a.key);
-		for (let term of this.terms_) {
+		const matcher = new RegExp(strings.regExpEscape(token), "i");
+		const heap = new Heap((a, b) => b.key - a.key);
+		for (const term of this.terms_) {
 			// 1) Require at least a substring match.
 			if (!term.match(matcher)) {
 				continue;
@@ -75,7 +75,7 @@ class AutoCompleteMatcher {
 			// NB: we could apply this second pass only if there are >max substring
 			// matches, but this ensures suggestions are always consistently sorted
 			// based on D-L distance.
-			let distance = this.damerauLevenshteinDistance_(token, term);
+			const distance = this.damerauLevenshteinDistance_(token, term);
 			if (heap.size() < max) {
 				heap.insert(distance, term);
 			} else if (distance < asserts.assertNumber(heap.peekKey())) {
@@ -100,7 +100,7 @@ class AutoCompleteMatcher {
 	 */
 	damerauLevenshteinDistance_(a, b) {
 		/** @type {!Array<!Array<number>>} */
-		let d = [];
+		const d = [];
 
 		for (let i = 0; i <= a.length; i++) {
 			d[i] = [i];
@@ -112,7 +112,7 @@ class AutoCompleteMatcher {
 
 		for (let i = 1; i <= a.length; i++) {
 			for (let j = 1; j <= b.length; j++) {
-				let cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+				const cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
 				d[i][j] = Math.min(
 					d[i - 1][j] + 1, // Deletion
 					d[i][j - 1] + 1, // Insertion
@@ -122,8 +122,8 @@ class AutoCompleteMatcher {
 				if (
 					i > 1 &&
 					j > 1 &&
-					a.charAt(i - 1) == b.charAt(j - 2) &&
-					a.charAt(i - 2) == b.charAt(j - 1)
+					a.charAt(i - 1) === b.charAt(j - 2) &&
+					a.charAt(i - 2) === b.charAt(j - 1)
 				) {
 					d[i][j] = Math.min(
 						d[i][j],

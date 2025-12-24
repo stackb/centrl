@@ -65,45 +65,45 @@ const {
 } = goog.require("centrl.starlark");
 
 testSuite({
-	teardown: function () {},
+	teardown: () => {},
 
 	// ========== StarlarkCallBuilder Tests ==========
 
-	testStarlarkCallBuilder_noArguments: function () {
+	testStarlarkCallBuilder_noArguments: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_rule");
 		const result = builder.build();
 		assertEquals("my_rule()", result);
 	},
 
-	testStarlarkCallBuilder_singlePositionalArg: function () {
+	testStarlarkCallBuilder_singlePositionalArg: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_rule");
 		builder.addPositional('"arg1"');
 		const result = builder.build();
 		assertEquals('my_rule("arg1")', result);
 	},
 
-	testStarlarkCallBuilder_singleKeywordArg: function () {
+	testStarlarkCallBuilder_singleKeywordArg: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_rule");
 		builder.addKeyword("name", '"my_target"');
 		const result = builder.build();
 		assertEquals('my_rule(name = "my_target")', result);
 	},
 
-	testStarlarkCallBuilder_singleVarargs: function () {
+	testStarlarkCallBuilder_singleVarargs: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_func");
 		builder.setVarargs("args");
 		const result = builder.build();
 		assertEquals("my_func(*args)", result);
 	},
 
-	testStarlarkCallBuilder_singleKwargs: function () {
+	testStarlarkCallBuilder_singleKwargs: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_func");
 		builder.setKwargs("kwargs");
 		const result = builder.build();
 		assertEquals("my_func(**kwargs)", result);
 	},
 
-	testStarlarkCallBuilder_multiplePositionalArgs: function () {
+	testStarlarkCallBuilder_multiplePositionalArgs: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_func");
 		builder.addPositional("arg1");
 		builder.addPositional("arg2");
@@ -112,7 +112,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testStarlarkCallBuilder_multipleKeywordArgs: function () {
+	testStarlarkCallBuilder_multipleKeywordArgs: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_rule");
 		builder.addKeyword("name", '"my_target"');
 		builder.addKeyword("srcs", "[]");
@@ -121,7 +121,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testStarlarkCallBuilder_requiredAttr: function () {
+	testStarlarkCallBuilder_requiredAttr: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_rule");
 		builder.addKeyword("name", '"my_target"', true);
 		builder.addKeyword("url", '""', true);
@@ -142,7 +142,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testStarlarkCallBuilder_requiredAttrSuppressedForName: function () {
+	testStarlarkCallBuilder_requiredAttrSuppressedForName: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_rule");
 		builder.addKeyword("name", '"my_target"', true);
 		builder.addKeyword("version", '""', true);
@@ -155,7 +155,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testStarlarkCallBuilder_mixedArgs: function () {
+	testStarlarkCallBuilder_mixedArgs: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_func");
 		builder.addPositional("ctx");
 		builder.addKeyword("name", '"my_name"');
@@ -168,14 +168,14 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testStarlarkCallBuilder_withResultPrefix: function () {
+	testStarlarkCallBuilder_withResultPrefix: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_func", "result = ");
 		builder.addKeyword("name", '"value"');
 		const result = builder.build();
 		assertEquals('result = my_func(name = "value")', result);
 	},
 
-	testStarlarkCallBuilder_withVarargsAndKwargs: function () {
+	testStarlarkCallBuilder_withVarargsAndKwargs: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_func");
 		builder.addPositional("arg1");
 		builder.addKeyword("name", '"value"');
@@ -189,7 +189,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testStarlarkCallBuilder_kwargsNoTrailingComma: function () {
+	testStarlarkCallBuilder_kwargsNoTrailingComma: () => {
 		const builder = new starlark.StarlarkCallBuilder("my_func");
 		builder.setKwargs("kwargs");
 		builder.addKeyword("name", '"value"');
@@ -202,7 +202,7 @@ testSuite({
 
 	// ========== Helper Function Tests ==========
 
-	testGetAttributeExampleValue_name: function () {
+	testGetAttributeExampleValue_name: () => {
 		const attr = new AttributeInfo();
 		attr.setName("name");
 		attr.setType(AttributeType.NAME);
@@ -211,7 +211,7 @@ testSuite({
 		assertEquals('"my_target"', result);
 	},
 
-	testGetAttributeExampleValue_string: function () {
+	testGetAttributeExampleValue_string: () => {
 		const attr = new AttributeInfo();
 		attr.setName("url");
 		attr.setType(AttributeType.STRING);
@@ -220,7 +220,7 @@ testSuite({
 		assertEquals('""', result);
 	},
 
-	testGetAttributeExampleValue_int: function () {
+	testGetAttributeExampleValue_int: () => {
 		const attr = new AttributeInfo();
 		attr.setName("count");
 		attr.setType(AttributeType.INT);
@@ -229,7 +229,7 @@ testSuite({
 		assertEquals("1", result);
 	},
 
-	testGetAttributeExampleValue_boolean: function () {
+	testGetAttributeExampleValue_boolean: () => {
 		const attr = new AttributeInfo();
 		attr.setName("enabled");
 		attr.setType(AttributeType.BOOLEAN);
@@ -238,7 +238,7 @@ testSuite({
 		assertEquals("True", result);
 	},
 
-	testGetAttributeExampleValue_label: function () {
+	testGetAttributeExampleValue_label: () => {
 		const attr = new AttributeInfo();
 		attr.setName("target");
 		attr.setType(AttributeType.LABEL);
@@ -247,7 +247,7 @@ testSuite({
 		assertEquals('"//path/to:target"', result);
 	},
 
-	testGetAttributeExampleValue_stringList: function () {
+	testGetAttributeExampleValue_stringList: () => {
 		const attr = new AttributeInfo();
 		attr.setName("srcs");
 		attr.setType(AttributeType.STRING_LIST);
@@ -256,7 +256,7 @@ testSuite({
 		assertEquals("[]", result);
 	},
 
-	testGetAttributeExampleValue_labelList: function () {
+	testGetAttributeExampleValue_labelList: () => {
 		const attr = new AttributeInfo();
 		attr.setName("deps");
 		attr.setType(AttributeType.LABEL_LIST);
@@ -265,7 +265,7 @@ testSuite({
 		assertEquals("[]", result);
 	},
 
-	testGetAttributeExampleValue_stringDict: function () {
+	testGetAttributeExampleValue_stringDict: () => {
 		const attr = new AttributeInfo();
 		attr.setName("env");
 		attr.setType(AttributeType.STRING_DICT);
@@ -274,7 +274,7 @@ testSuite({
 		assertEquals("{}", result);
 	},
 
-	testGetAttributeExampleValue_output: function () {
+	testGetAttributeExampleValue_output: () => {
 		const attr = new AttributeInfo();
 		attr.setName("out");
 		attr.setType(AttributeType.OUTPUT);
@@ -283,7 +283,7 @@ testSuite({
 		assertEquals('"output.txt"', result);
 	},
 
-	testGetParameterExampleValue_withDefault: function () {
+	testGetParameterExampleValue_withDefault: () => {
 		const param = new FunctionParamInfo();
 		param.setName("count");
 		param.setDefaultValue("5");
@@ -292,7 +292,7 @@ testSuite({
 		assertEquals("5", result);
 	},
 
-	testGetParameterExampleValue_namePattern: function () {
+	testGetParameterExampleValue_namePattern: () => {
 		const param = new FunctionParamInfo();
 		param.setName("module_name");
 
@@ -300,7 +300,7 @@ testSuite({
 		assertEquals('"my_module_name"', result);
 	},
 
-	testGetParameterExampleValue_labelPattern: function () {
+	testGetParameterExampleValue_labelPattern: () => {
 		const param = new FunctionParamInfo();
 		param.setName("target_label");
 
@@ -308,7 +308,7 @@ testSuite({
 		assertEquals('"//path/to:target"', result);
 	},
 
-	testGetParameterExampleValue_listPattern: function () {
+	testGetParameterExampleValue_listPattern: () => {
 		const param = new FunctionParamInfo();
 		param.setName("file_list");
 
@@ -316,7 +316,7 @@ testSuite({
 		assertEquals("[]", result);
 	},
 
-	testGetParameterExampleValue_boolPattern: function () {
+	testGetParameterExampleValue_boolPattern: () => {
 		const param = new FunctionParamInfo();
 		param.setName("enabled");
 
@@ -324,7 +324,7 @@ testSuite({
 		assertEquals("True or False", result);
 	},
 
-	testGetFieldExampleValue_files: function () {
+	testGetFieldExampleValue_files: () => {
 		const field = new ProviderFieldInfo();
 		field.setName("output_files");
 
@@ -332,7 +332,7 @@ testSuite({
 		assertEquals("depset([])", result);
 	},
 
-	testGetFieldExampleValue_list: function () {
+	testGetFieldExampleValue_list: () => {
 		const field = new ProviderFieldInfo();
 		field.setName("items_list");
 
@@ -340,7 +340,7 @@ testSuite({
 		assertEquals("[]", result);
 	},
 
-	testGetFieldExampleValue_bool: function () {
+	testGetFieldExampleValue_bool: () => {
 		const field = new ProviderFieldInfo();
 		field.setName("is_enabled");
 
@@ -348,7 +348,7 @@ testSuite({
 		assertEquals("True", result);
 	},
 
-	testGetFieldExampleValue_path: function () {
+	testGetFieldExampleValue_path: () => {
 		const field = new ProviderFieldInfo();
 		field.setName("install_path");
 
@@ -356,7 +356,7 @@ testSuite({
 		assertEquals('"path/to/file"', result);
 	},
 
-	testGetFieldExampleValue_default: function () {
+	testGetFieldExampleValue_default: () => {
 		const field = new ProviderFieldInfo();
 		field.setName("unknown_field");
 
@@ -366,7 +366,7 @@ testSuite({
 
 	// ========== Generate Function Tests ==========
 
-	testGenerateProviderExample_noFields: function () {
+	testGenerateProviderExample_noFields: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_go");
 
@@ -394,7 +394,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateProviderExample_withFields: function () {
+	testGenerateProviderExample_withFields: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_go");
 
@@ -432,7 +432,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateRuleExample_simpleRule: function () {
+	testGenerateRuleExample_simpleRule: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_go");
 
@@ -473,7 +473,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateRepositoryRuleExample: function () {
+	testGenerateRepositoryRuleExample: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_go");
 
@@ -514,7 +514,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateFunctionExample_noParams: function () {
+	testGenerateFunctionExample_noParams: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_python");
 
@@ -542,7 +542,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateFunctionExample_withReturn: function () {
+	testGenerateFunctionExample_withReturn: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_python");
 
@@ -574,7 +574,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateFunctionExample_withParams: function () {
+	testGenerateFunctionExample_withParams: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_python");
 
@@ -615,7 +615,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateMacroExample: function () {
+	testGenerateMacroExample: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_pkg");
 
@@ -656,7 +656,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateAspectExample: function () {
+	testGenerateAspectExample: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_go");
 
@@ -688,7 +688,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateModuleExtensionExample_noTags: function () {
+	testGenerateModuleExtensionExample_noTags: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_go");
 
@@ -718,7 +718,7 @@ testSuite({
 		assertEquals(expected, result);
 	},
 
-	testGenerateModuleExtensionExample_withTags: function () {
+	testGenerateModuleExtensionExample_withTags: () => {
 		const moduleVersion = new ModuleVersion();
 		moduleVersion.setName("rules_go");
 

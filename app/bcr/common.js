@@ -40,9 +40,9 @@ class Application {
 	getKbd() {}
 
 	/**
-	 * @param {string} msg
+	 * @param {string} _msg
 	 */
-	notifyError(msg) {}
+	notifyError(_msg) {}
 }
 exports.Application = Application;
 

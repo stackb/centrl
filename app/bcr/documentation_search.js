@@ -12,13 +12,12 @@ const EventTarget = goog.require("goog.events.EventTarget");
 const InputHandler = goog.require("goog.ui.ac.InputHandler");
 const Renderer = goog.require("goog.ui.ac.Renderer");
 const soy = goog.require("goog.soy");
-const { Application, DefaultSearchHandlerName, SearchProvider } =
-	goog.require("centrl.common");
+const { Application, SearchProvider } = goog.requireType("centrl.common");
 const { Searchable } = goog.requireType("centrl.common");
 const { symbolSearchRow } = goog.require("soy.centrl.app");
-const File = goog.require("proto.build.stack.bazel.symbol.v1.File");
+const File = goog.requireType("proto.build.stack.bazel.symbol.v1.File");
 const Registry = goog.require("proto.build.stack.bazel.registry.v1.Registry");
-const Symbol = goog.require("proto.build.stack.bazel.symbol.v1.Symbol");
+const Symbol = goog.requireType("proto.build.stack.bazel.symbol.v1.Symbol");
 const SymbolType = goog.require("proto.build.stack.bazel.symbol.v1.SymbolType");
 
 /** @typedef {{file: !File, sym: !Symbol, moduleVersion: string}} */

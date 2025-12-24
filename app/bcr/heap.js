@@ -74,12 +74,12 @@ class Heap {
 	 * @return {(string|undefined)} The removed value.
 	 */
 	remove() {
-		let n = this.nodes_.length;
+		const n = this.nodes_.length;
 		if (!n) {
 			return undefined;
 		}
 
-		let root = this.nodes_[0];
+		const root = this.nodes_[0];
 		if (n === 1) {
 			delete this.nodes_[0];
 			this.nodes_.length = 0;
@@ -106,8 +106,8 @@ class Heap {
 	moveUp_(index) {
 		const node = this.nodes_[index];
 		while (index > 0) {
-			let parentIndex = (index - 1) >> 1;
-			let diff = this.comparatorFn_(this.nodes_[parentIndex], node);
+			const parentIndex = (index - 1) >> 1;
+			const diff = this.comparatorFn_(this.nodes_[parentIndex], node);
 			if (diff > 0) {
 				this.nodes_[index] = this.nodes_[parentIndex];
 				index = parentIndex;
@@ -126,12 +126,12 @@ class Heap {
 		const node = this.nodes_[index];
 		const size = this.nodes_.length;
 		while (index < size >> 1) {
-			let leftIndex = (index << 1) + 1;
-			let rightIndex = (index << 1) + 2;
+			const leftIndex = (index << 1) + 1;
+			const rightIndex = (index << 1) + 2;
 
 			let minIndex;
 			if (rightIndex < size) {
-				let diff = this.comparatorFn_(
+				const diff = this.comparatorFn_(
 					this.nodes_[leftIndex],
 					this.nodes_[rightIndex],
 				);
@@ -140,7 +140,7 @@ class Heap {
 				minIndex = leftIndex;
 			}
 
-			let diff = this.comparatorFn_(this.nodes_[minIndex], node);
+			const diff = this.comparatorFn_(this.nodes_[minIndex], node);
 			if (diff > 0) {
 				break;
 			}

@@ -184,7 +184,7 @@ class ModuleRowRenderer {
 	 * @param {!Element} row
 	 */
 	renderModule(module, entry, val, row) {
-		let el = soy.renderAsElement(moduleSearchRow, {
+		const el = soy.renderAsElement(moduleSearchRow, {
 			module,
 			lang: sanitizeLanguageName(
 				module.getRepositoryMetadata()?.getPrimaryLanguage() || "",

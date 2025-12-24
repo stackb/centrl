@@ -18,9 +18,9 @@ const { calculateAgeSummary, getVersionDistances } =
 	goog.require("centrl.registry");
 
 testSuite({
-	teardown: function () {},
+	teardown: () => {},
 
-	testCalculateAgeSummary: function () {
+	testCalculateAgeSummary: () => {
 		// Test edge cases
 		assertEquals("0d", calculateAgeSummary(0));
 
@@ -45,13 +45,13 @@ testSuite({
 		assertEquals("10.0y", calculateAgeSummary(3650));
 	},
 
-	testGetVersionDistances_emptyRegistry: function () {
+	testGetVersionDistances_emptyRegistry: () => {
 		const registry = new Registry();
 		const result = getVersionDistances(registry);
 		assertEquals(0, result.size);
 	},
 
-	testGetVersionDistances_moduleWithoutMetadata: function () {
+	testGetVersionDistances_moduleWithoutMetadata: () => {
 		const registry = new Registry();
 		const module = new Module();
 		module.setName("test-module");
@@ -62,7 +62,7 @@ testSuite({
 		assertEquals(0, result.size);
 	},
 
-	testGetVersionDistances_singleVersion: function () {
+	testGetVersionDistances_singleVersion: () => {
 		const registry = new Registry();
 
 		// Create module with metadata
@@ -98,7 +98,7 @@ testSuite({
 		assertEquals("0d", versionInfo.ageSummary);
 	},
 
-	testGetVersionDistances_multipleVersions: function () {
+	testGetVersionDistances_multipleVersions: () => {
 		const registry = new Registry();
 
 		const module = new Module();
@@ -154,7 +154,7 @@ testSuite({
 		assertEquals("1.1y", v1Info.ageSummary);
 	},
 
-	testGetVersionDistances_versionWithoutCommit: function () {
+	testGetVersionDistances_versionWithoutCommit: () => {
 		const registry = new Registry();
 
 		const module = new Module();
@@ -189,7 +189,7 @@ testSuite({
 		assertNull(v1Info.ageSummary);
 	},
 
-	testGetVersionDistances_protobufBug: function () {
+	testGetVersionDistances_protobufBug: () => {
 		// Reproduces bug where protobuf 33.1 shows as 52 versions behind 33.2
 		// This happens when metadata.versionsList contains ALL versions (33.2, 33.1, 33.0, ... 27.0)
 		// but module.versionsList only contains the versions present in BCR (33.2, 33.1)

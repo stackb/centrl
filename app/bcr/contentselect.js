@@ -6,7 +6,8 @@ goog.module("centrl.ContentSelect");
 const dom = goog.require("goog.dom");
 const soy = goog.require("goog.soy");
 const Select = goog.require("stack.ui.Select");
-const { Component, Route } = goog.require("stack.ui");
+const { Component } = goog.require("stack.ui");
+const { Route } = goog.requireType("stack.ui");
 const { notFoundComponent } = goog.require("soy.centrl.app");
 
 /**
@@ -51,7 +52,7 @@ class ContentSelect extends Select {
 	 * @param {!Route} route
 	 */
 	selectFail(name, route) {
-		let tab = this.getTab(NOT_FOUND);
+		const tab = this.getTab(NOT_FOUND);
 		if (tab) {
 			this.showTab(NOT_FOUND);
 			tab.go(route);

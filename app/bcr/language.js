@@ -42,7 +42,7 @@ exports.sanitizeLanguageName = sanitizeLanguageName;
  */
 function unsanitizeLanguageName(sanitizedName) {
 	// Reverse the replacements
-	let unsanitized = sanitizedName
+	const unsanitized = sanitizedName
 		.replace(/sharp/g, "#")
 		.replace(/plus/g, "+")
 		.replace(/-/g, " ");

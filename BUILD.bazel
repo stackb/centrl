@@ -96,3 +96,10 @@ proto_compile_assets(
 biome_format(
     name = "format",
 )
+
+# ProTip: `bazel run //:format.check` to apply additional lint checks, but these
+# are just suggestions, they are not madatory.
+biome_format(
+    name = "format.check",
+    command = "check",
+)
