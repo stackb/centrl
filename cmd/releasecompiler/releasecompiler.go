@@ -24,7 +24,7 @@ type Config struct {
 	OutputFile                string
 	IndexHtmlFile             string
 	RegistryFile              string
-	DocumentationRegistryFile string
+	ModuleRegistrySymbolsFile string
 	AssetFiles                []string
 	ExcludeFromHash           map[string]bool // basenames to exclude from hashing
 }
@@ -79,7 +79,7 @@ func run(args []string) error {
 		log.Printf("Processed registry file: %s -> %s", asset.OriginalName, asset.HashedName)
 	}
 
-	docAsset, err := processDocumentationRegistryFile(cfg.DocumentationRegistryFile)
+	docAsset, err := processModuleRegistrySymbolsFile(cfg.ModuleRegistrySymbolsFile)
 	if err != nil {
 		return fmt.Errorf("failed to process registry file: %v", err)
 	}
@@ -156,7 +156,7 @@ func processRegistryFile(registryPath string) ([]HashedAsset, error) {
 	}, nil
 }
 
-func processDocumentationRegistryFile(documentationRegistryPath string) (*HashedAsset, error) {
+func processModuleRegistrySymbolsFile(documentationRegistryPath string) (*HashedAsset, error) {
 	var b64Content string
 	if documentationRegistryPath != "" {
 		content, err := os.ReadFile(documentationRegistryPath)
@@ -319,7 +319,7 @@ func parseFlags(args []string) (cfg Config, err error) {
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
 	fs.StringVar(&cfg.IndexHtmlFile, "index_html_file", "", "the index.html file to read")
 	fs.StringVar(&cfg.RegistryFile, "registry_file", "", "the registry protobuf file to process (gzipped and base64 encoded)")
-	fs.StringVar(&cfg.DocumentationRegistryFile, "documentation_registry_file", "", "the documentation registry protobuf file to process (gzipped and base64 encoded)")
+	fs.StringVar(&cfg.ModuleRegistrySymbolsFile, "documentation_registry_file", "", "the documentation registry protobuf file to process (gzipped and base64 encoded)")
 	fs.StringVar(&excludeFromHashStr, "exclude_from_hash", "", "comma-separated list of basenames to exclude from hashing (e.g., favicon.png,robots.txt)")
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "usage: %s @PARAMS_FILE", toolName)

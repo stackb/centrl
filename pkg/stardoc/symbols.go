@@ -1,7 +1,7 @@
 package stardoc
 
 import (
-	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	sympb "github.com/stackb/centrl/build/stack/bazel/symbol/v1"
 	slpb "github.com/stackb/centrl/build/stack/starlark/v1beta1"
 	sdpb "github.com/stackb/centrl/stardoc_output"
 )
@@ -191,7 +191,7 @@ func makeModuleExtensionTagClasss(infos []*sdpb.ModuleExtensionTagClassInfo) []*
 	return tagClasses
 }
 
-func makeRuleSymbol(info *sdpb.RuleInfo, rule *slpb.Rule) *bzpb.SymbolInfo {
+func makeRuleSymbol(info *sdpb.RuleInfo, rule *slpb.Rule) *sympb.Symbol {
 	if rule == nil {
 		rule = &slpb.Rule{
 			Info:      info,
@@ -199,15 +199,15 @@ func makeRuleSymbol(info *sdpb.RuleInfo, rule *slpb.Rule) *bzpb.SymbolInfo {
 		}
 	}
 	processRule(rule)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_RULE,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_RULE,
 		Name:        info.RuleName,
 		Description: processDocString(info.DocString),
-		Info:        &bzpb.SymbolInfo_Rule{Rule: rule},
+		Info:        &sympb.Symbol_Rule{Rule: rule},
 	}
 }
 
-func makeFunctionSymbol(info *sdpb.StarlarkFunctionInfo, function *slpb.Function) *bzpb.SymbolInfo {
+func makeFunctionSymbol(info *sdpb.StarlarkFunctionInfo, function *slpb.Function) *sympb.Symbol {
 	if function == nil {
 		function = &slpb.Function{
 			Info:  info,
@@ -215,15 +215,15 @@ func makeFunctionSymbol(info *sdpb.StarlarkFunctionInfo, function *slpb.Function
 		}
 	}
 	processFunction(function)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_FUNCTION,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_FUNCTION,
 		Name:        info.FunctionName,
 		Description: processDocString(info.DocString),
-		Info:        &bzpb.SymbolInfo_Func{Func: function},
+		Info:        &sympb.Symbol_Func{Func: function},
 	}
 }
 
-func makeProviderSymbol(info *sdpb.ProviderInfo, provider *slpb.Provider) *bzpb.SymbolInfo {
+func makeProviderSymbol(info *sdpb.ProviderInfo, provider *slpb.Provider) *sympb.Symbol {
 	if provider == nil {
 		provider = &slpb.Provider{
 			Info:  info,
@@ -231,15 +231,15 @@ func makeProviderSymbol(info *sdpb.ProviderInfo, provider *slpb.Provider) *bzpb.
 		}
 	}
 	processProvider(provider)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_PROVIDER,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_PROVIDER,
 		Name:        info.ProviderName,
 		Description: processDocString(info.DocString),
-		Info:        &bzpb.SymbolInfo_Provider{Provider: provider},
+		Info:        &sympb.Symbol_Provider{Provider: provider},
 	}
 }
 
-func makeAspectSymbol(info *sdpb.AspectInfo, aspect *slpb.Aspect) *bzpb.SymbolInfo {
+func makeAspectSymbol(info *sdpb.AspectInfo, aspect *slpb.Aspect) *sympb.Symbol {
 	if aspect == nil {
 		aspect = &slpb.Aspect{
 			Info:      info,
@@ -247,15 +247,15 @@ func makeAspectSymbol(info *sdpb.AspectInfo, aspect *slpb.Aspect) *bzpb.SymbolIn
 		}
 	}
 	processAspect(aspect)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_ASPECT,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_ASPECT,
 		Name:        info.AspectName,
 		Description: processDocString(info.DocString),
-		Info:        &bzpb.SymbolInfo_Aspect{Aspect: aspect},
+		Info:        &sympb.Symbol_Aspect{Aspect: aspect},
 	}
 }
 
-func makeModuleExtensionSymbol(info *sdpb.ModuleExtensionInfo, ext *slpb.ModuleExtension) *bzpb.SymbolInfo {
+func makeModuleExtensionSymbol(info *sdpb.ModuleExtensionInfo, ext *slpb.ModuleExtension) *sympb.Symbol {
 	if ext == nil {
 		ext = &slpb.ModuleExtension{
 			Info:     info,
@@ -263,15 +263,15 @@ func makeModuleExtensionSymbol(info *sdpb.ModuleExtensionInfo, ext *slpb.ModuleE
 		}
 	}
 	processModuleExtension(ext)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_MODULE_EXTENSION,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_MODULE_EXTENSION,
 		Name:        info.ExtensionName,
 		Description: processDocString(info.DocString),
-		Info:        &bzpb.SymbolInfo_ModuleExtension{ModuleExtension: ext},
+		Info:        &sympb.Symbol_ModuleExtension{ModuleExtension: ext},
 	}
 }
 
-func makeRepositoryRuleSymbol(info *sdpb.RepositoryRuleInfo, repoRule *slpb.RepositoryRule) *bzpb.SymbolInfo {
+func makeRepositoryRuleSymbol(info *sdpb.RepositoryRuleInfo, repoRule *slpb.RepositoryRule) *sympb.Symbol {
 	if repoRule == nil {
 		repoRule = &slpb.RepositoryRule{
 			Info:      info,
@@ -279,15 +279,15 @@ func makeRepositoryRuleSymbol(info *sdpb.RepositoryRuleInfo, repoRule *slpb.Repo
 		}
 	}
 	processRepositoryRule(repoRule)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_REPOSITORY_RULE,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_REPOSITORY_RULE,
 		Name:        info.RuleName,
 		Description: processDocString(info.DocString),
-		Info:        &bzpb.SymbolInfo_RepositoryRule{RepositoryRule: repoRule},
+		Info:        &sympb.Symbol_RepositoryRule{RepositoryRule: repoRule},
 	}
 }
 
-func makeMacroSymbol(info *sdpb.MacroInfo, macro *slpb.Macro) *bzpb.SymbolInfo {
+func makeMacroSymbol(info *sdpb.MacroInfo, macro *slpb.Macro) *sympb.Symbol {
 	if macro == nil {
 		macro = &slpb.Macro{
 			Info:      info,
@@ -295,15 +295,15 @@ func makeMacroSymbol(info *sdpb.MacroInfo, macro *slpb.Macro) *bzpb.SymbolInfo {
 		}
 	}
 	processMacro(macro)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_MACRO,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_MACRO,
 		Name:        info.MacroName,
 		Description: processDocString(info.DocString),
-		Info:        &bzpb.SymbolInfo_Macro{Macro: macro},
+		Info:        &sympb.Symbol_Macro{Macro: macro},
 	}
 }
 
-func makeRuleMacroSymbol(ruleMacro *slpb.RuleMacro) *bzpb.SymbolInfo {
+func makeRuleMacroSymbol(ruleMacro *slpb.RuleMacro) *sympb.Symbol {
 	// Get description from rule or function
 	description := ruleMacro.Function.Info.DocString
 	if description == "" {
@@ -311,11 +311,11 @@ func makeRuleMacroSymbol(ruleMacro *slpb.RuleMacro) *bzpb.SymbolInfo {
 	}
 	processRule(ruleMacro.Rule)
 	processFunction(ruleMacro.Function)
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_RULE_MACRO,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_RULE_MACRO,
 		Name:        ruleMacro.Function.Info.FunctionName,
 		Description: processDocString(description),
-		Info:        &bzpb.SymbolInfo_RuleMacro{RuleMacro: ruleMacro},
+		Info:        &sympb.Symbol_RuleMacro{RuleMacro: ruleMacro},
 	}
 }
 
@@ -326,7 +326,7 @@ func processLoadStmt(load *slpb.LoadStmt) {
 	}
 }
 
-func makeLoadStmtSymbol(load *slpb.LoadStmt) *bzpb.SymbolInfo {
+func makeLoadStmtSymbol(load *slpb.LoadStmt) *sympb.Symbol {
 	processLoadStmt(load)
 	// Use the label as the name for load statements
 	name := ""
@@ -337,11 +337,11 @@ func makeLoadStmtSymbol(load *slpb.LoadStmt) *bzpb.SymbolInfo {
 			name = ":" + load.Label.Name
 		}
 	}
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_LOAD_STMT,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_LOAD_STMT,
 		Name:        name,
 		Description: "", // Load statements don't have descriptions
-		Info:        &bzpb.SymbolInfo_Load{Load: load},
+		Info:        &sympb.Symbol_Load{Load: load},
 	}
 }
 
@@ -349,7 +349,7 @@ func processValue(value *slpb.Value) {
 	processSymbolLocation(value.Location)
 }
 
-func makeValueSymbol(name string, value *slpb.Value) *bzpb.SymbolInfo {
+func makeValueSymbol(name string, value *slpb.Value) *sympb.Symbol {
 	processValue(value)
 	// Create a description based on the value type
 	description := ""
@@ -361,17 +361,17 @@ func makeValueSymbol(name string, value *slpb.Value) *bzpb.SymbolInfo {
 	case *slpb.Value_Bool:
 		description = ""
 	}
-	return &bzpb.SymbolInfo{
-		Type:        bzpb.SymbolType_SYMBOL_TYPE_VALUE,
+	return &sympb.Symbol{
+		Type:        sympb.SymbolType_SYMBOL_TYPE_VALUE,
 		Name:        name,
 		Description: description,
-		Info:        &bzpb.SymbolInfo_Value{Value: value},
+		Info:        &sympb.Symbol_Value{Value: value},
 	}
 }
 
 // makeSymbolsFromModuleInfo extracts all symbols from a ModuleInfo
-func makeSymbolsFromModuleInfo(module *sdpb.ModuleInfo) []*bzpb.SymbolInfo {
-	var symbols []*bzpb.SymbolInfo
+func makeSymbolsFromModuleInfo(module *sdpb.ModuleInfo) []*sympb.Symbol {
+	var symbols []*sympb.Symbol
 
 	// Process rules
 	for _, rule := range module.RuleInfo {
@@ -413,14 +413,14 @@ func makeSymbolsFromModuleInfo(module *sdpb.ModuleInfo) []*bzpb.SymbolInfo {
 
 // makeSymbolsFromModule extracts all symbols from a slpb.Module with location
 // information
-func makeSymbolsFromModule(module *slpb.Module) []*bzpb.SymbolInfo {
+func makeSymbolsFromModule(module *slpb.Module) []*sympb.Symbol {
 	if module == nil {
 		return nil
 	}
 
 	symbolNames := make(map[string]bool)
 
-	var symbols []*bzpb.SymbolInfo
+	var symbols []*sympb.Symbol
 
 	// Process rules
 	for _, rule := range module.Rule {

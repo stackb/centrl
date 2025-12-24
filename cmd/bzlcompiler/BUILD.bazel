@@ -18,6 +18,7 @@ go_library(
     deps = [
         "//blaze/worker",
         "//build/stack/bazel/registry/v1:registry",
+        "//build/stack/bazel/symbol/v1:symbol",
         "//build/stack/starlark/v1beta1",
         "//pkg/paramsfile",
         "//pkg/protoutil",

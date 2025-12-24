@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	sympb "github.com/stackb/centrl/build/stack/bazel/symbol/v1"
 	"github.com/stackb/centrl/pkg/gh"
 	"github.com/stackb/centrl/pkg/paramsfile"
 	"github.com/stackb/centrl/pkg/protoutil"
@@ -17,7 +18,7 @@ const toolName = "registrycompiler"
 
 type Config struct {
 	OutputFile                string
-	DocumentationRegistryFile string
+	ModuleRegistrySymbolsFile string
 	ModuleFiles               []string
 	GithubToken               string
 	RepositoryURL             string
@@ -75,12 +76,12 @@ func run(args []string) error {
 		registry.Modules = append(registry.Modules, &module)
 	}
 
-	if cfg.DocumentationRegistryFile != "" {
-		var docRegistry bzpb.DocumentationRegistry
-		if err := protoutil.ReadFile(cfg.DocumentationRegistryFile, &docRegistry); err != nil {
-			return fmt.Errorf("reading %s: %v", cfg.DocumentationRegistryFile, err)
+	if cfg.ModuleRegistrySymbolsFile != "" {
+		var docRegistry sympb.ModuleRegistrySymbols
+		if err := protoutil.ReadFile(cfg.ModuleRegistrySymbolsFile, &docRegistry); err != nil {
+			return fmt.Errorf("reading %s: %v", cfg.ModuleRegistrySymbolsFile, err)
 		}
-		for _, d := range docRegistry.Documentation {
+		for _, d := range docRegistry.ModuleVersion {
 			id := fmt.Sprintf("%s@%s", d.ModuleName, d.Version)
 			if mv, ok := moduleVersionsById[id]; ok {
 				if mv.Source.Documentation == nil {
@@ -104,7 +105,7 @@ func run(args []string) error {
 func parseFlags(args []string) (cfg Config, err error) {
 	fs := flag.NewFlagSet(toolName, flag.ExitOnError)
 	fs.StringVar(&cfg.OutputFile, "output_file", "", "the output file to write")
-	fs.StringVar(&cfg.DocumentationRegistryFile, "documentation_registry_file", "", "the doc registry file to read")
+	fs.StringVar(&cfg.ModuleRegistrySymbolsFile, "documentation_registry_file", "", "the doc registry file to read")
 	fs.StringVar(&cfg.RepositoryURL, "repository_url", "", "repository URL of the registry (e.g. 'https://github.com/bazelbuild/bazel-central-registry')")
 	fs.StringVar(&cfg.RegistryURL, "registry_url", "", "URL of the registry UI (e.g. 'https://registry.bazel.build')")
 	fs.StringVar(&cfg.Branch, "branch", "", "branch name of the repository data (e.g. 'main')")

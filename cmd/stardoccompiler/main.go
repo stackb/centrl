@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	sympb "github.com/stackb/centrl/build/stack/bazel/symbol/v1"
 	"github.com/stackb/centrl/pkg/protoutil"
 	"github.com/stackb/centrl/pkg/stardoc"
 	sdpb "github.com/stackb/centrl/stardoc_output"
@@ -35,8 +35,8 @@ func run(args []string) error {
 		return fmt.Errorf("failed to parse args: %w", err)
 	}
 
-	result := &bzpb.DocumentationInfo{
-		Source: bzpb.DocumentationSource_PUBLISHED,
+	result := &sympb.ModuleVersionSymbols{
+		Source: sympb.SymbolSource_PUBLISHED,
 	}
 
 	for _, file := range cfg.Files {
@@ -44,7 +44,7 @@ func run(args []string) error {
 		if err := protoutil.ReadFile(file, &module); err != nil {
 			return fmt.Errorf("reading %s: %v", file, err)
 		}
-		fileInfo := stardoc.ModuleInfoToFileInfo(&module)
+		fileInfo := stardoc.ModuleInfoToFile(&module)
 		result.File = append(result.File, fileInfo)
 	}
 

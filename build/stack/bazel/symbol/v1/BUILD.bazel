@@ -6,31 +6,27 @@ load("@stackb_rules_closure//closure/protobuf:defs.bzl", "closure_jspb_library")
 load("//bazel_tools/rust:proto_rust_library.bzl", "proto_rust_library")
 
 proto_library(
-    name = "bzpb_proto",
-    srcs = ["bcr.proto"],
+    name = "sympb_proto",
+    srcs = ["symbol.proto"],
     visibility = ["//visibility:public"],
-    deps = [
-        "//build/stack/bazel/symbol/v1:sympb_proto",
-        "//build/stack/starlark/v1beta1:v1beta1_proto",
-    ],
+    deps = ["//build/stack/starlark/v1beta1:v1beta1_proto"],
 )
 
 proto_compiled_sources(
-    name = "bzpb_go_compiled_sources",
-    srcs = ["bcr.pb.go"],
-    output_mappings = ["bcr.pb.go=github.com/stackb/centrl/build/stack/bazel/registry/v1/bcr.pb.go"],
+    name = "sympb_go_compiled_sources",
+    srcs = ["symbol.pb.go"],
+    output_mappings = ["symbol.pb.go=github.com/stackb/centrl/build/stack/bazel/symbol/v1/symbol.pb.go"],
     plugins = ["@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go"],
-    proto = "bzpb_proto",
+    proto = "sympb_proto",
     visibility = ["//visibility:public"],
 )
 
 go_library(
-    name = "registry",
-    srcs = ["bcr.pb.go"],
-    importpath = "github.com/stackb/centrl/build/stack/bazel/registry/v1",
+    name = "symbol",
+    srcs = ["symbol.pb.go"],
+    importpath = "github.com/stackb/centrl/build/stack/bazel/symbol/v1",
     visibility = ["//visibility:public"],
     deps = [
-        "//build/stack/bazel/symbol/v1:symbol",
         "//build/stack/starlark/v1beta1",
         "@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
         "@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
@@ -38,50 +34,42 @@ go_library(
 )
 
 proto_compile(
-    name = "bzpb_js_proto",
-    outputs = ["bzpb.js"],
+    name = "sympb_js_proto",
+    outputs = ["sympb.js"],
     plugins = ["@stackb_rules_closure//closure/protobuf:protoc-gen-js"],
-    proto = "bzpb_proto",
+    proto = "sympb_proto",
 )
 
 closure_jspb_library(
-    name = "bzpb_js",
-    srcs = [":bzpb_js_proto"],
-    internal_descriptors = [":bzpb_proto"],
+    name = "sympb_js",
+    srcs = [":sympb_js_proto"],
+    internal_descriptors = [":sympb_proto"],
     visibility = ["//visibility:public"],
-    deps = [
-        "//build/stack/bazel/symbol/v1:sympb_js",
-        "//build/stack/starlark/v1beta1:v1beta1_js",
-    ],
+    deps = ["//build/stack/starlark/v1beta1:v1beta1_js"],
 )
 
 proto_compile(
-    name = "bzpb_proto_rs",
+    name = "sympb_proto_rs",
     options = {
         "//bazel_tools/rust:protoc-gen-prost": [
-            "extern_path=.build.stack.bazel.symbol.v1=::sympb_rs::build::stack::bazel::symbol::v1",
-            "extern_path=.build.stack.bazel.help.v1=::help_rs::build::stack::bazel::help::v1",
             "extern_path=.build.stack.starlark.v1beta1=::v1beta1_rs::build::stack::starlark::v1beta1",
         ],
     },
     outputs = [
-        "build.stack.bazel.registry.v1.rs",
-        "build.stack.bazel.registry.v1.serde.rs",
+        "build.stack.bazel.symbol.v1.rs",
+        "build.stack.bazel.symbol.v1.serde.rs",
     ],
     plugins = [
         "//bazel_tools/rust:protoc-gen-prost",
         "//bazel_tools/rust:protoc-gen-prost-serde",
     ],
-    proto = "bzpb_proto",
+    proto = "sympb_proto",
 )
 
 proto_rust_library(
-    name = "bzpb_rs",
-    srcs = [":bzpb_proto_rs"],
-    pkg = "build.stack.bazel.registry.v1",
+    name = "sympb_rs",
+    srcs = [":sympb_proto_rs"],
+    pkg = "build.stack.bazel.symbol.v1",
     visibility = ["//visibility:public"],
-    deps = [
-        "//build/stack/bazel/symbol/v1:sympb_rs",
-        "//build/stack/starlark/v1beta1:v1beta1_rs",
-    ],
+    deps = ["//build/stack/starlark/v1beta1:v1beta1_rs"],
 )

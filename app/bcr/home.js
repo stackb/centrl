@@ -3,7 +3,7 @@ goog.module("centrl.home");
 const Module = goog.require('proto.build.stack.bazel.registry.v1.Module');
 const ModuleVersion = goog.require('proto.build.stack.bazel.registry.v1.ModuleVersion');
 const Registry = goog.require('proto.build.stack.bazel.registry.v1.Registry');
-const SymbolType = goog.require('proto.build.stack.bazel.registry.v1.SymbolType');
+const SymbolType = goog.require('proto.build.stack.bazel.symbol.v1.SymbolType');
 const dom = goog.require('goog.dom');
 const soy = goog.require('goog.soy');
 const { ContentSelect } = goog.require('centrl.ContentSelect');

@@ -7,6 +7,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//build/stack/bazel/registry/v1:registry",
+        "//build/stack/bazel/symbol/v1:symbol",
         "//pkg/gh",
         "//pkg/paramsfile",
         "//pkg/protoutil",

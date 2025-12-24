@@ -26,11 +26,12 @@ import {
     octiconStar16,
     octiconVerified16
 } from 'app/bcr/octicons.soy';
-
+import {
+    ModuleVersionSymbols,
+    SymbolSource
+} from 'build/stack/bazel/symbol/v1/symbol.proto';
 import {
     Attestations,
-    DocumentationInfo,
-    DocumentationSource,
     GitOverride,
     LocalPathOverride,
     Maintainer,
@@ -663,10 +664,10 @@ unknown
 {/template}
 
 {template documentationSourceOcticon}
-  {@param source: DocumentationSource}
-{if $source == DocumentationSource.PUBLISHED}
+  {@param source: SymbolSource}
+{if $source == SymbolSource.PUBLISHED}
   {octiconNorthStar16(fill: 'var(--color-success-fg)')}
-{elseif $source == DocumentationSource.BEST_EFFORT}
+{elseif $source == SymbolSource.BEST_EFFORT}
   {octiconNorthStar16(fill: 'var(--color-attention-fg)')}
 {else}
   {octiconNorthStar16()}
@@ -675,7 +676,7 @@ unknown
 {/template}
 
 {template docsList}
-  {@param docsMap: map<string,DocumentationInfo>}
+  {@param docsMap: map<string,ModuleVersionSymbols>}
 <div class="mt-3">
   {for $key in $docsMap.keys()}
     {let $docs: $docsMap.get($key) /}

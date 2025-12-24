@@ -94,7 +94,8 @@ closure_js_template_library(
     ],
     deps = [
         "//build/stack/bazel/registry/v1:bzpb_js",
-        "//build/stack/starlark/v1beta1:v1beta1_proto_js",
+        "//build/stack/bazel/symbol/v1:sympb_js",
+        "//build/stack/starlark/v1beta1:v1beta1_js",
         "//stardoc_output:stardoc_output_js",
     ],
 )
@@ -196,7 +197,8 @@ closure_js_library(
         ":registry",
         ":soy",
         "//build/stack/bazel/registry/v1:bzpb_js",
-        "//build/stack/starlark/v1beta1:v1beta1_proto_js",
+        "//build/stack/bazel/symbol/v1:sympb_js",
+        "//build/stack/starlark/v1beta1:v1beta1_js",
         "//stardoc_output:stardoc_output_js",
         "@stackb_rules_closure//closure/goog/array",
         "@stackb_rules_closure//closure/goog/asserts",

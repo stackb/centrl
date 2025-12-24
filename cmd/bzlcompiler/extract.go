@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"time"
 
-	bzpb "github.com/stackb/centrl/build/stack/bazel/registry/v1"
+	sympb "github.com/stackb/centrl/build/stack/bazel/symbol/v1"
 	slpb "github.com/stackb/centrl/build/stack/starlark/v1beta1"
 	"github.com/stackb/centrl/pkg/stardoc"
 )
 
-func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtract []string) (*bzpb.DocumentationInfo, error) {
-	result := &bzpb.DocumentationInfo{
-		Source: bzpb.DocumentationSource_BEST_EFFORT,
+func extractModuleVersionSymbols(cfg *config, bzlFileByPath map[string]*bzlFile, filesToExtract []string) (*sympb.ModuleVersionSymbols, error) {
+	result := &sympb.ModuleVersionSymbols{
+		Source: sympb.SymbolSource_BEST_EFFORT,
 	}
 
 	var errors int
@@ -29,7 +29,7 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 		// }
 		// cfg.Logger.Panicf("extracting %s: %+v", filePath, bzlFile.Label)
 
-		file := &bzpb.FileInfo{Label: bzlFile.Label}
+		file := &sympb.File{Label: bzlFile.Label}
 
 		module, err := extractModule(cfg, bzlFile)
 		if err != nil {
@@ -41,7 +41,7 @@ func extractDocumentationInfo(cfg *config, bzlFileByPath map[string]*bzlFile, fi
 			}
 			errors++
 		} else {
-			stardoc.ModuleToFileInfo(file, module)
+			stardoc.ModuleToFile(file, module)
 			// cfg.Logger.Printf("🟢 successfully extracted %s", bzlFile.Label)
 			// cfg.Logger.Panicf("extracted %s: %+v", filePath, module)
 		}
