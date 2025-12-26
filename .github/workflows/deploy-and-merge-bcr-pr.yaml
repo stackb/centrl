@@ -3,8 +3,6 @@ name: Deploy and Auto-Merge BCR PR
 on:
   pull_request:
     types: [opened, synchronize, labeled]
-    paths:
-      - "data/bazel-central-registry"
 
 concurrency:
   group: deploy-bcr-pr-${{ github.event.pull_request.number }}
