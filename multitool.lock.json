@@ -15,7 +15,27 @@
         "sha256": "94633f4516184d8f5c058df4958e92e2311d49da9f00c3e01eee8ef64a70d303",
         "os": "linux",
         "cpu": "x86_64"
-      }      
+      }
+    ]
+  },
+  "gh": {
+    "binaries": [
+      {
+        "kind": "archive",
+        "url": "https://github.com/cli/cli/releases/download/v2.83.2/gh_2.83.2_macOS_arm64.zip",
+        "sha256": "ba3e0396ebbc8da17256144ddda503e4e79c8b502166335569f8390d6b75fa8d",
+        "file": "gh_2.83.2_macOS_arm64/bin/gh",
+        "os": "macos",
+        "cpu": "arm64"
+      },
+      {
+        "kind": "archive",
+        "url": "https://github.com/cli/cli/releases/download/v2.83.2/gh_2.83.2_linux_386.tar.gz",
+        "sha256": "72934bf79559b61d1e810a838025301f1f5fed674108b198991da5b383ff9cfa",
+        "file": "gh_2.83.2_linux_386/bin/gh",
+        "os": "linux",
+        "cpu": "x86_64"
+      }
     ]
   }
 }
