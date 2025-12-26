@@ -437,8 +437,6 @@ func (ext *bcrExtension) populateBazelModuleCommit(release *bzpb.BazelRelease) {
 
 	// Store in the moduleCommits map
 	ext.moduleCommits[key] = release.Commit
-
-	log.Printf("Populated commit data for bazel/%s: %s", release.Version, release.Commit.Sha1)
 }
 
 // writeBazelMetadataFile writes the metadata.json file at module level with all versions and maintainer information
