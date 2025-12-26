@@ -135,6 +135,25 @@ func (ext *bcrExtension) getBackupModuleSource(moduleName, version string) *bzpb
 	return nil
 }
 
+// getBackupSourceUrlStatus retrieves source URL status from the backup registry
+// Returns the ResourceStatus if found, nil otherwise
+func (ext *bcrExtension) getBackupSourceUrlStatus(url string) *bzpb.ResourceStatus {
+	if ext.backupRegistry == nil {
+		return nil
+	}
+
+	// Search through all module versions to find matching source URL
+	for _, module := range ext.backupRegistry.Modules {
+		for _, version := range module.Versions {
+			if version.Source != nil && version.Source.Url == url && version.Source.UrlStatus != nil {
+				return version.Source.UrlStatus
+			}
+		}
+	}
+
+	return nil
+}
+
 // populateFromBackupRegistry attempts to populate repository metadata from the backup registry
 // Returns the number of repositories successfully populated
 func (ext *bcrExtension) populateFromBackupRegistry(repositories []*bzpb.RepositoryMetadata) int {

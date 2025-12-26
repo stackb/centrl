@@ -198,9 +198,10 @@ func (ext *bcrExtension) prepareBzlRepositories() rankedModuleVersionMap {
 
 	versions := make(rankedModuleVersionMap)
 
-	// Separate URLs into cached, blacklisted, MVS-filtered, bzl_src-filtered, and uncached
+	// Separate URLs into cached, blacklisted, backup, and uncached
 	var uncachedItems []checkItem
 	var cachedCount int
+	var backupCount int
 	var unrequestedCount int
 	var blacklistedCount int
 	var bzlSrcsFilteredCount int
@@ -213,22 +214,37 @@ func (ext *bcrExtension) prepareBzlRepositories() rankedModuleVersionMap {
 			continue
 		}
 
+		// Priority 1: Check local cache
 		if cachedStatus, found := ext.resourceStatusByUrl[url]; found {
-			// Use cached status
 			cachedCount++
 			status := netutil.URLStatus{
 				Code:    int(cachedStatus.Code),
 				Message: cachedStatus.Message,
 			}
 			ext.handleSourceUrlStatus(url, moduleIDs, status, versions, true)
-		} else {
-			// Need to check this URL
-			uncachedItems = append(uncachedItems, checkItem{url, moduleIDs})
+			continue
 		}
+
+		// Priority 2: Check backup registry
+		if backupStatus := ext.getBackupSourceUrlStatus(url); backupStatus != nil {
+			backupCount++
+			status := netutil.URLStatus{
+				Code:    int(backupStatus.Code),
+				Message: backupStatus.Message,
+			}
+			ext.handleSourceUrlStatus(url, moduleIDs, status, versions, true)
+			continue
+		}
+
+		// Priority 3: Need to check this URL via HTTP
+		uncachedItems = append(uncachedItems, checkItem{url, moduleIDs})
 	}
 
 	if cachedCount > 0 {
 		log.Printf("Skipped %d cached source URL checks", cachedCount)
+	}
+	if backupCount > 0 {
+		log.Printf("Retrieved %d source URL statuses from backup registry", backupCount)
 	}
 	if blacklistedCount > 0 {
 		log.Printf("Skipped %d blacklisted source URLs", blacklistedCount)
