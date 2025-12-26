@@ -139,7 +139,7 @@ jobs:
       # https://github.com/actions/attest-build-provenance
       - name: Attest release files
         id: attest_release
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-path: release_files/**/*
 
