@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  check-update:
     runs-on: self-hosted
     environment: deploy
     permissions:
@@ -53,10 +53,10 @@ jobs:
           fi
 
       - uses: bazel-contrib/setup-bazel@0.16.0
-        if: steps.check_updates.outputs.has_updates == 'true' || github.event_name == 'workflow_dispatch'
+        if: steps.check_updates.outputs.has_updates == 'true'
 
       - name: Create PR for submodule update
-        if: steps.check_updates.outputs.has_updates == 'true' && github.event_name == 'schedule'
+        if: steps.check_updates.outputs.has_updates == 'true'
         run: |
           # Get the new commit SHA
           NEW_SHA=$(git -C data/bazel-central-registry rev-parse HEAD)
@@ -79,7 +79,7 @@ jobs:
             --title "Update BCR submodule to latest" \
             --body "Automated update of bazel-central-registry submodule to \`$NEW_SHA\`
 
-          This PR was automatically created by the scheduled release workflow." \
+          This PR was automatically created by the scheduled update workflow." \
             --head "$BRANCH_NAME" \
             --base "main" \
             --label "bcr-auto-update"
