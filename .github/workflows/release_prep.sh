@@ -9,7 +9,7 @@ readonly TAG=$1
 # The prefix is chosen to match what GitHub generates for source archives.
 # This guarantees that users can easily switch from a released artifact to a source archive
 # with minimal differences in their code (e.g. strip_prefix remains the same)
-readonly PREFIX="centrl-${TAG}"
+readonly PREFIX="bcr-frontend-${TAG}"
 readonly ARCHIVE="${PREFIX}.tar.gz"
 
 # NB: configuration for 'git archive' is in /.gitattributes
@@ -23,6 +23,6 @@ cat << EOF
 Add to your \`MODULE.bazel\` file:
 
 \`\`\`starlark
-bazel_dep(name = "centrl", version = "${TAG}")
+bazel_dep(name = "bcr-frontend", version = "${TAG}")
 \`\`\`
 EOF
