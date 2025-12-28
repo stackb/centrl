@@ -37,18 +37,6 @@ jobs:
 
       - uses: bazel-contrib/setup-bazel@0.16.0
 
-      - name: Enable auto-merge on PR
-        run: |
-          echo "Enabling auto-merge on PR #${{ github.event.pull_request.number }}"
-
-          # Enable auto-merge - will merge when all checks (including this one) pass
-          bazel run @multitool//tools/gh:gh -- pr merge ${{ github.event.pull_request.number }} \
-            --auto \
-            --squash \
-            --delete-branch
-        env:
-          GH_TOKEN: ${{ secrets.BCR_AUTOMATION_TOKEN }}
-
       - name: Clean and initialize BCR
         run: make bcr_clean bcr_init bcr_update
 
@@ -70,13 +58,25 @@ jobs:
           --//app/bcr:release_type=production
           //app/bcr:deploy
 
+      - name: Enable auto-merge on PR after successful deployment
+        if: success()
+        run: |
+          echo "✅ Deployment succeeded! Enabling auto-merge on PR #${{ github.event.pull_request.number }}"
+
+          # Enable auto-merge - will merge when all checks (including this one) pass
+          bazel run @multitool//tools/gh:gh -- pr merge ${{ github.event.pull_request.number }} \
+            --auto \
+            --squash \
+            --delete-branch
+        env:
+          GH_TOKEN: ${{ secrets.BCR_AUTOMATION_TOKEN }}
+
       - name: Comment on PR if deployment failed
         if: failure()
         run: |
-          # Disable auto-merge since deployment failed
-          bazel run @multitool//tools/gh:gh -- pr merge ${{ github.event.pull_request.number }} --disable-auto || true
+          echo "❌ Deployment failed! Commenting on PR #${{ github.event.pull_request.number }}"
 
           bazel run @multitool//tools/gh:gh -- pr comment ${{ github.event.pull_request.number }} \
-            --body "❌ Deployment failed for BCR commit \`${{ steps.bcr_commit.outputs.sha }}\`. Auto-merge has been disabled. Please review the logs and merge manually after fixing."
+            --body "❌ Deployment failed for BCR commit \`${{ steps.bcr_commit.outputs.sha }}\`. Please review the logs and merge manually after fixing."
         env:
           GH_TOKEN: ${{ secrets.BCR_AUTOMATION_TOKEN }}
